@@ -42,7 +42,7 @@ BOARD_SHOT = "assets/screenshots/play-board.png"
 GUIDE_SHOT = "assets/screenshots/play-guide.png"
 BOOK_COVER_REL = "assets/books"
 LINK_TEXT = "View on Amazon UK"
-SITE_TAGLINE = "Organisational Decision Architecture sandbox"
+SITE_TAGLINE = "Organisational Decision Architecture Sandbox"
 
 # Covers and the icon ship downscaled: they are shown at most ~190px wide, so a
 # web-sized copy keeps the page light instead of serving multi-megabyte art.
@@ -134,7 +134,7 @@ def _head(description: str) -> str:
     return f"""<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{APP_NAME}: a Decision Architecture sandbox</title>
+<title>{APP_NAME}: a Decision Architecture Sandbox</title>
 <meta name="description" content="{escape(description)}">
 <link rel="canonical" href="{SITE_URL}">
 <meta property="og:type" content="website">

@@ -56,7 +56,7 @@ APP_NAME = "Fulcrum"
 # identifier and the display name match (no embedded space), so the payload
 # directory, install path and exe all share the same base name.
 APP_DISPLAY_NAME = "Fulcrum"
-APP_TAGLINE = "Decision Sandbox"
+APP_TAGLINE = "Organisational Decision Architecture Sandbox"
 APP_PUBLISHER = "Oliver Ernster"
 APP_URL = "https://oernster.github.io/fulcrum/"
 
@@ -879,6 +879,7 @@ class InstallerWindow(QWidget):
         tagline = QLabel(APP_TAGLINE)
         tagline.setObjectName("Tagline")
         tagline.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        tagline.setWordWrap(True)
         layout.addWidget(tagline)
 
         divider = QFrame()

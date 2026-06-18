@@ -144,7 +144,7 @@ chmod +x packaging/fulcrum-launcher.sh
 cat > "packaging/${APP_ID}.desktop" <<DESKTOP
 [Desktop Entry]
 Name=Fulcrum
-Comment=Organisational decision architecture sandbox
+Comment=Organisational Decision Architecture Sandbox
 Exec=fulcrum
 Icon=${APP_ID}
 Terminal=false
@@ -158,7 +158,7 @@ cat > "packaging/${APP_ID}.metainfo.xml" <<XML
 <component type="desktop-application">
   <id>${APP_ID}</id>
   <name>Fulcrum</name>
-  <summary>Organisational decision architecture sandbox</summary>
+  <summary>Organisational Decision Architecture Sandbox</summary>
   <metadata_license>MIT</metadata_license>
   <project_license>GPL-3.0-only AND LGPL-3.0-only</project_license>
   <developer_name>Oliver Ernster</developer_name>
