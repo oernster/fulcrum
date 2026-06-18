@@ -6,11 +6,12 @@ The randomness varies the flavour (size, delays, skew, workload), never the
 existence of a solution, so every level is playable and provably has a great
 move.
 
-Every level is grouped into domains, and larger ones nest a sub-domain, so a
-generated org always reads as a real structure rather than a flat team list and
-exercises the hierarchy, the navigable map and the per-domain plan. The grouping
-is navigational metadata over the same teams, so it never changes the score or
-the guaranteed great move.
+Every level nests into a real multi-tier hierarchy. Two root divisions branch
+into departments, then larger orgs branch once more into groups, with teams
+spread across the leaf domains. A generated org therefore reads like a real
+organisation rather than one flat level and exercises the hierarchy, the
+navigable map and the per-domain plan. The nesting is navigational metadata over
+the same teams, so it never changes the score or the guaranteed great move.
 """
 
 from __future__ import annotations
@@ -30,7 +31,7 @@ from fulcrum.domain.models import (
 from fulcrum.domain.moves import apply_move
 from fulcrum.domain.simulation import MoveClassification
 
-_TEAM_CHOICES: tuple[int, ...] = (4, 5, 6, 7, 8, 9, 10)
+_TEAM_CHOICES: tuple[int, ...] = (6, 7, 8, 9, 10)
 _LOOKAHEAD: int = 10
 _MIN_DELAY: int = 3
 _MAX_DELAY: int = 6
@@ -40,14 +41,15 @@ _MIN_SKEW: float = 0.3
 _MAX_SKEW: float = 0.9
 _SKEW_DECIMALS: int = 2
 
-# Every generated org is grouped into root domains, so a level always reads as a
-# real structure rather than a flat team list; at or above the sub-domain
-# threshold one domain is nested under the first, making it two levels deep. The
-# grouping is metadata only and never changes the score.
-_SUBDOMAIN_THRESHOLD: int = 5
+# Generated orgs nest into a real multi-tier hierarchy rather than one flat
+# level: two root divisions branch into departments, then larger orgs branch
+# once more into groups. Teams are spread across the leaf domains. The nesting
+# is metadata only and never changes the score.
 _ROOT_DOMAINS: int = 2
-_ROOT_CATEGORY: str = GROUP_CATEGORIES[0]
-_SUB_CATEGORY: str = GROUP_CATEGORIES[1]
+_CHILDREN_PER_DOMAIN: int = 2
+_DEPTH_MEDIUM: int = 2
+_DEPTH_DEEP: int = 3
+_DEEP_THRESHOLD: int = 12
 
 # Cosmetic name pools for generated domains and their leads, the structural
 # equivalent of the "Team N" team names: drawn at random, never load-bearing.
@@ -58,6 +60,16 @@ _DOMAIN_NAMES: tuple[str, ...] = (
     "Operations",
     "Security",
     "Growth",
+    "Finance",
+    "Legal",
+    "Marketing",
+    "Sales",
+    "Support",
+    "Research",
+    "Infrastructure",
+    "Quality",
+    "Design",
+    "Delivery",
 )
 _LEAD_NAMES: tuple[str, ...] = (
     "Avery",
@@ -67,42 +79,75 @@ _LEAD_NAMES: tuple[str, ...] = (
     "Esin",
     "Faye",
     "Gabriel",
+    "Hana",
+    "Ira",
+    "Jun",
+    "Kit",
+    "Lena",
+    "Mara",
+    "Nils",
+    "Omar",
+    "Pia",
 )
 
 
-def _build_domains(rng: Random, count: int) -> tuple[tuple[Domain, ...], list[str]]:
-    """Return the domains and a per-team domain id for an org of `count` teams.
+def _tier_category(tier: int) -> str:
+    return GROUP_CATEGORIES[min(tier, len(GROUP_CATEGORIES) - 1)]
 
-    Every org is grouped into root domains; from the sub-domain threshold up,
-    one extra domain is nested under the first so the org is two levels deep.
+
+def _domain_total(depth: int) -> int:
+    total = 0
+    tier_size = _ROOT_DOMAINS
+    for _ in range(depth):
+        total += tier_size
+        tier_size *= _CHILDREN_PER_DOMAIN
+    return total
+
+
+def _build_domains(rng: Random, count: int) -> tuple[tuple[Domain, ...], list[str]]:
+    """Return the domains and a per-team leaf-domain id for `count` teams.
+
+    The org nests into two tiers (divisions then departments), or three for
+    larger orgs (divisions, departments then groups). Teams are spread across
+    the leaf domains, so a generated org is a real multi-level structure.
     """
-    nested = count >= _SUBDOMAIN_THRESHOLD
-    total = _ROOT_DOMAINS + (1 if nested else 0)
+    depth = _DEPTH_DEEP if count >= _DEEP_THRESHOLD else _DEPTH_MEDIUM
+    total = _domain_total(depth)
     names = rng.sample(_DOMAIN_NAMES, total)
     leads = rng.sample(_LEAD_NAMES, total)
-    domains = [
-        Domain(
-            id=f"domain_{k + 1}",
-            name=names[k],
-            lead=leads[k],
-            category=_ROOT_CATEGORY,
-        )
-        for k in range(_ROOT_DOMAINS)
-    ]
-    if nested:
+    domains: list[Domain] = []
+    index = 0
+    current: list[str] = []
+    for _ in range(_ROOT_DOMAINS):
+        domain_id = f"domain_{index + 1}"
         domains.append(
             Domain(
-                id=f"domain_{_ROOT_DOMAINS + 1}",
-                name=names[_ROOT_DOMAINS],
-                parent_id="domain_1",
-                lead=leads[_ROOT_DOMAINS],
-                category=_SUB_CATEGORY,
+                id=domain_id,
+                name=names[index],
+                lead=leads[index],
+                category=_tier_category(0),
             )
         )
-    assignable = [domain.id for domain in domains]
-    domain_of: list[str | None] = [
-        assignable[i % len(assignable)] for i in range(count)
-    ]
+        current.append(domain_id)
+        index += 1
+    for tier in range(1, depth):
+        children: list[str] = []
+        for parent_id in current:
+            for _ in range(_CHILDREN_PER_DOMAIN):
+                domain_id = f"domain_{index + 1}"
+                domains.append(
+                    Domain(
+                        id=domain_id,
+                        name=names[index],
+                        parent_id=parent_id,
+                        lead=leads[index],
+                        category=_tier_category(tier),
+                    )
+                )
+                children.append(domain_id)
+                index += 1
+        current = children
+    domain_of = [current[i % len(current)] for i in range(count)]
     return tuple(domains), domain_of
 
 

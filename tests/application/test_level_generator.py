@@ -61,25 +61,36 @@ def test_reaches_great_move_false_for_healthy_org():
     assert _reaches_great_move(healthy, DeterministicSimulator()) is False
 
 
-def test_orgs_group_into_root_domains():
-    domains, domain_of = _build_domains(Random(0), 4)
-    assert len(domains) == 2
-    assert all(domain.parent_id is None for domain in domains)
-    assert all(domain.category == GROUP_CATEGORIES[0] for domain in domains)
-    known = {domain.id for domain in domains}
-    assert all(assigned in known for assigned in domain_of)
-
-
-def test_largest_orgs_nest_a_subdomain():
-    domains, domain_of = _build_domains(Random(0), 8)
-    nested = [domain for domain in domains if domain.parent_id is not None]
-    assert len(nested) == 1
-    assert nested[0].parent_id == "domain_1"
-    assert nested[0].category == GROUP_CATEGORIES[1]
-    # The grouping must build a valid org: construction validates the domains.
+def _org_from(domains, domain_of, count):
     teams = tuple(
         Team(f"team_{i + 1}", f"Team {i + 1}", i == 0, domain_id=domain_of[i])
-        for i in range(8)
+        for i in range(count)
     )
-    org = OrgState(teams=teams, domains=domains)
-    assert len(org.domains) == 3
+    return OrgState(teams=teams, domains=domains)
+
+
+def test_medium_orgs_nest_departments_under_divisions():
+    domains, domain_of = _build_domains(Random(0), 8)
+    roots = [d for d in domains if d.parent_id is None]
+    leaves = [d for d in domains if d.parent_id is not None]
+    assert len(roots) == 2
+    assert len(leaves) == 4
+    assert all(d.category == GROUP_CATEGORIES[0] for d in roots)
+    assert all(d.category == GROUP_CATEGORIES[1] for d in leaves)
+    root_ids = {d.id for d in roots}
+    assert all(d.parent_id in root_ids for d in leaves)
+    leaf_ids = {d.id for d in leaves}
+    assert all(assigned in leaf_ids for assigned in domain_of)
+    assert len(_org_from(domains, domain_of, 8).domains) == 6
+
+
+def test_large_orgs_nest_three_tiers():
+    domains, domain_of = _build_domains(Random(1), 12)
+    assert len(domains) == 14
+    parents = {d.parent_id for d in domains if d.parent_id is not None}
+    leaf_ids = {d.id for d in domains if d.id not in parents}
+    assert len(leaf_ids) == 8
+    tiers = {d.category for d in domains}
+    assert {GROUP_CATEGORIES[0], GROUP_CATEGORIES[1], GROUP_CATEGORIES[2]} <= tiers
+    assert all(assigned in leaf_ids for assigned in domain_of)
+    assert len(_org_from(domains, domain_of, 12).domains) == 14

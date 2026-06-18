@@ -20,7 +20,7 @@ A short tour and the books behind it are at <https://oernster.github.io/fulcrum/
 
 ## Who it is not for
 
-- It is not an HR, headcount or performance tool.
+- It is not an HR or performance-management tool.
 - It is not a project tracker or a roadmap planner.
 - It is not a cloud service; there is no account and no server.
 
@@ -30,6 +30,9 @@ A short tour and the books behind it are at <https://oernster.github.io/fulcrum/
 - "Model my organisation": a hierarchical editor for domains, sub-domains, teams
   and the dependencies between them, with inline add and remove. A quick wizard
   is also there for a fast first position.
+- Per-team headcount that rolls up through the domain hierarchy to a whole-org
+  total, so a 100k-person structure is as workable as a handful of teams. It is
+  descriptive context and never changes the structural score.
 - JSON import, with two example sets under `examples/`: a debt ladder that
   worsens with scale and a well-designed reference set that stays healthy.
 - Save and load games as local JSON.

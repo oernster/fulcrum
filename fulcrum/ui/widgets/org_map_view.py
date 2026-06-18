@@ -47,6 +47,7 @@ _ARROW = 11.0
 _ZOOM_STEP = 1.15
 _MIN_SCALE = 0.2
 _MAX_SCALE = 4.0
+_CLICK_SLOP = 4
 _FULL = 1.0
 _HALF = 2.0
 _PREVIEW_INSET = 2
@@ -98,6 +99,8 @@ class OrgMapView(QGraphicsView):
         self._signature: object = None
         self._hot: list[tuple[QRectF, str, str]] = []
         self._up_rect: QRectF | None = None
+        self._press_pos = None
+        self._user_zoomed = False
 
     def set_org(self, org: OrgState) -> None:
         self._org = org
@@ -134,12 +137,18 @@ class OrgMapView(QGraphicsView):
         signature = (self._parent_id, len(nodes))
         if signature != self._signature:
             self._signature = signature
+            self._user_zoomed = False
             self._fit()
 
     def _fit(self) -> None:
         bounds = self._scene.itemsBoundingRect()
         if not bounds.isEmpty():
             self.fitInView(bounds, Qt.AspectRatioMode.KeepAspectRatio)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        if not self._user_zoomed:
+            self._fit()
 
     def _positions(self, nodes) -> dict:
         columns = max(1, math.ceil(math.sqrt(max(1, len(nodes)))))
@@ -277,8 +286,20 @@ class OrgMapView(QGraphicsView):
                 return domain.parent_id
         return None
 
-    def mouseDoubleClickEvent(self, event) -> None:
-        scene_pos = self.mapToScene(event.position().toPoint())
+    def mousePressEvent(self, event) -> None:
+        self._press_pos = event.position().toPoint()
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event) -> None:
+        super().mouseReleaseEvent(event)
+        if self._press_pos is None:
+            return
+        moved = (event.position().toPoint() - self._press_pos).manhattanLength()
+        self._press_pos = None
+        if moved <= _CLICK_SLOP:
+            self._drill_at(self.mapToScene(event.position().toPoint()))
+
+    def _drill_at(self, scene_pos: QPointF) -> None:
         if self._up_rect is not None and self._up_rect.contains(scene_pos):
             self._parent_id = self._domain_parent(self._parent_id)
             self._render()
@@ -288,7 +309,6 @@ class OrgMapView(QGraphicsView):
                 self._parent_id = node_id
                 self._render()
                 return
-        super().mouseDoubleClickEvent(event)
 
     def wheelEvent(self, event) -> None:
         delta = event.angleDelta().y()
@@ -299,6 +319,7 @@ class OrgMapView(QGraphicsView):
         if _MIN_SCALE <= target <= _MAX_SCALE:
             self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
             self.scale(factor, factor)
+            self._user_zoomed = True
 
     def drawForeground(self, painter: QPainter, rect: QRectF) -> None:
         if not self._preview:

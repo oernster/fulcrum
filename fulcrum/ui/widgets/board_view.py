@@ -26,10 +26,12 @@ from fulcrum.ui.widgets.org_map_view import OrgMapView
 
 _SCORE_DECIMALS = 1
 _VALUE_DECIMALS = 1
-_MAP_CAPTION = "Organisation map · double-click a domain to open"
+_MAP_CAPTION = "Organisation map"
+_MAP_HINT = "click a domain to open"
 _MAP_PANE_W = 520
 _RIGHT_PANE_W = 480
 _RIGHT_PANE_MIN = 360
+_MOVES_RIGHT_PAD = 12
 _PREVIEW_COLOR = "#fbbf24"
 # The per-move note reserves the height of the tallest note at the current
 # width (recomputed on resize), so changing its text on hover never reflows the
@@ -128,6 +130,7 @@ class BoardView(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         moves_holder = QWidget()
+        self._moves_box.setContentsMargins(0, 0, ui_scale.px(_MOVES_RIGHT_PAD), 0)
         moves_holder.setLayout(self._moves_box)
         scroll.setWidget(moves_holder)
         column.addWidget(scroll, 1)
@@ -170,13 +173,18 @@ class BoardView(QWidget):
             f"{total_headcount(self._session.org):,} people across "
             f"{len(self._session.org.teams)} teams"
         )
-        self._map_caption.setText(_MAP_CAPTION)
+        self._map_caption.setText(self._map_caption_text())
         self._map_caption.setStyleSheet("")
         self._map.set_preview(False)
         self._map.set_org(self._session.org)
         self._render_signals(self._session.signals())
         self._render_moves(self._session.candidate_valuations())
         self._set_last_move_note()
+
+    def _map_caption_text(self) -> str:
+        if self._session is not None and self._session.org.domains:
+            return f"{_MAP_CAPTION} · {_MAP_HINT}"
+        return _MAP_CAPTION
 
     def _render_signals(self, readings: tuple[SignalReading, ...]) -> None:
         _clear(self._signals_row)
@@ -227,7 +235,7 @@ class BoardView(QWidget):
         if self._session is not None:
             self._map.set_org(self._session.org)
             self._map.set_preview(False)
-            self._map_caption.setText(_MAP_CAPTION)
+            self._map_caption.setText(self._map_caption_text())
             self._map_caption.setStyleSheet("")
             self._set_last_move_note()
 
