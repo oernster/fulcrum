@@ -6,10 +6,11 @@ The randomness varies the flavour (size, delays, skew, workload), never the
 existence of a solution, so every level is playable and provably has a great
 move.
 
-Larger levels are additionally grouped into domains, and the largest nest a
-sub-domain, so they exercise the hierarchy, the navigable map and the
-per-domain plan. The grouping is navigational metadata over the same teams, so
-it never changes the score or the guaranteed great move.
+Every level is grouped into domains, and larger ones nest a sub-domain, so a
+generated org always reads as a real structure rather than a flat team list and
+exercises the hierarchy, the navigable map and the per-domain plan. The grouping
+is navigational metadata over the same teams, so it never changes the score or
+the guaranteed great move.
 """
 
 from __future__ import annotations
@@ -26,9 +27,11 @@ from fulcrum.domain.models import (
     OrgState,
     Team,
 )
+from fulcrum.domain.moves import apply_move
 from fulcrum.domain.simulation import MoveClassification
 
-_TEAM_CHOICES: tuple[int, ...] = (3, 4, 5, 6, 7, 8)
+_TEAM_CHOICES: tuple[int, ...] = (4, 5, 6, 7, 8, 9, 10)
+_LOOKAHEAD: int = 10
 _MIN_DELAY: int = 3
 _MAX_DELAY: int = 6
 _MIN_WORKLOAD: int = 6
@@ -37,11 +40,11 @@ _MIN_SKEW: float = 0.3
 _MAX_SKEW: float = 0.9
 _SKEW_DECIMALS: int = 2
 
-# At or above the first threshold the teams are grouped into root domains; at or
-# above the second one of those domains becomes a nested sub-domain, so the
-# largest generated orgs are two levels deep. The grouping is metadata only.
-_DOMAIN_THRESHOLD: int = 6
-_SUBDOMAIN_THRESHOLD: int = 7
+# Every generated org is grouped into root domains, so a level always reads as a
+# real structure rather than a flat team list; at or above the sub-domain
+# threshold one domain is nested under the first, making it two levels deep. The
+# grouping is metadata only and never changes the score.
+_SUBDOMAIN_THRESHOLD: int = 5
 _ROOT_DOMAINS: int = 2
 _ROOT_CATEGORY: str = GROUP_CATEGORIES[0]
 _SUB_CATEGORY: str = GROUP_CATEGORIES[1]
@@ -67,17 +70,12 @@ _LEAD_NAMES: tuple[str, ...] = (
 )
 
 
-def _build_domains(
-    rng: Random, count: int
-) -> tuple[tuple[Domain, ...], list[str | None]]:
+def _build_domains(rng: Random, count: int) -> tuple[tuple[Domain, ...], list[str]]:
     """Return the domains and a per-team domain id for an org of `count` teams.
 
-    Small orgs stay flat with no domains. From the domain threshold up, teams
-    are grouped into root domains; from the sub-domain threshold up, one extra
-    domain is nested under the first so the org is two levels deep.
+    Every org is grouped into root domains; from the sub-domain threshold up,
+    one extra domain is nested under the first so the org is two levels deep.
     """
-    if count < _DOMAIN_THRESHOLD:
-        return (), [None] * count
     nested = count >= _SUBDOMAIN_THRESHOLD
     total = _ROOT_DOMAINS + (1 if nested else 0)
     names = rng.sample(_DOMAIN_NAMES, total)
@@ -139,16 +137,18 @@ def _random_org(rng: Random) -> OrgState:
 
 
 def generate_level(rng: Random) -> OrgState:
-    """Generate a playable level that is guaranteed to have a great move.
+    """Generate a playable level whose great move is reachable, not immediate.
 
-    Resample until the position has a great move, so a generated level always
-    has a dominant answer to find, the way a puzzle generator only ships a
-    position once it has verified a solution.
+    Resample until the position can reach a great move along its greedy
+    improvement path. Relaxing the old "great move available now" rule lets
+    larger, deeper orgs through: their dominant move often only opens up after a
+    few setup moves, which is fine for a playable level.
     """
-    org = _random_org(rng)
-    while not has_great_move(org):
+    simulator = DeterministicSimulator()
+    while True:
         org = _random_org(rng)
-    return org
+        if _reaches_great_move(org, simulator):
+            return org
 
 
 def has_great_move(
@@ -160,3 +160,28 @@ def has_great_move(
         valuation.classification == MoveClassification.GREAT
         for valuation in sim.valuate_moves(org, enumerate_moves(org))
     )
+
+
+def _reaches_great_move(
+    org: OrgState, simulator: DeterministicSimulator, lookahead: int = _LOOKAHEAD
+) -> bool:
+    """Whether a great move is reachable within `lookahead` greedy improvements.
+
+    A great move need not be available now: following the best improving move
+    step by step, the position may open one up within a few moves, which is
+    enough for a playable level.
+    """
+    current = org
+    for _ in range(lookahead + 1):
+        if has_great_move(current, simulator):
+            return True
+        improving = [
+            valuation
+            for valuation in simulator.valuate_moves(current, enumerate_moves(current))
+            if valuation.delta > 0
+        ]
+        if not improving:
+            return False
+        best = max(improving, key=lambda valuation: valuation.delta)
+        current = apply_move(current, best.move)
+    return False
