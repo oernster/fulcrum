@@ -169,9 +169,9 @@ def _hero() -> str:
       <img class="logo" src="{ICON_REL}" alt="{APP_NAME} icon">
       <h1>{APP_NAME}</h1>
       <div class="tagline">{SITE_TAGLINE}</div>
-      <p class="lede">The Decision Architecture series, made playable. Fix a
-        failing organisation with structural moves; a deterministic model
-        scores the result from 0 to 100.</p>
+      <p class="lede">The Decision Architecture series, made playable. Model
+        any organisation, read its structural health from 0 to 100 and find
+        the moves that make it stronger.</p>
       <div class="cta">
         <a class="btn btn-primary" href="{RELEASES_URL}">Download</a>
         <a class="btn btn-ghost" href="#books">Explore the books</a>
@@ -192,22 +192,22 @@ def _overview() -> str:
       <div class="eyebrow">The model, made incarnate</div>
       <h2 class="section-title">A model you can hold</h2>
       <p class="section-sub">Decision Architecture argues that organisations
-        fail structurally, not for lack of effort. {APP_NAME} turns that
-        argument into an engine you operate directly: the decision objects,
-        authority worldlines and structural moves from the books, scored
-        live.</p>
+        succeed or fail by their structure, not by effort. {APP_NAME} turns
+        that argument into an engine you operate directly: the decision
+        objects, authority worldlines and structural moves from the books,
+        scored live by a deterministic model.</p>
       <div class="features">{_feature_html()}</div>
     </div>
   </section>"""
 
 
 def _play() -> str:
-    board_alt = f"The {APP_NAME} board scoring a failing org"
-    guide_alt = f"The {APP_NAME} guide planning a recovery"
+    board_alt = f"The {APP_NAME} board scoring an organisation's structure"
+    guide_alt = f"The {APP_NAME} guide planning a stronger org"
     return f"""<section id="play" class="alt">
     <div class="container">
       <div class="eyebrow">Play by play</div>
-      <h2 class="section-title">Watch a failing org recover</h2>
+      <h2 class="section-title">Watch a score climb, move by move</h2>
       <p class="section-sub">Load an organisation and the board scores its
         structural health, maps who decides locally against who escalates and
         lists every move open to you.</p>
@@ -227,7 +227,7 @@ def _play() -> str:
             <div class="bar"><i></i><i></i><i></i></div>
             <img loading="lazy" src="{GUIDE_SHOT}" alt="{guide_alt}">
           </div>
-          <figcaption><b>The line.</b> The guide plans the recovery move by
+          <figcaption><b>The line.</b> The guide plans the climb move by
             move, 24.5 to 85.1, each step classified from blunder to great. It
             opens by delegating authority to the teams everyone depends
             on.</figcaption>
@@ -269,8 +269,8 @@ def _footer() -> str:
 def _page_html(showcase: BookShowcase) -> str:
     description = (
         f"{APP_NAME} turns the Decision Architecture series into a playable "
-        "model: fix a failing organisation with structural moves and a "
-        "deterministic engine scores the result from 0 to 100."
+        "model: read any organisation's structural health from 0 to 100 and "
+        "find the moves that make it stronger."
     )
     return (
         '<!DOCTYPE html>\n<html lang="en">\n'
