@@ -237,5 +237,8 @@ uk.codecrafter.Fulcrum.yml
 *.dmg
 _dmg_staging/
 
+# Annoying generated files
+/1
+
 # Private release notes (pasted into the GitHub Releases page, not committed)
 NOTES.md

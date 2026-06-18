@@ -69,7 +69,7 @@ _DEFAULT_SKEW_PERCENT = 30
 _MIN_WORKLOAD = 1
 _MAX_WORKLOAD = 50
 _DEFAULT_WORKLOAD = 6
-_MIN_WIDTH = 780
+_MIN_WIDTH = 840
 _MIN_HEIGHT = 640
 _HINT = (
     "Build your organisation: start a domain, then use + on a domain to add a "
@@ -112,6 +112,10 @@ class OrgEditorDialog(QDialog):
         header.setSectionResizeMode(
             _COL_ACTIONS, QHeaderView.ResizeMode.ResizeToContents
         )
+        # The actions column is fixed to its buttons; without this the last
+        # section stretches and steals the leftover width, starving the Name
+        # column so the name editors clip. Let Name absorb the remaining width.
+        header.setStretchLastSection(False)
         self._tree.setColumnWidth(_COL_LEAD, ui_scale.px(_LEAD_COLUMN_WIDTH))
         header_item = self._tree.headerItem()
         header_item.setToolTip(_COL_AUTHORITY, _AUTHORITY_TIP)
