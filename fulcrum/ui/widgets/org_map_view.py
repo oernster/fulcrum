@@ -108,6 +108,10 @@ class OrgMapView(QGraphicsView):
         self._preview = value
         self.viewport().update()
 
+    def fit_to_contents(self) -> None:
+        """Fit the whole scene into the viewport, after a resize or a show."""
+        self._fit()
+
     def _render(self) -> None:
         self._scene.clear()
         self._hot = []

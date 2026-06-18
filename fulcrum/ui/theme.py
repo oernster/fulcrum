@@ -85,13 +85,13 @@ QPushButton#Primary {{ background-color: {_ACCENT}; color: {_BG}; }}
 QPushButton#Primary:enabled:hover {{ border-color: {_ACCENT_BRIGHT}; }}
 QPushButton#MoveButton {{ text-align: left; padding-left: 14px; }}
 QPushButton#TreeAction {{ padding: 0; min-width: 0; font-weight: 700; }}
-QPushButton#GlossaryLink {{
+QPushButton#IconLink {{
     background: transparent;
     border: 2px solid transparent;
     padding: 4px 10px;
     font-size: {glyph_pt}pt;
 }}
-QPushButton#GlossaryLink:enabled:hover {{
+QPushButton#IconLink:enabled:hover {{
     border-color: {_ACCENT};
     color: {_ACCENT_BRIGHT};
 }}

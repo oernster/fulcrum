@@ -40,6 +40,7 @@ from fulcrum.ui.widgets.book_background_dialog import BookBackgroundDialog
 from fulcrum.ui.widgets.glossary_dialog import GlossaryDialog
 from fulcrum.ui.widgets.guide_dialog import GuideDialog
 from fulcrum.ui.widgets.org_editor import OrgEditorDialog
+from fulcrum.ui.widgets.org_overview_dialog import OrgOverviewDialog
 from fulcrum.ui.widgets.org_wizard import OrgWizard
 from fulcrum.ui.widgets.plan_editor import PlanEditorDialog
 from fulcrum.version import APP_NAME, APP_TAGLINE
@@ -51,6 +52,8 @@ _DEFAULT_EXPORT = "fulcrum-plan.html"
 _PLAN_FILTER = "Plan JSON (*.json);;All files (*)"
 _GLOSSARY_GLYPH = "\N{SCROLL}"
 _GLOSSARY_TOOLTIP = "Decision glossary"
+_OVERVIEW_GLYPH = "\N{WORLD MAP}\N{VARIATION SELECTOR-16}"
+_OVERVIEW_TOOLTIP = "Organisation overview"
 
 
 class MainWindow(QMainWindow):
@@ -96,8 +99,14 @@ class MainWindow(QMainWindow):
         top.addWidget(new_button)
         top.addWidget(guide_button)
         top.addStretch()
+        overview_link = QPushButton(_OVERVIEW_GLYPH)
+        overview_link.setObjectName("IconLink")
+        overview_link.setToolTip(_OVERVIEW_TOOLTIP)
+        overview_link.setCursor(Qt.CursorShape.PointingHandCursor)
+        overview_link.clicked.connect(self._org_overview)
+        top.addWidget(overview_link)
         glossary_link = QPushButton(_GLOSSARY_GLYPH)
-        glossary_link.setObjectName("GlossaryLink")
+        glossary_link.setObjectName("IconLink")
         glossary_link.setToolTip(_GLOSSARY_TOOLTIP)
         glossary_link.setCursor(Qt.CursorShape.PointingHandCursor)
         glossary_link.clicked.connect(self._glossary)
@@ -242,6 +251,11 @@ class MainWindow(QMainWindow):
 
     def _glossary(self) -> None:
         GlossaryDialog(self).exec()
+
+    def _org_overview(self) -> None:
+        if self._session is None:
+            return
+        OrgOverviewDialog(self._session.org, self).exec()
 
     def _book_background(self) -> None:
         BookBackgroundDialog(self).exec()
