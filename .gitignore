@@ -224,5 +224,18 @@ installer/payload/
 *.build
 *.onefile-build
 
+# Flatpak build outputs (build_flatpak.sh / clean_flatpak.sh)
+*.flatpak
+.flatpak-build/
+.flatpak-repo/
+.flatpak-builder/
+.flatpak-wheels/
+packaging/
+uk.codecrafter.Fulcrum.yml
+
+# macOS DMG build outputs (builddmg.py)
+*.dmg
+_dmg_staging/
+
 # Private release notes (pasted into the GitHub Releases page, not committed)
 NOTES.md
