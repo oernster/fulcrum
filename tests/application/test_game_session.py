@@ -2,7 +2,7 @@
 
 from fulcrum.application.dto import MoveValuation, SavedGame
 from fulcrum.application.game_session import GameSession, enumerate_moves
-from fulcrum.domain.models import Dependency, OrgState, Team
+from fulcrum.domain.models import Dependency, Domain, OrgState, Team
 from fulcrum.domain.moves import Move, MoveKind
 from fulcrum.domain.simulation import MoveClassification, StructuralScore
 
@@ -107,3 +107,53 @@ def test_preview_does_not_mutate_the_session():
     previewed = session.preview(Move(MoveKind.DELEGATE_AUTHORITY, ("b",)))
     assert previewed.team("b").has_local_authority is True
     assert session.org.team("b").has_local_authority is False
+
+
+def _domained_org():
+    return OrgState(
+        teams=(
+            Team("a", "A", True, 0.0, domain_id="d1"),
+            Team("b", "B", False, 0.5, domain_id="d1"),
+            Team("c", "C", True, 0.0, domain_id="d2"),
+        ),
+        dependencies=(Dependency("a", "b", 3), Dependency("a", "c", 2)),
+        workload=2,
+        domains=(Domain("d1", "Platform"), Domain("d2", "Data")),
+    )
+
+
+def test_focus_scores_only_the_section():
+    session = GameSession(_domained_org(), _FakeSimulator())
+    assert session.focused_on is None
+    full_moves = len(session.candidate_valuations())
+    session.focus("d1")
+    assert session.focused_on == "d1"
+    assert len(session.candidate_valuations()) < full_moves
+    assert len(session.signals()) == 4
+    assert session.score() == 50.0
+
+
+def test_focus_on_a_domain_without_teams_returns_to_the_whole_org():
+    org = OrgState(
+        teams=(Team("a", "A", True, 0.0, domain_id="d1"),),
+        domains=(Domain("d1", "Platform"), Domain("d2", "Data")),
+    )
+    session = GameSession(org, _FakeSimulator())
+    session.focus("d2")
+    assert session.focused_on is None
+
+
+def test_clearing_focus_restores_the_whole_org_palette():
+    session = GameSession(_domained_org(), _FakeSimulator())
+    session.focus("d1")
+    session.focus(None)
+    assert session.focused_on is None
+    assert len(session.candidate_valuations()) == len(enumerate_moves(_domained_org()))
+
+
+def test_a_focused_move_applies_to_the_whole_org_and_keeps_focus():
+    session = GameSession(_domained_org(), _FakeSimulator())
+    session.focus("d1")
+    session.play(Move(MoveKind.DELEGATE_AUTHORITY, ("b",)))
+    assert session.org.team("b").has_local_authority is True
+    assert session.focused_on == "d1"

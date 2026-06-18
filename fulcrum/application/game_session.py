@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from fulcrum.application.dto import MoveValuation, SavedGame
 from fulcrum.application.interfaces import Clock, SaveGameRepository, Simulator
+from fulcrum.domain.hierarchy import domain_has_teams, focused_suborg
 from fulcrum.domain.models import OrgState
 from fulcrum.domain.moves import Move, MoveKind, apply_move
 from fulcrum.domain.signals import SignalReading, compute_signals
@@ -61,6 +62,7 @@ class GameSession:
         self._initial_org = org
         self._simulator = simulator
         self._history: list[Move] = []
+        self._focus_id: str | None = None
 
     @property
     def org(self) -> OrgState:
@@ -74,14 +76,40 @@ class GameSession:
     def history(self) -> tuple[Move, ...]:
         return tuple(self._history)
 
+    @property
+    def focused_on(self) -> str | None:
+        """The domain currently focused for scoring and play, or None."""
+        return self._focus_id
+
+    def focus(self, domain_id: str | None) -> None:
+        """Focus scoring and the move palette on one domain's section.
+
+        Drilling into a domain plays it as a self-contained section: the score,
+        signals and candidate moves all reflect its focused sub-org, so a move
+        that is only great within that section reads as great. Moves still apply
+        to the whole org, so acting on a section's great move is real and
+        permanent. Passing None, or a domain with no teams, returns to the whole
+        org.
+        """
+        if domain_id is not None and not domain_has_teams(self._org, domain_id):
+            domain_id = None
+        self._focus_id = domain_id
+
+    def _active_org(self) -> OrgState:
+        """The org currently being scored: the focused section, or the whole."""
+        if self._focus_id is None:
+            return self._org
+        return focused_suborg(self._org, self._focus_id)
+
     def score(self) -> float:
-        return self._simulator.score(self._org).value
+        return self._simulator.score(self._active_org()).value
 
     def signals(self) -> tuple[SignalReading, ...]:
-        return compute_signals(self._org)
+        return compute_signals(self._active_org())
 
     def candidate_valuations(self) -> tuple[MoveValuation, ...]:
-        return self._simulator.valuate_moves(self._org, enumerate_moves(self._org))
+        active = self._active_org()
+        return self._simulator.valuate_moves(active, enumerate_moves(active))
 
     def play(self, move: Move) -> None:
         self._org = apply_move(self._org, move)

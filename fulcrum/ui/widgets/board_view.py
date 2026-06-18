@@ -78,9 +78,14 @@ class BoardView(QWidget):
         self._origin_label.setObjectName("Muted")
         self._headcount_label = QLabel("")
         self._headcount_label.setObjectName("Muted")
+        self._focus_label = QLabel("")
+        self._focus_label.setObjectName("Muted")
+        self._focus_label.setWordWrap(True)
+        self._focus_label.setVisible(False)
         self._map_caption = QLabel(_MAP_CAPTION)
         self._map_caption.setObjectName("Muted")
         self._map = OrgMapView()
+        self._map.drilled.connect(self._on_drilled)
         self._move_note = QLabel("")
         self._move_note.setObjectName("Muted")
         self._move_note.setWordWrap(True)
@@ -101,6 +106,7 @@ class BoardView(QWidget):
         layout.addWidget(self._score_label)
         layout.addWidget(self._origin_label)
         layout.addWidget(self._headcount_label)
+        layout.addWidget(self._focus_label)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.addWidget(self._build_map_pane())
@@ -159,6 +165,14 @@ class BoardView(QWidget):
 
     def set_session(self, session: GameSession) -> None:
         self._session = session
+        session.focus(None)
+        self._map.reset_view()
+        self.refresh()
+
+    def _on_drilled(self, domain_id) -> None:
+        if self._session is None:
+            return
+        self._session.focus(domain_id)
         self.refresh()
 
     def refresh(self) -> None:
@@ -173,6 +187,7 @@ class BoardView(QWidget):
             f"{total_headcount(self._session.org):,} people across "
             f"{len(self._session.org.teams)} teams"
         )
+        self._set_focus_note()
         self._map_caption.setText(self._map_caption_text())
         self._map_caption.setStyleSheet("")
         self._map.set_preview(False)
@@ -185,6 +200,27 @@ class BoardView(QWidget):
         if self._session is not None and self._session.org.domains:
             return f"{_MAP_CAPTION} · {_MAP_HINT}"
         return _MAP_CAPTION
+
+    def _set_focus_note(self) -> None:
+        focused = self._session.focused_on if self._session is not None else None
+        if focused is None:
+            self._focus_label.setVisible(False)
+            self._focus_label.setStyleSheet("")
+            self._focus_label.setText("")
+            return
+        name = self._focus_domain_name(focused)
+        self._focus_label.setText(
+            f"Focused on {name}: this score and these moves are the section's. "
+            "Use Back on the map to zoom out."
+        )
+        self._focus_label.setStyleSheet(f"color: {_PREVIEW_COLOR};")
+        self._focus_label.setVisible(True)
+
+    def _focus_domain_name(self, domain_id: str) -> str:
+        for domain in self._session.org.domains:
+            if domain.id == domain_id:
+                return domain.name
+        return domain_id
 
     def _render_signals(self, readings: tuple[SignalReading, ...]) -> None:
         _clear(self._signals_row)

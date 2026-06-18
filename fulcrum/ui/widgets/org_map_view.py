@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import math
 
-from PySide6.QtCore import QPointF, QRectF, Qt
+from PySide6.QtCore import QPointF, QRectF, Qt, Signal
 from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPainterPath, QPen, QPolygonF
 from PySide6.QtWidgets import QGraphicsScene, QGraphicsView
 
@@ -85,6 +85,11 @@ def _center(top_left: QPointF) -> QPointF:
 class OrgMapView(QGraphicsView):
     """Paints the OrgState as a navigable, drill-down domain-and-team map."""
 
+    # Emitted when the user drills into a domain or climbs back out, carrying the
+    # domain now in focus (a domain id) or None at the top level. The board uses
+    # it to focus play on the drilled section.
+    drilled = Signal(object)
+
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._scene = QGraphicsScene(self)
@@ -113,6 +118,11 @@ class OrgMapView(QGraphicsView):
     def set_preview(self, value: bool) -> None:
         self._preview = value
         self.viewport().update()
+
+    def reset_view(self) -> None:
+        """Return to the top level, for when a fresh org is loaded."""
+        self._parent_id = None
+        self._user_zoomed = False
 
     def fit_to_contents(self) -> None:
         """Fit the whole scene into the viewport, after a resize or a show."""
@@ -303,11 +313,13 @@ class OrgMapView(QGraphicsView):
         if self._up_rect is not None and self._up_rect.contains(scene_pos):
             self._parent_id = self._domain_parent(self._parent_id)
             self._render()
+            self.drilled.emit(self._parent_id)
             return
         for rect, kind, node_id in self._hot:
             if kind == _KIND_DOMAIN and rect.contains(scene_pos):
                 self._parent_id = node_id
                 self._render()
+                self.drilled.emit(self._parent_id)
                 return
 
     def wheelEvent(self, event) -> None:
