@@ -201,7 +201,7 @@ section.alt {
 
 .books-intro {
   color: var(--muted);
-  max-width: 720px;
+  max-width: none;
   font-size: 17px;
   margin-bottom: 38px;
 }
