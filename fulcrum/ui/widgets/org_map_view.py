@@ -32,14 +32,17 @@ _PREVIEW = QColor("#fbbf24")
 _BG = QColor("#0d0f12")
 
 _MIN_HEIGHT = 340
-_NODE_W = 210.0
+_NODE_W = 240.0
 _NODE_H = 88.0
 _GAP_X = 64.0
 _GAP_Y = 72.0
 _MARGIN = 44.0
 _PAD = 12.0
 _SUB_DROP = 24.0
+_SUB_LINE2 = 42.0
 _CORNER = 10.0
+_DRILL_INSET = 4.0
+_DRILL_PEN = 1.5
 _ARROW = 11.0
 _ZOOM_STEP = 1.15
 _MIN_SCALE = 0.2
@@ -156,6 +159,8 @@ class OrgMapView(QGraphicsView):
         fill = _DOMAIN_FILL if node.kind == _KIND_DOMAIN else _TEAM_FILL
         border = _blend(_NO_AUTHORITY, _AUTHORITY, node.authority_ratio)
         self._scene.addPath(path, QPen(border, 2), QBrush(fill))
+        if node.kind == _KIND_DOMAIN:
+            self._draw_drill_ring(rect)
         self._draw_person(rect, border, node)
         name = self._scene.addSimpleText(node.label, _font(bold=True))
         name.setBrush(_TEXT)
@@ -163,7 +168,19 @@ class OrgMapView(QGraphicsView):
         sub = self._scene.addSimpleText(self._sublabel(node), _font())
         sub.setBrush(_TEXT_MUTED)
         sub.setPos(rect.x() + _PAD, rect.y() + _SUB_DROP + _PAD)
+        secondary = self._secondary(node)
+        if secondary:
+            line2 = self._scene.addSimpleText(secondary, _font())
+            line2.setBrush(_TEXT_MUTED)
+            line2.setPos(rect.x() + _PAD, rect.y() + _SUB_LINE2 + _PAD)
         self._hot.append((rect, node.kind, node.id))
+
+    def _draw_drill_ring(self, rect: QRectF) -> None:
+        ring = rect.adjusted(-_DRILL_INSET, -_DRILL_INSET, _DRILL_INSET, _DRILL_INSET)
+        path = QPainterPath()
+        path.addRoundedRect(ring, _CORNER + _DRILL_INSET, _CORNER + _DRILL_INSET)
+        pen = QPen(_PREVIEW, _DRILL_PEN)
+        self._scene.addPath(path, pen, QBrush(Qt.BrushStyle.NoBrush))
 
     def _draw_person(self, rect: QRectF, color: QColor, node) -> None:
         pen = QPen(color, 2)
@@ -190,14 +207,16 @@ class OrgMapView(QGraphicsView):
     def _sublabel(node) -> str:
         people = f"{node.headcount:,} people"
         if node.kind == _KIND_DOMAIN:
-            base = (
-                f"{node.category} · {node.team_count} teams · {people} · "
-                "double-click to open"
-            )
-            return f"{base} · lead: {node.owner}" if node.owner else base
+            return f"{node.category} · {node.team_count} teams · {people}"
         decides = "decides locally" if node.authority_ratio >= _FULL else "escalates"
-        base = f"{decides} · {people}"
-        return f"{base} · owner: {node.owner}" if node.owner else base
+        return f"{decides} · {people}"
+
+    @staticmethod
+    def _secondary(node) -> str:
+        if not node.owner:
+            return ""
+        label = "lead" if node.kind == _KIND_DOMAIN else "owner"
+        return f"{label}: {node.owner}"
 
     def _draw_edges(self, edges, positions: dict) -> None:
         for edge in edges:

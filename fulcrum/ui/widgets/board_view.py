@@ -5,11 +5,11 @@ from __future__ import annotations
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
-    QHBoxLayout,
     QLabel,
     QLayout,
     QPushButton,
     QScrollArea,
+    QSplitter,
     QVBoxLayout,
     QWidget,
 )
@@ -26,7 +26,9 @@ from fulcrum.ui.widgets.org_map_view import OrgMapView
 
 _SCORE_DECIMALS = 1
 _VALUE_DECIMALS = 1
-_MAP_CAPTION = "Organisation map"
+_MAP_CAPTION = "Organisation map · double-click a domain to open"
+_MAP_PANE_W = 640
+_RIGHT_PANE_W = 320
 _PREVIEW_COLOR = "#fbbf24"
 # The per-move note reserves the height of the tallest note at the current
 # width (recomputed on resize), so changing its text on hover never reflows the
@@ -83,7 +85,7 @@ class BoardView(QWidget):
             Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
         )
         self._move_note.setFixedHeight(ui_scale.px(_MOVE_NOTE_MIN_HEIGHT))
-        self._signals_row = QHBoxLayout()
+        self._signals_row = QVBoxLayout()
         self._moves_box = QVBoxLayout()
         self._build()
 
@@ -97,34 +99,50 @@ class BoardView(QWidget):
         layout.addWidget(self._origin_label)
         layout.addWidget(self._headcount_label)
 
-        layout.addWidget(self._map_caption)
-        layout.addWidget(self._map)
-        layout.addWidget(self._move_note)
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.addWidget(self._build_map_pane())
+        splitter.addWidget(self._build_side_pane())
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 0)
+        splitter.setSizes([ui_scale.px(_MAP_PANE_W), ui_scale.px(_RIGHT_PANE_W)])
+        layout.addWidget(splitter, 1)
 
-        signals_caption = QLabel("Signals to watch")
-        signals_caption.setObjectName("Muted")
-        layout.addWidget(signals_caption)
-        signals_holder = QWidget()
-        signals_holder.setLayout(self._signals_row)
-        layout.addWidget(signals_holder)
+    def _build_map_pane(self) -> QWidget:
+        pane = QWidget()
+        column = QVBoxLayout(pane)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.addWidget(self._map_caption)
+        column.addWidget(self._map, 1)
+        column.addWidget(self._move_note)
+        return pane
 
+    def _build_side_pane(self) -> QWidget:
+        pane = QWidget()
+        column = QVBoxLayout(pane)
+        column.setContentsMargins(0, 0, 0, 0)
         moves_caption = QLabel("Available moves")
         moves_caption.setObjectName("Muted")
-        layout.addWidget(moves_caption)
+        column.addWidget(moves_caption)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         moves_holder = QWidget()
         moves_holder.setLayout(self._moves_box)
         scroll.setWidget(moves_holder)
-        layout.addWidget(scroll, 1)
+        column.addWidget(scroll, 1)
+        signals_caption = QLabel("Signals to watch")
+        signals_caption.setObjectName("Muted")
+        column.addWidget(signals_caption)
+        signals_holder = QWidget()
+        signals_holder.setLayout(self._signals_row)
+        column.addWidget(signals_holder)
+        return pane
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         self._reserve_move_note_height()
 
     def _reserve_move_note_height(self) -> None:
-        margins = self.layout().contentsMargins()
-        width = self.width() - margins.left() - margins.right()
+        width = self._move_note.width()
         if width <= 0:
             return
         metrics = self._move_note.fontMetrics()
