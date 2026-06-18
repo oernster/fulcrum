@@ -1,8 +1,7 @@
-"""Default plan exporter: writes the HTML report and the JSON source together.
+"""Default plan exporter: writes the HTML report or the JSON source.
 
-Given a chosen .html path, it writes the self-contained report there and a
-re-importable .json beside it, so the same export both elucidates the plan and
-can be loaded back to edit it.
+Each export is independent, so the user can save just the shareable HTML report
+or just the re-importable JSON plan rather than always producing both.
 """
 
 from __future__ import annotations
@@ -14,24 +13,23 @@ from fulcrum.domain.models import OrgState
 from fulcrum.infrastructure.plan_html import render_plan_html
 from fulcrum.infrastructure.plan_repository import read_plan, write_html, write_plan
 
-_JSON_SUFFIX = ".json"
-
 
 class FilePlanExporter:
-    """Writes the plan's HTML report and its JSON source side by side."""
+    """Writes the plan's HTML report or its JSON source, each on its own."""
 
-    def export(
+    def export_html(
         self,
-        html_path: str,
+        path: str,
         report: PlanReport,
-        plan: Plan,
+        initial_org: OrgState,
         final_org: OrgState,
         created_at: str,
     ) -> None:
-        target = Path(html_path)
-        html = render_plan_html(report, plan.initial_org, final_org, created_at)
-        write_html(target, html)
-        write_plan(target.with_suffix(_JSON_SUFFIX), plan)
+        html = render_plan_html(report, initial_org, final_org, created_at)
+        write_html(Path(path), html)
+
+    def export_json(self, path: str, plan: Plan) -> None:
+        write_plan(Path(path), plan)
 
     def read(self, path: str) -> Plan:
         return read_plan(Path(path))

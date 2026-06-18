@@ -53,15 +53,17 @@ class OrgImporter(Protocol):
 
 
 class PlanExporter(Protocol):
-    """Writes a plan report (HTML) plus its source (JSON), and reads it back."""
+    """Writes a plan's HTML report and its JSON source as separate exports."""
 
-    def export(
+    def export_html(
         self,
-        html_path: str,
+        path: str,
         report: PlanReport,
-        plan: Plan,
+        initial_org: OrgState,
         final_org: OrgState,
         created_at: str,
     ) -> None: ...
+
+    def export_json(self, path: str, plan: Plan) -> None: ...
 
     def read(self, path: str) -> Plan: ...

@@ -5,6 +5,11 @@ the rest lacking authority, so a collapsing or delegating move is always strong.
 The randomness varies the flavour (size, delays, skew, workload), never the
 existence of a solution, so every level is playable and provably has a great
 move.
+
+Larger levels are additionally grouped into domains, and the largest nest a
+sub-domain, so they exercise the hierarchy, the navigable map and the
+per-domain plan. The grouping is navigational metadata over the same teams, so
+it never changes the score or the guaranteed great move.
 """
 
 from __future__ import annotations
@@ -13,12 +18,10 @@ from random import Random
 
 from fulcrum.application.game_session import enumerate_moves
 from fulcrum.application.simulator import DeterministicSimulator
-from fulcrum.domain.models import Dependency, Origin, OrgState, Team
+from fulcrum.domain.models import Dependency, Domain, Origin, OrgState, Team
 from fulcrum.domain.simulation import MoveClassification
 
-_MIN_TEAMS: int = 3
-_MID_TEAMS: int = 4
-_MAX_TEAMS: int = 5
+_TEAM_CHOICES: tuple[int, ...] = (3, 4, 5, 6, 7, 8)
 _MIN_DELAY: int = 3
 _MAX_DELAY: int = 6
 _MIN_WORKLOAD: int = 6
@@ -27,15 +30,79 @@ _MIN_SKEW: float = 0.3
 _MAX_SKEW: float = 0.9
 _SKEW_DECIMALS: int = 2
 
+# At or above the first threshold the teams are grouped into root domains; at or
+# above the second one of those domains becomes a nested sub-domain, so the
+# largest generated orgs are two levels deep. The grouping is metadata only.
+_DOMAIN_THRESHOLD: int = 6
+_SUBDOMAIN_THRESHOLD: int = 7
+_ROOT_DOMAINS: int = 2
+
+# Cosmetic name pools for generated domains and their leads, the structural
+# equivalent of the "Team N" team names: drawn at random, never load-bearing.
+_DOMAIN_NAMES: tuple[str, ...] = (
+    "Platform",
+    "Product",
+    "Data",
+    "Operations",
+    "Security",
+    "Growth",
+)
+_LEAD_NAMES: tuple[str, ...] = (
+    "Avery",
+    "Bo",
+    "Cass",
+    "Devi",
+    "Esin",
+    "Faye",
+    "Gabriel",
+)
+
+
+def _build_domains(
+    rng: Random, count: int
+) -> tuple[tuple[Domain, ...], list[str | None]]:
+    """Return the domains and a per-team domain id for an org of `count` teams.
+
+    Small orgs stay flat with no domains. From the domain threshold up, teams
+    are grouped into root domains; from the sub-domain threshold up, one extra
+    domain is nested under the first so the org is two levels deep.
+    """
+    if count < _DOMAIN_THRESHOLD:
+        return (), [None] * count
+    nested = count >= _SUBDOMAIN_THRESHOLD
+    total = _ROOT_DOMAINS + (1 if nested else 0)
+    names = rng.sample(_DOMAIN_NAMES, total)
+    leads = rng.sample(_LEAD_NAMES, total)
+    domains = [
+        Domain(id=f"domain_{k + 1}", name=names[k], lead=leads[k])
+        for k in range(_ROOT_DOMAINS)
+    ]
+    if nested:
+        domains.append(
+            Domain(
+                id=f"domain_{_ROOT_DOMAINS + 1}",
+                name=names[_ROOT_DOMAINS],
+                parent_id="domain_1",
+                lead=leads[_ROOT_DOMAINS],
+            )
+        )
+    assignable = [domain.id for domain in domains]
+    domain_of: list[str | None] = [
+        assignable[i % len(assignable)] for i in range(count)
+    ]
+    return tuple(domains), domain_of
+
 
 def _random_org(rng: Random) -> OrgState:
-    count = rng.choice((_MIN_TEAMS, _MID_TEAMS, _MAX_TEAMS))
+    count = rng.choice(_TEAM_CHOICES)
+    domains, domain_of = _build_domains(rng, count)
     teams = tuple(
         Team(
             id=f"team_{i + 1}",
             name=f"Team {i + 1}",
             has_local_authority=(i == 0),
             incentive_skew=round(rng.uniform(_MIN_SKEW, _MAX_SKEW), _SKEW_DECIMALS),
+            domain_id=domain_of[i],
         )
         for i in range(count)
     )
@@ -52,6 +119,7 @@ def _random_org(rng: Random) -> OrgState:
         dependencies=dependencies,
         workload=workload,
         origin=Origin.GENERATED,
+        domains=domains,
     )
 
 

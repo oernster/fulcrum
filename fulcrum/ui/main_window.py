@@ -47,9 +47,10 @@ from fulcrum.version import APP_NAME, APP_TAGLINE
 
 _DEFAULT_SLOT = "slot1"
 _IMPORT_FILTER = "Org JSON (*.json);;All files (*)"
-_EXPORT_FILTER = "HTML report (*.html);;All files (*)"
-_DEFAULT_EXPORT = "fulcrum-plan.html"
+_HTML_FILTER = "HTML report (*.html);;All files (*)"
 _PLAN_FILTER = "Plan JSON (*.json);;All files (*)"
+_DEFAULT_HTML_EXPORT = "fulcrum-plan.html"
+_DEFAULT_JSON_EXPORT = "fulcrum-plan.json"
 _GLOSSARY_GLYPH = "\N{SCROLL}"
 _GLOSSARY_TOOLTIP = "Decision glossary"
 _OVERVIEW_GLYPH = "\N{WORLD MAP}\N{VARIATION SELECTOR-16}"
@@ -125,10 +126,14 @@ class MainWindow(QMainWindow):
         file_menu.addAction("Save game...", self._save_game)
         file_menu.addAction("Load game...", self._load_game)
         file_menu.addSeparator()
-        file_menu.addAction("Export plan (HTML + JSON)...", self._export_plan)
+        file_menu.addAction("Export plan as HTML...", self._export_plan_html)
+        file_menu.addAction("Export plan as JSON...", self._export_plan_json)
         file_menu.addAction("Edit a plan...", self._edit_plan)
         file_menu.addSeparator()
         file_menu.addAction("Exit", self.close)
+
+        view_menu = self.menuBar().addMenu("View")
+        view_menu.addAction("Organisation overview...", self._org_overview)
 
         help_menu = self.menuBar().addMenu("Help")
         help_menu.addAction("Decision glossary...", self._glossary)
@@ -208,11 +213,11 @@ class MainWindow(QMainWindow):
             saved = self._save_repository.load(slot)
             self._set_session(GameSession.from_saved_game(saved, self._simulator))
 
-    def _export_plan(self) -> None:
+    def _export_plan_html(self) -> None:
         if self._session is None:
             return
         path, _ = QFileDialog.getSaveFileName(
-            self, "Export plan", _DEFAULT_EXPORT, _EXPORT_FILTER
+            self, "Export plan as HTML", _DEFAULT_HTML_EXPORT, _HTML_FILTER
         )
         if not path:
             return
@@ -220,12 +225,23 @@ class MainWindow(QMainWindow):
         report = build_plan_report(
             self._session.initial_org, self._session.history, self._simulator
         )
-        plan = Plan(self._session.initial_org, self._session.history, created)
-        self._plan_exporter.export(path, report, plan, self._session.org, created)
-        self._inform(
-            "Plan exported",
-            "Wrote the HTML report and a JSON copy you can re-import to edit.",
+        self._plan_exporter.export_html(
+            path, report, self._session.initial_org, self._session.org, created
         )
+        self._inform("Plan exported", "Wrote the HTML report.")
+
+    def _export_plan_json(self) -> None:
+        if self._session is None:
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export plan as JSON", _DEFAULT_JSON_EXPORT, _PLAN_FILTER
+        )
+        if not path:
+            return
+        created = self._clock.timestamp()
+        plan = Plan(self._session.initial_org, self._session.history, created)
+        self._plan_exporter.export_json(path, plan)
+        self._inform("Plan exported", "Wrote the JSON plan you can re-import to edit.")
 
     def _edit_plan(self) -> None:
         path, _ = QFileDialog.getOpenFileName(self, "Edit a plan", "", _PLAN_FILTER)

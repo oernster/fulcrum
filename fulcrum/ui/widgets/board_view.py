@@ -87,7 +87,7 @@ class BoardView(QWidget):
     def _build(self) -> None:
         layout = QVBoxLayout(self)
 
-        health = QLabel("Structural health")
+        health = QLabel("Organisational structural health")
         health.setObjectName("Muted")
         layout.addWidget(health)
         layout.addWidget(self._score_label)
