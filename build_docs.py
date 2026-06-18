@@ -134,7 +134,7 @@ def _head(description: str) -> str:
     return f"""<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{APP_NAME}: a Decision Architecture Sandbox</title>
+<title>{APP_NAME}: Decision Architecture Sandbox</title>
 <meta name="description" content="{escape(description)}">
 <link rel="canonical" href="{SITE_URL}">
 <meta property="og:type" content="website">
