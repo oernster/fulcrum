@@ -32,6 +32,7 @@ ICON_SOURCE = ROOT / "fulcrum.png"
 BOOK_COVER_SOURCE = ROOT / "assets" / "books"
 
 REPO_URL = "https://github.com/oernster/fulcrum"
+RELEASES_URL = f"{REPO_URL}/releases"
 SITE_URL = "https://oernster.github.io/fulcrum/"
 BOOKS_URL = "https://www.crankthecode.com/books"
 AUTHOR_URL = "https://www.crankthecode.com/"
@@ -171,9 +172,11 @@ def _hero() -> str:
         failing organisation with structural moves; a deterministic model
         scores the result from 0 to 100.</p>
       <div class="cta">
-        <a class="btn btn-primary" href="{REPO_URL}">Get it on GitHub</a>
+        <a class="btn btn-primary" href="{RELEASES_URL}">Download</a>
         <a class="btn btn-ghost" href="#books">Explore the books</a>
       </div>
+      <p class="release-note">Builds are published on the
+        <a href="{RELEASES_URL}">releases page</a> as they ship.</p>
       <div class="badges">
         <span>Local-first</span>·<span>No cloud, no account</span>·<span>LGPL-3.0</span>
       </div>
@@ -248,10 +251,11 @@ def _footer() -> str:
     return f"""<footer>
   <div class="container footer-inner">
     <div>
-      <strong>{APP_NAME}</strong> · {escape(APP_TAGLINE)}<br>
+      <strong>{APP_NAME}</strong>: Organisational Decision Architecture sandbox<br>
       {escape(APP_COPYRIGHT)} · Local-first · LGPL-3.0 · v{__version__}
     </div>
     <div class="footer-links">
+      <a href="{RELEASES_URL}">Releases</a>
       <a href="{REPO_URL}">GitHub</a>
       <a href="{BOOKS_URL}">The books</a>
       <a href="{AUTHOR_URL}">crankthecode.com</a>

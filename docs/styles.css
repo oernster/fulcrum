@@ -122,6 +122,7 @@ header.nav {
   letter-spacing: 0.06em;
 }
 .badges span { margin: 0 10px; }
+.release-note { margin-top: 16px; color: var(--muted); font-size: 14px; }
 
 section { padding: 78px 0; }
 section.alt {
