@@ -28,6 +28,7 @@ _BASE_FONT_PT = 14
 _HEADING_SCALE = 1.5
 _SCORE_SCALE = 2.2
 _GLYPH_SCALE = 1.3
+_COMPACT_SCALE = 0.92
 _SPIN_UP_FILE = "spin_up.png"
 _SPIN_DOWN_FILE = "spin_down.png"
 
@@ -50,6 +51,7 @@ def get_dark_qss() -> str:
     heading_pt = round(base_pt * _HEADING_SCALE)
     score_pt = round(base_pt * _SCORE_SCALE)
     glyph_pt = round(base_pt * _GLYPH_SCALE)
+    compact_pt = round(base_pt * _COMPACT_SCALE)
     font_family = _ui_font_family()
     up_arrow = _arrow_image(_SPIN_UP_FILE)
     down_arrow = _arrow_image(_SPIN_DOWN_FILE)
@@ -83,7 +85,12 @@ QPushButton:disabled {{ color: {_DISABLED_TEXT}; background-color: {_SURFACE}; }
 
 QPushButton#Primary {{ background-color: {_ACCENT}; color: {_BG}; }}
 QPushButton#Primary:enabled:hover {{ border-color: {_ACCENT_BRIGHT}; }}
-QPushButton#MoveButton {{ text-align: left; padding-left: 14px; }}
+QPushButton#MoveButton {{
+    text-align: left;
+    padding: 6px 12px;
+    font-size: {compact_pt}pt;
+}}
+QPushButton#SignalChip {{ padding: 6px 10px; font-size: {compact_pt}pt; }}
 QPushButton#TreeAction {{ padding: 0; min-width: 0; font-weight: 700; }}
 QPushButton#IconLink {{
     background: transparent;

@@ -27,8 +27,9 @@ from fulcrum.ui.widgets.org_map_view import OrgMapView
 _SCORE_DECIMALS = 1
 _VALUE_DECIMALS = 1
 _MAP_CAPTION = "Organisation map · double-click a domain to open"
-_MAP_PANE_W = 640
-_RIGHT_PANE_W = 320
+_MAP_PANE_W = 520
+_RIGHT_PANE_W = 480
+_RIGHT_PANE_MIN = 360
 _PREVIEW_COLOR = "#fbbf24"
 # The per-move note reserves the height of the tallest note at the current
 # width (recomputed on resize), so changing its text on hover never reflows the
@@ -118,6 +119,7 @@ class BoardView(QWidget):
 
     def _build_side_pane(self) -> QWidget:
         pane = QWidget()
+        pane.setMinimumWidth(ui_scale.px(_RIGHT_PANE_MIN))
         column = QVBoxLayout(pane)
         column.setContentsMargins(0, 0, 0, 0)
         moves_caption = QLabel("Available moves")
@@ -183,6 +185,7 @@ class BoardView(QWidget):
                 f"{reading.definition.label}: "
                 f"{reading.value:.{_VALUE_DECIMALS}f} {reading.definition.unit}"
             )
+            chip.setObjectName("SignalChip")
             chip.setToolTip(reading.definition.gloss)
             chip.clicked.connect(lambda _=False, r=reading: self._show_definition(r))
             self._signals_row.addWidget(chip)
@@ -193,8 +196,8 @@ class BoardView(QWidget):
         for valuation in valuations:
             description = describe_move(self._session.org, valuation.move)
             button = _MoveButton(
-                f"{description}     "
-                f"[{valuation.classification.value}]     "
+                f"{description}   "
+                f"[{valuation.classification.value}]   "
                 f"{valuation.delta:+.{_VALUE_DECIMALS}f}"
             )
             button.setObjectName("MoveButton")
