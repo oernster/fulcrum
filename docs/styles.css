@@ -144,7 +144,7 @@ section.alt {
 .section-sub {
   color: var(--muted);
   margin: 0 0 42px;
-  max-width: 700px;
+  max-width: 600px;
   font-size: 17px;
 }
 
