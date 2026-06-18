@@ -40,6 +40,8 @@ INSTALLER_NAME = "FulcrumSetup"
 # Repository layout, resolved relative to this script.
 PROJECT_ROOT = Path(__file__).resolve().parent
 LICENSE_FILE = PROJECT_ROOT / "LICENSE"
+MODEL_LICENSE_FILE = PROJECT_ROOT / "LICENSE-GPL-3.0.txt"
+UI_LICENSE_FILE = PROJECT_ROOT / "LICENSE-LGPL-3.0.txt"
 INSTALLER_LICENSE_FILE = PROJECT_ROOT / "INSTALLER_LICENSE"
 ICON_FILE = PROJECT_ROOT / "fulcrum.ico"
 VERSION_FILE = PROJECT_ROOT / "VERSION"
@@ -170,6 +172,10 @@ def stage_payload() -> None:
         print(f"[buildinstaller] Staged LICENSE into payload from {LICENSE_FILE}")
     else:
         print(f"[buildinstaller] WARNING: LICENSE not found at {LICENSE_FILE}.")
+    for licence in (MODEL_LICENSE_FILE, UI_LICENSE_FILE):
+        if licence.exists():
+            shutil.copy2(licence, PAYLOAD_STAGE_DIR / licence.name)
+            print(f"[buildinstaller] Staged {licence.name} into payload")
 
 
 def build_installer() -> int:
@@ -239,6 +245,11 @@ def build_installer() -> int:
     # it directly without unpacking the payload first.
     if LICENSE_FILE.exists():
         nuitka_args.append(f"--include-data-file={LICENSE_FILE}=LICENSE")
+
+    # Ship the split licences (model GPL-3.0, UI LGPL-3.0) for the two buttons.
+    for licence in (MODEL_LICENSE_FILE, UI_LICENSE_FILE):
+        if licence.exists():
+            nuitka_args.append(f"--include-data-file={licence}={licence.name}")
 
     # Ship the installer-wrapper licence notice next to the binary as well.
     if INSTALLER_LICENSE_FILE.exists():

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
@@ -13,7 +15,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from fulcrum.shared.resources import find_about_png, find_license
+from fulcrum.shared.resources import find_about_png
 from fulcrum.ui import ui_scale
 from fulcrum.version import APP_AUTHOR, APP_NAME, APP_TAGLINE, __version__
 
@@ -35,8 +37,8 @@ _ABOUT_TEMPLATE = (
     "<p><b>{tagline}</b></p>"
     "<p><b>Version:</b> {version}</p>"
     "<p><b>Author:</b> {author}</p>"
-    "<p>Distributed under the GNU Lesser General Public Licence v3.0 "
-    "(LGPL-3.0).</p>"
+    "<p>Dual-licensed: the model under GPL-3.0 and the user interface under "
+    "LGPL-3.0. See the Help menu for both licences.</p>"
     "<hr>"
     "<h3>Open source credits</h3>"
     "<ul>{credits}</ul>"
@@ -44,7 +46,7 @@ _ABOUT_TEMPLATE = (
     "communities.</p>"
 )
 
-_LICENCE_FALLBACK = "The LICENSE file could not be located in this build."
+_LICENCE_FALLBACK = "The licence text could not be located in this build."
 
 
 def _close_row(dialog: QDialog) -> QHBoxLayout:
@@ -95,24 +97,23 @@ class AboutDialog(QDialog):
 
 
 class LicenceDialog(QDialog):
-    """Shows the bundled LICENSE file verbatim."""
+    """Shows a bundled licence text verbatim."""
 
-    def __init__(self, parent=None) -> None:
+    def __init__(self, title: str, path: Path | None, parent=None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Licence - LGPL-3.0")
+        self.setWindowTitle(title)
         self.setMinimumSize(
             ui_scale.px(_LICENCE_MIN_WIDTH), ui_scale.px(_LICENCE_MIN_HEIGHT)
         )
         layout = QVBoxLayout(self)
         browser = QTextBrowser()
         browser.setLineWrapMode(QTextBrowser.LineWrapMode.WidgetWidth)
-        browser.setPlainText(_read_licence())
+        browser.setPlainText(_read_licence(path))
         layout.addWidget(browser)
         layout.addLayout(_close_row(self))
 
 
-def _read_licence() -> str:
-    path = find_license()
+def _read_licence(path: Path | None) -> str:
     if path is None:
         return _LICENCE_FALLBACK
     return path.read_text(encoding="utf-8")

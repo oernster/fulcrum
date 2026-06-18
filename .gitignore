@@ -217,5 +217,12 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+# Fulcrum build outputs (Nuitka standalone payload + onefile installer)
+dist-installer/
+installer/payload/
+*.dist
+*.build
+*.onefile-build
+
 # Private release notes (pasted into the GitHub Releases page, not committed)
 NOTES.md

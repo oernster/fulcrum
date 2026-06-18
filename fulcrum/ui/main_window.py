@@ -32,6 +32,7 @@ from fulcrum.application.plan_edit import first_invalid_index
 from fulcrum.application.planner import ImprovementPlanner
 from fulcrum.domain.errors import FulcrumError
 from fulcrum.domain.models import Origin
+from fulcrum.shared.resources import find_model_licence, find_ui_licence
 from fulcrum.ui.widgets.about_dialog import AboutDialog, LicenceDialog
 from fulcrum.ui.widgets.board_view import BoardView
 from fulcrum.ui.widgets.book_background_dialog import BookBackgroundDialog
@@ -116,7 +117,8 @@ class MainWindow(QMainWindow):
         help_menu.addAction("Book background...", self._book_background)
         help_menu.addSeparator()
         help_menu.addAction("About", self._about)
-        help_menu.addAction("Licence", self._licence)
+        help_menu.addAction("Model licence (GPL-3.0)", self._model_licence)
+        help_menu.addAction("UI licence (LGPL-3.0)", self._ui_licence)
 
     def _set_session(self, session: GameSession) -> None:
         self._session = session
@@ -238,8 +240,11 @@ class MainWindow(QMainWindow):
     def _about(self) -> None:
         AboutDialog(self).exec()
 
-    def _licence(self) -> None:
-        LicenceDialog(self).exec()
+    def _model_licence(self) -> None:
+        LicenceDialog("Model licence - GPL-3.0", find_model_licence(), self).exec()
+
+    def _ui_licence(self) -> None:
+        LicenceDialog("UI licence - LGPL-3.0", find_ui_licence(), self).exec()
 
     def _warn(self, title: str, message: str) -> None:
         QMessageBox.warning(self, title, message)

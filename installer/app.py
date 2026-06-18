@@ -66,6 +66,8 @@ APP_URL = "https://oernster.github.io/fulcrum/"
 # licence text.
 _PAYLOAD_DIR_NAME = "payload"
 _LICENSE_FILE_NAME = "LICENSE"
+_MODEL_LICENSE_FILE_NAME = "LICENSE-GPL-3.0.txt"
+_UI_LICENSE_FILE_NAME = "LICENSE-LGPL-3.0.txt"
 _INSTALLER_LICENSE_FILE_NAME = "INSTALLER_LICENSE"
 _VERSION_FILE_NAME = "VERSION"
 _EXE_NAME = "fulcrum.exe"
@@ -252,11 +254,11 @@ def _payload_archive() -> Path:
     return _bundle_root() / _PAYLOAD_DIR_NAME / _PAYLOAD_ARCHIVE_NAME
 
 
-def _license_text() -> str:
-    """Return the bundled licence text, or a fallback when it is absent."""
+def _licence_text(file_name: str) -> str:
+    """Return a bundled licence text by file name, or a fallback if absent."""
     candidates = (
-        _bundle_root() / _LICENSE_FILE_NAME,
-        _bundle_root() / _PAYLOAD_DIR_NAME / _LICENSE_FILE_NAME,
+        _bundle_root() / file_name,
+        _bundle_root() / _PAYLOAD_DIR_NAME / file_name,
     )
     for candidate in candidates:
         try:
@@ -932,10 +934,15 @@ class InstallerWindow(QWidget):
         installer_licence_button.clicked.connect(self._on_show_installer_licence)
         header.addWidget(installer_licence_button)
 
-        licence_button = QPushButton("Licence")
-        licence_button.setObjectName("LicenceButton")
-        licence_button.clicked.connect(self._on_show_licence)
-        header.addWidget(licence_button)
+        model_licence_button = QPushButton("Model licence (GPL-3.0)")
+        model_licence_button.setObjectName("LicenceButton")
+        model_licence_button.clicked.connect(self._on_show_model_licence)
+        header.addWidget(model_licence_button)
+
+        ui_licence_button = QPushButton("UI licence (LGPL-3.0)")
+        ui_licence_button.setObjectName("LicenceButton")
+        ui_licence_button.clicked.connect(self._on_show_ui_licence)
+        header.addWidget(ui_licence_button)
         return header
 
     def _build_buttons(self) -> QHBoxLayout:
@@ -968,9 +975,21 @@ class InstallerWindow(QWidget):
 
     # ---------------------------------------------------------------- actions
 
-    def _on_show_licence(self) -> None:
-        """Open the bundled application licence in a themed dialog."""
-        LicenceDialog(_license_text(), f"{APP_DISPLAY_NAME} Licence", self).exec()
+    def _on_show_model_licence(self) -> None:
+        """Open the model (GPL-3.0) licence in a themed dialog."""
+        LicenceDialog(
+            _licence_text(_MODEL_LICENSE_FILE_NAME),
+            f"{APP_DISPLAY_NAME} Model Licence (GPL-3.0)",
+            self,
+        ).exec()
+
+    def _on_show_ui_licence(self) -> None:
+        """Open the UI (LGPL-3.0) licence in a themed dialog."""
+        LicenceDialog(
+            _licence_text(_UI_LICENSE_FILE_NAME),
+            f"{APP_DISPLAY_NAME} UI Licence (LGPL-3.0)",
+            self,
+        ).exec()
 
     def _on_show_installer_licence(self) -> None:
         """Open the installer-wrapper licence notice in a themed dialog."""

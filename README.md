@@ -54,7 +54,7 @@ A short tour and the books behind it are at <https://oernster.github.io/fulcrum/
 | Icons and images | Pillow (build time) |
 | Packaging | Nuitka (standalone build and installer) |
 | Site | static HTML from `build_docs.py`, served on GitHub Pages |
-| Licence | LGPL-3.0 |
+| Licence | model GPL-3.0, UI LGPL-3.0 |
 
 ## Install and run
 
@@ -90,4 +90,8 @@ installer and the GitHub Pages site) are described in
 
 ## Licence
 
-LGPL-3.0. See [LICENSE](LICENSE).
+Dual-licensed by component: the model under GPL-3.0 and the user interface (the
+PySide6 layer) under LGPL-3.0. See [LICENSE](LICENSE) for the split, with the
+full texts in [LICENSE-GPL-3.0.txt](LICENSE-GPL-3.0.txt) and
+[LICENSE-LGPL-3.0.txt](LICENSE-LGPL-3.0.txt). The running app shows both under
+Help.

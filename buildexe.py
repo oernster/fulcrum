@@ -46,6 +46,8 @@ ENTRY_SCRIPT = PROJECT_ROOT / "main.py"
 ICON_FILE = PROJECT_ROOT / "fulcrum.ico"
 VERSION_FILE = PROJECT_ROOT / "VERSION"
 LICENSE_FILE = PROJECT_ROOT / "LICENSE"
+MODEL_LICENSE_FILE = PROJECT_ROOT / "LICENSE-GPL-3.0.txt"
+UI_LICENSE_FILE = PROJECT_ROOT / "LICENSE-LGPL-3.0.txt"
 
 # Asset files bundled at the bundle root (the app's resource resolver looks for
 # these beside the executable, not inside an assets subdirectory).
@@ -224,10 +226,15 @@ def build_exe() -> int:
         nuitka_args.append(f"--include-data-file={VERSION_FILE}=VERSION")
         print(f"[buildexe] Bundling data file: {VERSION_FILE} -> VERSION")
 
-    # Ship the LICENCE so the in-app Help > Licence dialog can display it.
+    # Ship the LICENSE overview plus the split licences, so the in-app Help can
+    # show the model (GPL-3.0) and UI (LGPL-3.0) texts.
     if LICENSE_FILE.exists():
         nuitka_args.append(f"--include-data-file={LICENSE_FILE}=LICENSE")
         print(f"[buildexe] Bundling data file: {LICENSE_FILE} -> LICENSE")
+    for licence in (MODEL_LICENSE_FILE, UI_LICENSE_FILE):
+        if licence.exists():
+            nuitka_args.append(f"--include-data-file={licence}={licence.name}")
+            print(f"[buildexe] Bundling licence: {licence} -> {licence.name}")
 
     # Ship the book covers under assets/books for the Book background dialog.
     if BOOK_COVER_DIR.is_dir():

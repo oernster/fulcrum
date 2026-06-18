@@ -5,3 +5,5 @@ pytest-qt>=4.4
 Pillow>=10.0
 black>=24.0
 flake8>=7.0
+# Only needed to make the packaged Windows builds (buildexe.py / buildinstaller.py).
+Nuitka>=2.0

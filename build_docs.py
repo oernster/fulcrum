@@ -22,7 +22,7 @@ from PIL import Image
 
 from fulcrum.application.books import BookShowcase, build_book_showcase
 from fulcrum.domain.books import BookEntry
-from fulcrum.version import APP_COPYRIGHT, APP_NAME, APP_TAGLINE, __version__
+from fulcrum.version import APP_COPYRIGHT, APP_NAME, __version__
 
 ROOT = Path(__file__).resolve().parent
 DOCS = ROOT / "docs"
@@ -42,6 +42,7 @@ BOARD_SHOT = "assets/screenshots/play-board.png"
 GUIDE_SHOT = "assets/screenshots/play-guide.png"
 BOOK_COVER_REL = "assets/books"
 LINK_TEXT = "View on Amazon UK"
+SITE_TAGLINE = "Organisational Decision Architecture sandbox"
 
 # Covers and the icon ship downscaled: they are shown at most ~190px wide, so a
 # web-sized copy keeps the page light instead of serving multi-megabyte art.
@@ -137,7 +138,7 @@ def _head(description: str) -> str:
 <meta name="description" content="{escape(description)}">
 <link rel="canonical" href="{SITE_URL}">
 <meta property="og:type" content="website">
-<meta property="og:title" content="{APP_NAME}: {escape(APP_TAGLINE)}">
+<meta property="og:title" content="{APP_NAME}: {SITE_TAGLINE}">
 <meta property="og:description" content="{escape(description)}">
 <meta property="og:url" content="{SITE_URL}">
 <meta property="og:image" content="{SITE_URL}{BOARD_SHOT}">
@@ -167,7 +168,7 @@ def _hero() -> str:
     <div class="container">
       <img class="logo" src="{ICON_REL}" alt="{APP_NAME} icon">
       <h1>{APP_NAME}</h1>
-      <div class="tagline">{escape(APP_TAGLINE)}</div>
+      <div class="tagline">{SITE_TAGLINE}</div>
       <p class="lede">The Decision Architecture series, made playable. Fix a
         failing organisation with structural moves; a deterministic model
         scores the result from 0 to 100.</p>
@@ -178,7 +179,8 @@ def _hero() -> str:
       <p class="release-note">Builds are published on the
         <a href="{RELEASES_URL}">releases page</a> as they ship.</p>
       <div class="badges">
-        <span>Local-first</span>·<span>No cloud, no account</span>·<span>LGPL-3.0</span>
+        <span>Local-first</span>·<span>No cloud, no account</span>
+        ·<span>GPL-3.0 + LGPL-3.0</span>
       </div>
     </div>
   </section>"""
@@ -251,8 +253,8 @@ def _footer() -> str:
     return f"""<footer>
   <div class="container footer-inner">
     <div>
-      <strong>{APP_NAME}</strong>: Organisational Decision Architecture sandbox<br>
-      {escape(APP_COPYRIGHT)} · Local-first · LGPL-3.0 · v{__version__}
+      <strong>{APP_NAME}</strong>: {SITE_TAGLINE}<br>
+      {escape(APP_COPYRIGHT)} · Local-first · GPL-3.0 + LGPL-3.0 · v{__version__}
     </div>
     <div class="footer-links">
       <a href="{RELEASES_URL}">Releases</a>

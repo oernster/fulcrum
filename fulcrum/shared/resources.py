@@ -21,6 +21,8 @@ _ICON_FILENAMES = (
 )
 _PNG_SUFFIX = ".png"
 _LICENSE_FILENAME = "LICENSE"
+_MODEL_LICENCE_FILENAME = "LICENSE-GPL-3.0.txt"
+_UI_LICENCE_FILENAME = "LICENSE-LGPL-3.0.txt"
 _BOOK_COVER_SUBDIR = ("assets", "books")
 
 
@@ -91,3 +93,13 @@ def find_data_file(filename: str) -> Path | None:
         if candidate.is_file():
             return candidate
     return None
+
+
+def find_model_licence() -> Path | None:
+    """Locate the model (GPL-3.0) licence text."""
+    return find_data_file(_MODEL_LICENCE_FILENAME)
+
+
+def find_ui_licence() -> Path | None:
+    """Locate the user-interface (LGPL-3.0) licence text."""
+    return find_data_file(_UI_LICENCE_FILENAME)
