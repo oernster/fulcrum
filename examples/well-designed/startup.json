@@ -1,0 +1,14 @@
+{
+  "name": "Kernel",
+  "size": "Startup (~12 people), well designed",
+  "description": "Authority everywhere, almost no handoffs, fully aligned. About as healthy as an org gets.",
+  "teams": [
+    {"id": "product", "name": "Product", "has_local_authority": true, "incentive_skew": 0.05},
+    {"id": "engineering", "name": "Engineering", "has_local_authority": true, "incentive_skew": 0.05},
+    {"id": "ops", "name": "Ops", "has_local_authority": true, "incentive_skew": 0.1}
+  ],
+  "dependencies": [
+    {"upstream": "engineering", "downstream": "ops", "propagation_delay": 1}
+  ],
+  "workload": 4
+}

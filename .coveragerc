@@ -1,0 +1,17 @@
+[run]
+source = fulcrum
+
+[report]
+show_missing = True
+skip_covered = False
+fail_under = 100
+
+omit =
+    */main.py
+    */ui/*
+    */shared/resources.py
+    */application/interfaces.py
+    */version.py
+    */__pycache__/*
+    */venv/*
+    */generate_icons.py

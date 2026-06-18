@@ -1,0 +1,18 @@
+{
+  "name": "Cadence",
+  "size": "Scaleup (100-200 people), well designed",
+  "description": "Teams self-serve on a stable platform; no release gate, incentives aligned.",
+  "teams": [
+    {"id": "platform", "name": "Platform", "has_local_authority": true, "incentive_skew": 0.1},
+    {"id": "product_eng", "name": "Product engineering", "has_local_authority": true, "incentive_skew": 0.15},
+    {"id": "payments", "name": "Payments", "has_local_authority": true, "incentive_skew": 0.15},
+    {"id": "data", "name": "Data", "has_local_authority": true, "incentive_skew": 0.1},
+    {"id": "enablement", "name": "Developer enablement", "has_local_authority": true, "incentive_skew": 0.1}
+  ],
+  "dependencies": [
+    {"upstream": "platform", "downstream": "product_eng", "propagation_delay": 1},
+    {"upstream": "platform", "downstream": "payments", "propagation_delay": 1},
+    {"upstream": "enablement", "downstream": "product_eng", "propagation_delay": 1}
+  ],
+  "workload": 6
+}

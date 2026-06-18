@@ -1,0 +1,19 @@
+{
+  "name": "Ascent",
+  "size": "Scaleup (100-200 people)",
+  "description": "Functional teams have formed; a release gate and the first silos are emerging.",
+  "teams": [
+    {"id": "platform", "name": "Platform", "has_local_authority": true, "incentive_skew": 0.2},
+    {"id": "product_eng", "name": "Product engineering", "has_local_authority": false, "incentive_skew": 0.3},
+    {"id": "payments", "name": "Payments", "has_local_authority": false, "incentive_skew": 0.35},
+    {"id": "data", "name": "Data", "has_local_authority": true, "incentive_skew": 0.25},
+    {"id": "release_eng", "name": "Release engineering", "has_local_authority": false, "incentive_skew": 0.2}
+  ],
+  "dependencies": [
+    {"upstream": "platform", "downstream": "product_eng", "propagation_delay": 2},
+    {"upstream": "data", "downstream": "payments", "propagation_delay": 2},
+    {"upstream": "product_eng", "downstream": "release_eng", "propagation_delay": 3},
+    {"upstream": "payments", "downstream": "release_eng", "propagation_delay": 3}
+  ],
+  "workload": 6
+}

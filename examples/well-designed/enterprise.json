@@ -1,0 +1,22 @@
+{
+  "name": "Lattice",
+  "size": "Enterprise (1,500-2,500 people), well designed",
+  "description": "Federated divisions with local authority on a shared platform; no central gates.",
+  "teams": [
+    {"id": "core_platform", "name": "Core platform", "has_local_authority": true, "incentive_skew": 0.15},
+    {"id": "consumer", "name": "Consumer division", "has_local_authority": true, "incentive_skew": 0.2},
+    {"id": "enterprise_products", "name": "Enterprise products", "has_local_authority": true, "incentive_skew": 0.2},
+    {"id": "data_ml", "name": "Data and ML", "has_local_authority": true, "incentive_skew": 0.15},
+    {"id": "security", "name": "Security", "has_local_authority": true, "incentive_skew": 0.15},
+    {"id": "developer_platform", "name": "Developer platform", "has_local_authority": true, "incentive_skew": 0.1},
+    {"id": "reliability", "name": "Reliability", "has_local_authority": true, "incentive_skew": 0.15}
+  ],
+  "dependencies": [
+    {"upstream": "core_platform", "downstream": "consumer", "propagation_delay": 1},
+    {"upstream": "core_platform", "downstream": "enterprise_products", "propagation_delay": 1},
+    {"upstream": "developer_platform", "downstream": "consumer", "propagation_delay": 1},
+    {"upstream": "developer_platform", "downstream": "enterprise_products", "propagation_delay": 1},
+    {"upstream": "reliability", "downstream": "data_ml", "propagation_delay": 2}
+  ],
+  "workload": 8
+}

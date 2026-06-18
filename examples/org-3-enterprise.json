@@ -1,0 +1,25 @@
+{
+  "name": "Meridian Corp",
+  "size": "Enterprise (1,500-2,500 people)",
+  "description": "Divisions plus central governance gates: classic coordination overload.",
+  "teams": [
+    {"id": "core_platform", "name": "Core platform", "has_local_authority": true, "incentive_skew": 0.25},
+    {"id": "consumer", "name": "Consumer division", "has_local_authority": false, "incentive_skew": 0.4},
+    {"id": "enterprise_products", "name": "Enterprise products", "has_local_authority": false, "incentive_skew": 0.4},
+    {"id": "data_ml", "name": "Data and ML", "has_local_authority": false, "incentive_skew": 0.35},
+    {"id": "security", "name": "Security", "has_local_authority": false, "incentive_skew": 0.3},
+    {"id": "architecture_board", "name": "Architecture board", "has_local_authority": false, "incentive_skew": 0.2},
+    {"id": "change_advisory", "name": "Change advisory board", "has_local_authority": false, "incentive_skew": 0.25}
+  ],
+  "dependencies": [
+    {"upstream": "core_platform", "downstream": "consumer", "propagation_delay": 2},
+    {"upstream": "core_platform", "downstream": "enterprise_products", "propagation_delay": 2},
+    {"upstream": "consumer", "downstream": "architecture_board", "propagation_delay": 4},
+    {"upstream": "enterprise_products", "downstream": "architecture_board", "propagation_delay": 4},
+    {"upstream": "data_ml", "downstream": "architecture_board", "propagation_delay": 4},
+    {"upstream": "consumer", "downstream": "change_advisory", "propagation_delay": 3},
+    {"upstream": "enterprise_products", "downstream": "change_advisory", "propagation_delay": 3},
+    {"upstream": "security", "downstream": "change_advisory", "propagation_delay": 3}
+  ],
+  "workload": 8
+}

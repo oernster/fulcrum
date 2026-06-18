@@ -1,0 +1,24 @@
+{
+  "name": "Constellation",
+  "size": "Very large (~10,000 people), well designed",
+  "description": "Platform-as-product with autonomous teams and stable interfaces; some coupling is unavoidable at this scale.",
+  "teams": [
+    {"id": "platform_infra", "name": "Platform and infrastructure", "has_local_authority": true, "incentive_skew": 0.2},
+    {"id": "cloud", "name": "Cloud", "has_local_authority": true, "incentive_skew": 0.2},
+    {"id": "consumer_apps", "name": "Consumer apps", "has_local_authority": true, "incentive_skew": 0.25},
+    {"id": "ads", "name": "Advertising", "has_local_authority": true, "incentive_skew": 0.3},
+    {"id": "payments", "name": "Payments", "has_local_authority": true, "incentive_skew": 0.2},
+    {"id": "ml_platform", "name": "ML platform", "has_local_authority": true, "incentive_skew": 0.2},
+    {"id": "developer_experience", "name": "Developer experience", "has_local_authority": true, "incentive_skew": 0.15},
+    {"id": "reliability", "name": "Reliability", "has_local_authority": true, "incentive_skew": 0.2}
+  ],
+  "dependencies": [
+    {"upstream": "platform_infra", "downstream": "cloud", "propagation_delay": 1},
+    {"upstream": "platform_infra", "downstream": "ml_platform", "propagation_delay": 1},
+    {"upstream": "developer_experience", "downstream": "consumer_apps", "propagation_delay": 1},
+    {"upstream": "developer_experience", "downstream": "ads", "propagation_delay": 1},
+    {"upstream": "reliability", "downstream": "payments", "propagation_delay": 2},
+    {"upstream": "cloud", "downstream": "ads", "propagation_delay": 2}
+  ],
+  "workload": 10
+}

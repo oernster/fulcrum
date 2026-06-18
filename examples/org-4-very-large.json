@@ -1,0 +1,27 @@
+{
+  "name": "Helios Global",
+  "size": "Very large (~10,000 people)",
+  "description": "A dense matrix with heavy process; most decisions escalate to the centre.",
+  "teams": [
+    {"id": "platform_infra", "name": "Platform and infrastructure", "has_local_authority": true, "incentive_skew": 0.3},
+    {"id": "cloud", "name": "Cloud", "has_local_authority": false, "incentive_skew": 0.4},
+    {"id": "consumer_apps", "name": "Consumer apps", "has_local_authority": false, "incentive_skew": 0.45},
+    {"id": "ads", "name": "Advertising", "has_local_authority": false, "incentive_skew": 0.5},
+    {"id": "payments", "name": "Payments", "has_local_authority": false, "incentive_skew": 0.4},
+    {"id": "ml_platform", "name": "ML platform", "has_local_authority": false, "incentive_skew": 0.4},
+    {"id": "central_arch", "name": "Central architecture", "has_local_authority": false, "incentive_skew": 0.25},
+    {"id": "program_mgmt", "name": "Program management", "has_local_authority": false, "incentive_skew": 0.3}
+  ],
+  "dependencies": [
+    {"upstream": "platform_infra", "downstream": "cloud", "propagation_delay": 3},
+    {"upstream": "cloud", "downstream": "payments", "propagation_delay": 3},
+    {"upstream": "ads", "downstream": "ml_platform", "propagation_delay": 3},
+    {"upstream": "cloud", "downstream": "central_arch", "propagation_delay": 5},
+    {"upstream": "consumer_apps", "downstream": "central_arch", "propagation_delay": 5},
+    {"upstream": "ads", "downstream": "central_arch", "propagation_delay": 5},
+    {"upstream": "payments", "downstream": "program_mgmt", "propagation_delay": 4},
+    {"upstream": "ml_platform", "downstream": "program_mgmt", "propagation_delay": 4},
+    {"upstream": "consumer_apps", "downstream": "program_mgmt", "propagation_delay": 4}
+  ],
+  "workload": 10
+}

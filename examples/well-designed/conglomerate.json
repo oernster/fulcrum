@@ -1,0 +1,23 @@
+{
+  "name": "Federation",
+  "size": "Conglomerate (100,000-200,000 people), well designed",
+  "description": "Autonomous business units with real local authority on shared platforms; light-touch coordination, not gates. Strong for its scale, though it cannot match a startup's agility.",
+  "teams": [
+    {"id": "bu_consumer", "name": "Consumer BU", "has_local_authority": true, "incentive_skew": 0.25},
+    {"id": "bu_enterprise", "name": "Enterprise BU", "has_local_authority": true, "incentive_skew": 0.25},
+    {"id": "bu_financial", "name": "Financial services BU", "has_local_authority": true, "incentive_skew": 0.3},
+    {"id": "bu_industrial", "name": "Industrial BU", "has_local_authority": true, "incentive_skew": 0.25},
+    {"id": "shared_platform", "name": "Shared platform", "has_local_authority": true, "incentive_skew": 0.2},
+    {"id": "data_commons", "name": "Data commons", "has_local_authority": true, "incentive_skew": 0.2},
+    {"id": "security_guild", "name": "Security guild", "has_local_authority": true, "incentive_skew": 0.2},
+    {"id": "coordination_council", "name": "Coordination council", "has_local_authority": true, "incentive_skew": 0.25}
+  ],
+  "dependencies": [
+    {"upstream": "shared_platform", "downstream": "bu_consumer", "propagation_delay": 1},
+    {"upstream": "shared_platform", "downstream": "bu_enterprise", "propagation_delay": 1},
+    {"upstream": "data_commons", "downstream": "bu_financial", "propagation_delay": 2},
+    {"upstream": "data_commons", "downstream": "bu_industrial", "propagation_delay": 2},
+    {"upstream": "security_guild", "downstream": "bu_consumer", "propagation_delay": 2}
+  ],
+  "workload": 12
+}

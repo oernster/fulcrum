@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Private release notes (pasted into the GitHub Releases page, not committed)
+NOTES.md

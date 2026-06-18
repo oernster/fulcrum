@@ -1,0 +1,28 @@
+{
+  "name": "Atlas Holdings",
+  "size": "Conglomerate (100,000-200,000 people)",
+  "description": "Business units orbiting heavy central functions: a single unavoidable attractor.",
+  "teams": [
+    {"id": "bu_consumer", "name": "Consumer BU", "has_local_authority": false, "incentive_skew": 0.55},
+    {"id": "bu_enterprise", "name": "Enterprise BU", "has_local_authority": false, "incentive_skew": 0.55},
+    {"id": "bu_financial", "name": "Financial services BU", "has_local_authority": false, "incentive_skew": 0.6},
+    {"id": "bu_industrial", "name": "Industrial BU", "has_local_authority": false, "incentive_skew": 0.5},
+    {"id": "shared_platform", "name": "Shared platform", "has_local_authority": true, "incentive_skew": 0.35},
+    {"id": "central_governance", "name": "Central governance", "has_local_authority": false, "incentive_skew": 0.3},
+    {"id": "global_security", "name": "Global security and risk", "has_local_authority": false, "incentive_skew": 0.35},
+    {"id": "corporate_pmo", "name": "Corporate PMO", "has_local_authority": false, "incentive_skew": 0.4}
+  ],
+  "dependencies": [
+    {"upstream": "shared_platform", "downstream": "bu_consumer", "propagation_delay": 3},
+    {"upstream": "shared_platform", "downstream": "bu_enterprise", "propagation_delay": 3},
+    {"upstream": "bu_consumer", "downstream": "central_governance", "propagation_delay": 6},
+    {"upstream": "bu_enterprise", "downstream": "central_governance", "propagation_delay": 6},
+    {"upstream": "bu_financial", "downstream": "central_governance", "propagation_delay": 6},
+    {"upstream": "bu_industrial", "downstream": "central_governance", "propagation_delay": 6},
+    {"upstream": "bu_consumer", "downstream": "corporate_pmo", "propagation_delay": 5},
+    {"upstream": "bu_enterprise", "downstream": "corporate_pmo", "propagation_delay": 5},
+    {"upstream": "bu_financial", "downstream": "global_security", "propagation_delay": 5},
+    {"upstream": "bu_industrial", "downstream": "global_security", "propagation_delay": 5}
+  ],
+  "workload": 12
+}

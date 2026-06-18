@@ -1,0 +1,15 @@
+{
+  "name": "Seedling",
+  "size": "Startup (~12 people)",
+  "description": "Flat and fast: almost everyone ships. Ops is just starting to become a gate.",
+  "teams": [
+    {"id": "product", "name": "Product", "has_local_authority": true, "incentive_skew": 0.1},
+    {"id": "engineering", "name": "Engineering", "has_local_authority": true, "incentive_skew": 0.15},
+    {"id": "ops", "name": "Ops", "has_local_authority": false, "incentive_skew": 0.25}
+  ],
+  "dependencies": [
+    {"upstream": "product", "downstream": "engineering", "propagation_delay": 1},
+    {"upstream": "engineering", "downstream": "ops", "propagation_delay": 2}
+  ],
+  "workload": 4
+}
