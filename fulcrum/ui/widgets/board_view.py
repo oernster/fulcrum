@@ -130,7 +130,7 @@ class BoardView(QWidget):
         pane.setMinimumWidth(ui_scale.px(_RIGHT_PANE_MIN))
         column = QVBoxLayout(pane)
         column.setContentsMargins(0, 0, 0, 0)
-        moves_caption = QLabel("Available moves")
+        moves_caption = QLabel("Available moves within current scope")
         moves_caption.setObjectName("Muted")
         column.addWidget(moves_caption)
         scroll = QScrollArea()
