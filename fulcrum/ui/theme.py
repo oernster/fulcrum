@@ -27,6 +27,7 @@ _DISABLED_TEXT = "#5b6470"
 _BASE_FONT_PT = 14
 _HEADING_SCALE = 1.5
 _SCORE_SCALE = 2.2
+_GLYPH_SCALE = 1.3
 _SPIN_UP_FILE = "spin_up.png"
 _SPIN_DOWN_FILE = "spin_down.png"
 
@@ -48,6 +49,7 @@ def get_dark_qss() -> str:
     base_pt = round(_BASE_FONT_PT * ui_scale.factor())
     heading_pt = round(base_pt * _HEADING_SCALE)
     score_pt = round(base_pt * _SCORE_SCALE)
+    glyph_pt = round(base_pt * _GLYPH_SCALE)
     font_family = _ui_font_family()
     up_arrow = _arrow_image(_SPIN_UP_FILE)
     down_arrow = _arrow_image(_SPIN_DOWN_FILE)
@@ -83,6 +85,16 @@ QPushButton#Primary {{ background-color: {_ACCENT}; color: {_BG}; }}
 QPushButton#Primary:enabled:hover {{ border-color: {_ACCENT_BRIGHT}; }}
 QPushButton#MoveButton {{ text-align: left; padding-left: 14px; }}
 QPushButton#TreeAction {{ padding: 0; min-width: 0; font-weight: 700; }}
+QPushButton#GlossaryLink {{
+    background: transparent;
+    border: 2px solid transparent;
+    padding: 4px 10px;
+    font-size: {glyph_pt}pt;
+}}
+QPushButton#GlossaryLink:enabled:hover {{
+    border-color: {_ACCENT};
+    color: {_ACCENT_BRIGHT};
+}}
 
 QFrame#Card, QFrame#Popover {{
     background-color: {_SURFACE};

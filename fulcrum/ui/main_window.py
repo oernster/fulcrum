@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from random import Random
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
     QFileDialog,
@@ -48,6 +49,8 @@ _IMPORT_FILTER = "Org JSON (*.json);;All files (*)"
 _EXPORT_FILTER = "HTML report (*.html);;All files (*)"
 _DEFAULT_EXPORT = "fulcrum-plan.html"
 _PLAN_FILTER = "Plan JSON (*.json);;All files (*)"
+_GLOSSARY_GLYPH = "\N{SCROLL}"
+_GLOSSARY_TOOLTIP = "Decision glossary"
 
 
 class MainWindow(QMainWindow):
@@ -93,6 +96,12 @@ class MainWindow(QMainWindow):
         top.addWidget(new_button)
         top.addWidget(guide_button)
         top.addStretch()
+        glossary_link = QPushButton(_GLOSSARY_GLYPH)
+        glossary_link.setObjectName("GlossaryLink")
+        glossary_link.setToolTip(_GLOSSARY_TOOLTIP)
+        glossary_link.setCursor(Qt.CursorShape.PointingHandCursor)
+        glossary_link.clicked.connect(self._glossary)
+        top.addWidget(glossary_link)
         layout.addLayout(top)
         layout.addWidget(self._board, 1)
         self.setCentralWidget(central)
