@@ -21,6 +21,18 @@ _MAX_SKEW: float = 1.0
 # a unit grows past the comfortable band.
 _MIN_TEAM_SIZE: int = 1
 
+# The vocabulary of group tiers offered when modelling an org. Any group can be
+# any of these or a custom label, and they nest to any depth. The category is
+# descriptive: it names what a grouping is, it does not change the score.
+GROUP_CATEGORIES: tuple[str, ...] = (
+    "Division",
+    "Department",
+    "Domain",
+    "Group",
+    "Sub-team",
+)
+DEFAULT_CATEGORY: str = "Domain"
+
 
 class Origin(str, Enum):
     """Where an organisational state came from."""
@@ -124,6 +136,7 @@ class Domain:
     name: str
     parent_id: str | None = None
     lead: str = ""
+    category: str = DEFAULT_CATEGORY
 
     def __post_init__(self) -> None:
         if not self.id:

@@ -20,6 +20,7 @@ from pathlib import Path
 
 from fulcrum.application.dto import DependencySpec, DomainSpec, OrgBlueprint, TeamSpec
 from fulcrum.domain.errors import FulcrumError
+from fulcrum.domain.models import DEFAULT_CATEGORY
 
 _DEFAULT_WORKLOAD = 1
 _DEFAULT_SKEW = 0.0
@@ -59,6 +60,7 @@ def _domain(entry: dict) -> DomainSpec:
             name=str(entry["name"]),
             parent_id=_optional_id(entry.get("parent_id")),
             lead=str(entry.get("lead", _DEFAULT_LEAD)),
+            category=str(entry.get("category", DEFAULT_CATEGORY)),
         )
     except (KeyError, TypeError, ValueError) as exc:
         raise OrgImportError(f"invalid domain entry: {entry}") from exc

@@ -18,7 +18,14 @@ from random import Random
 
 from fulcrum.application.game_session import enumerate_moves
 from fulcrum.application.simulator import DeterministicSimulator
-from fulcrum.domain.models import Dependency, Domain, Origin, OrgState, Team
+from fulcrum.domain.models import (
+    GROUP_CATEGORIES,
+    Dependency,
+    Domain,
+    Origin,
+    OrgState,
+    Team,
+)
 from fulcrum.domain.simulation import MoveClassification
 
 _TEAM_CHOICES: tuple[int, ...] = (3, 4, 5, 6, 7, 8)
@@ -36,6 +43,8 @@ _SKEW_DECIMALS: int = 2
 _DOMAIN_THRESHOLD: int = 6
 _SUBDOMAIN_THRESHOLD: int = 7
 _ROOT_DOMAINS: int = 2
+_ROOT_CATEGORY: str = GROUP_CATEGORIES[0]
+_SUB_CATEGORY: str = GROUP_CATEGORIES[1]
 
 # Cosmetic name pools for generated domains and their leads, the structural
 # equivalent of the "Team N" team names: drawn at random, never load-bearing.
@@ -74,7 +83,12 @@ def _build_domains(
     names = rng.sample(_DOMAIN_NAMES, total)
     leads = rng.sample(_LEAD_NAMES, total)
     domains = [
-        Domain(id=f"domain_{k + 1}", name=names[k], lead=leads[k])
+        Domain(
+            id=f"domain_{k + 1}",
+            name=names[k],
+            lead=leads[k],
+            category=_ROOT_CATEGORY,
+        )
         for k in range(_ROOT_DOMAINS)
     ]
     if nested:
@@ -84,6 +98,7 @@ def _build_domains(
                 name=names[_ROOT_DOMAINS],
                 parent_id="domain_1",
                 lead=leads[_ROOT_DOMAINS],
+                category=_SUB_CATEGORY,
             )
         )
     assignable = [domain.id for domain in domains]

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from fulcrum.domain.models import OrgState
+from fulcrum.domain.models import DEFAULT_CATEGORY, OrgState
 from fulcrum.domain.moves import Move
 from fulcrum.domain.simulation import MoveClassification
 
@@ -39,6 +39,7 @@ class DomainSpec:
     name: str
     parent_id: str | None = None
     lead: str = ""
+    category: str = DEFAULT_CATEGORY
 
 
 @dataclass(frozen=True, slots=True)
@@ -127,6 +128,7 @@ class MapNode:
     team_count: int
     authority_ratio: float
     owner: str = ""
+    category: str = ""
 
 
 @dataclass(frozen=True, slots=True)

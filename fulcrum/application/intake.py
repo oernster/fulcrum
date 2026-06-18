@@ -30,7 +30,7 @@ def build_org_state(blueprint: OrgBlueprint, origin: Origin) -> OrgState:
         for spec in blueprint.dependencies
     )
     domains = tuple(
-        Domain(spec.id, spec.name, spec.parent_id, spec.lead)
+        Domain(spec.id, spec.name, spec.parent_id, spec.lead, spec.category)
         for spec in blueprint.domains
     )
     return OrgState(

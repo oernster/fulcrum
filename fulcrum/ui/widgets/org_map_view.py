@@ -189,7 +189,7 @@ class OrgMapView(QGraphicsView):
     @staticmethod
     def _sublabel(node) -> str:
         if node.kind == _KIND_DOMAIN:
-            base = f"{node.team_count} teams · double-click to open"
+            base = f"{node.category} · {node.team_count} teams · double-click to open"
             return f"{base} · lead: {node.owner}" if node.owner else base
         decides = "decides locally" if node.authority_ratio >= _FULL else "escalates"
         return f"{decides} · owner: {node.owner}" if node.owner else decides

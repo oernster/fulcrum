@@ -49,6 +49,7 @@ def build_level(
                 team_count=len(members),
                 authority_ratio=_authority_ratio(members),
                 owner=domain.lead,
+                category=domain.category,
             )
         )
     for team in direct_teams:

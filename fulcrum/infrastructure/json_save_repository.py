@@ -7,7 +7,14 @@ import os
 from pathlib import Path
 
 from fulcrum.application.dto import SavedGame
-from fulcrum.domain.models import Dependency, Domain, Origin, OrgState, Team
+from fulcrum.domain.models import (
+    DEFAULT_CATEGORY,
+    Dependency,
+    Domain,
+    Origin,
+    OrgState,
+    Team,
+)
 from fulcrum.domain.moves import Move, MoveKind
 
 _SUFFIX = ".json"
@@ -35,6 +42,7 @@ def _domain_to_dict(domain: Domain) -> dict:
         "name": domain.name,
         "parent_id": domain.parent_id,
         "lead": domain.lead,
+        "category": domain.category,
     }
 
 
@@ -90,7 +98,13 @@ def org_from_dict(data: dict) -> OrgState:
         for d in data["dependencies"]
     )
     domains = tuple(
-        Domain(d["id"], d["name"], d.get("parent_id"), d.get("lead", ""))
+        Domain(
+            d["id"],
+            d["name"],
+            d.get("parent_id"),
+            d.get("lead", ""),
+            d.get("category", DEFAULT_CATEGORY),
+        )
         for d in data.get("domains", ())
     )
     return OrgState(

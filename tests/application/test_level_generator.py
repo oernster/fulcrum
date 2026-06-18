@@ -8,7 +8,7 @@ from fulcrum.application.level_generator import (
     has_great_move,
 )
 from fulcrum.application.simulator import DeterministicSimulator
-from fulcrum.domain.models import Origin, OrgState, Team
+from fulcrum.domain.models import GROUP_CATEGORIES, Origin, OrgState, Team
 
 _SEED_COUNT = 12
 
@@ -39,6 +39,7 @@ def test_larger_orgs_group_into_root_domains():
     domains, domain_of = _build_domains(Random(0), 6)
     assert len(domains) == 2
     assert all(domain.parent_id is None for domain in domains)
+    assert all(domain.category == GROUP_CATEGORIES[0] for domain in domains)
     known = {domain.id for domain in domains}
     assert all(assigned in known for assigned in domain_of)
 
@@ -48,6 +49,7 @@ def test_largest_orgs_nest_a_subdomain():
     nested = [domain for domain in domains if domain.parent_id is not None]
     assert len(nested) == 1
     assert nested[0].parent_id == "domain_1"
+    assert nested[0].category == GROUP_CATEGORIES[1]
     # The grouping must build a valid org: construction validates the domains.
     teams = tuple(
         Team(f"team_{i + 1}", f"Team {i + 1}", i == 0, domain_id=domain_of[i])

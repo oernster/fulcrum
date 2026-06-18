@@ -16,6 +16,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QDialog,
     QDialogButtonBox,
     QHBoxLayout,
@@ -33,6 +34,7 @@ from PySide6.QtWidgets import (
 )
 
 from fulcrum.application.dto import DomainSpec, OrgBlueprint, TeamSpec
+from fulcrum.domain.models import DEFAULT_CATEGORY, GROUP_CATEGORIES
 from fulcrum.ui import ui_scale
 from fulcrum.ui.widgets.dependency_editor import DependencyEditor
 from fulcrum.ui.widgets.glossary_dialog import GlossaryDialog
@@ -51,13 +53,15 @@ _HEADERS = ("Name", "Ships without asking", "Incentive skew %", "Lead / owner", 
 
 _ACCENT = "#f59e0b"
 _ADD_TEAM_TEXT = "Add team here"
-_ADD_SUBDOMAIN_TEXT = "Add sub-domain here"
+_ADD_SUBDOMAIN_TEXT = "Add a sub-group here"
 _ADD_GLYPH = "+"
 _REMOVE_GLYPH = "-"
 _ACTION_SPACING = 2
 _ACTION_BUTTON_W = 30
 _ACTION_BUTTON_H = 18
 _LEAD_COLUMN_WIDTH = 168
+_CATEGORY_WIDTH = 124
+_CATEGORY_SPACING = 6
 _AUTHORITY_TIP = "Tick if the team can decide and ship on its own, without escalating."
 _SKEW_TIP = (
     "How far the team's local incentives pull against the system outcome. "
@@ -72,10 +76,11 @@ _DEFAULT_WORKLOAD = 6
 _MIN_WIDTH = 840
 _MIN_HEIGHT = 640
 _HINT = (
-    "Build your organisation: start a domain, then use + on a domain to add a "
-    "team or a sub-domain; use - to remove an item. Tick the teams that ship "
-    "without escalating. Very large orgs are quicker to import as JSON. "
-    "Unsure on a term like incentive skew? Open the "
+    "Build your organisation: start a group and pick its category (Division, "
+    "Department, Domain, ...), then use + on a group to add a team or a "
+    "sub-group; use - to remove an item. Groups nest to any depth. Tick the "
+    "teams that ship without escalating. Very large orgs are quicker to import "
+    "as JSON. Unsure on a term like incentive skew? Open the "
     f'<a href="#glossary" style="color: {_ACCENT};">decision glossary</a>.'
 )
 
@@ -147,8 +152,8 @@ class OrgEditorDialog(QDialog):
 
     def _build_buttons(self) -> QHBoxLayout:
         row = QHBoxLayout()
-        add_domain = QPushButton("Add domain")
-        add_domain.setToolTip("Start a new top-level domain")
+        add_domain = QPushButton("Add a group")
+        add_domain.setToolTip("Start a new top-level group")
         add_domain.clicked.connect(self._add_root_domain)
         row.addWidget(add_domain)
         row.addStretch()
@@ -194,15 +199,41 @@ class OrgEditorDialog(QDialog):
             self._tree.addTopLevelItem(item)
         item.setData(_COL_NAME, _ROLE_KIND, _KIND_DOMAIN)
         item.setData(_COL_NAME, _ROLE_ID, self._new_id("domain"))
-        self._tree.setItemWidget(
-            item, _COL_NAME, QLineEdit(f"Domain {self._domain_count}")
-        )
+        self._tree.setItemWidget(item, _COL_NAME, self._domain_name_cell(parent))
         lead = QLineEdit()
         lead.setPlaceholderText("lead (optional)")
         self._tree.setItemWidget(item, _COL_LEAD, lead)
         self._tree.setItemWidget(item, _COL_ACTIONS, self._actions(item, _KIND_DOMAIN))
         item.setExpanded(True)
         return item
+
+    def _domain_name_cell(self, parent: QTreeWidgetItem | None) -> QWidget:
+        holder = QWidget()
+        row = QHBoxLayout(holder)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(ui_scale.px(_CATEGORY_SPACING))
+        default = self._default_category(parent)
+        category = QComboBox()
+        category.setObjectName("GroupCategory")
+        category.setEditable(True)
+        category.addItems(GROUP_CATEGORIES)
+        category.setCurrentText(default)
+        category.setFixedWidth(ui_scale.px(_CATEGORY_WIDTH))
+        category.setToolTip("The kind of group: pick a tier or type your own")
+        row.addWidget(category)
+        name = QLineEdit(f"{default} {self._domain_count}")
+        name.setObjectName("GroupName")
+        row.addWidget(name)
+        return holder
+
+    @staticmethod
+    def _default_category(parent: QTreeWidgetItem | None) -> str:
+        depth = 0
+        node = parent
+        while node is not None:
+            depth += 1
+            node = node.parent()
+        return GROUP_CATEGORIES[min(depth, len(GROUP_CATEGORIES) - 1)]
 
     @staticmethod
     def _centered(widget: QWidget) -> QWidget:
@@ -229,7 +260,7 @@ class OrgEditorDialog(QDialog):
         column.setContentsMargins(0, 0, 0, 0)
         column.setSpacing(ui_scale.px(_ACTION_SPACING))
         if kind == _KIND_DOMAIN:
-            add = self._action_button(_ADD_GLYPH, "Add a team or a sub-domain here")
+            add = self._action_button(_ADD_GLYPH, "Add a team or a sub-group here")
             add.clicked.connect(lambda _=False, it=item: self._show_add_menu(it))
             column.addWidget(add)
         remove = self._action_button(_REMOVE_GLYPH, "Remove this item")
@@ -268,7 +299,7 @@ class OrgEditorDialog(QDialog):
 
     def _confirm_remove(self, item: QTreeWidgetItem) -> bool:
         kind = item.data(_COL_NAME, _ROLE_KIND)
-        name = self._text(item, _COL_NAME) or "this item"
+        name = self._name_of(item) or "this item"
         if kind == _KIND_DOMAIN and item.childCount() > 0:
             message = (
                 f"Remove the domain '{name}' and everything inside it? Its "
@@ -293,7 +324,7 @@ class OrgEditorDialog(QDialog):
         teams = []
         for item, _ in self._walk():
             if item.data(_COL_NAME, _ROLE_KIND) == _KIND_TEAM:
-                teams.append((self._id_of(item), self._text(item, _COL_NAME)))
+                teams.append((self._id_of(item), self._name_of(item)))
         return teams
 
     def _walk(self):
@@ -312,6 +343,20 @@ class OrgEditorDialog(QDialog):
         widget = self._tree.itemWidget(item, column)
         return widget.text().strip() if widget is not None else ""
 
+    def _name_of(self, item: QTreeWidgetItem) -> str:
+        widget = self._tree.itemWidget(item, _COL_NAME)
+        if isinstance(widget, QLineEdit):
+            return widget.text().strip()
+        edit = widget.findChild(QLineEdit, "GroupName") if widget is not None else None
+        return edit.text().strip() if edit is not None else ""
+
+    def _category_of(self, item: QTreeWidgetItem) -> str:
+        widget = self._tree.itemWidget(item, _COL_NAME)
+        combo = (
+            widget.findChild(QComboBox, "GroupCategory") if widget is not None else None
+        )
+        return combo.currentText().strip() if combo is not None else DEFAULT_CATEGORY
+
     def _authority_of(self, item: QTreeWidgetItem) -> bool:
         holder = self._tree.itemWidget(item, _COL_AUTHORITY)
         checkbox = holder.findChild(QCheckBox) if holder is not None else None
@@ -323,10 +368,16 @@ class OrgEditorDialog(QDialog):
         for item, parent in self._walk():
             ident = self._id_of(item)
             parent_id = self._id_of(parent) if parent is not None else None
-            name = self._text(item, _COL_NAME) or ident
+            name = self._name_of(item) or ident
             if item.data(_COL_NAME, _ROLE_KIND) == _KIND_DOMAIN:
                 domains.append(
-                    DomainSpec(ident, name, parent_id, self._text(item, _COL_LEAD))
+                    DomainSpec(
+                        ident,
+                        name,
+                        parent_id,
+                        self._text(item, _COL_LEAD),
+                        self._category_of(item),
+                    )
                 )
             else:
                 teams.append(
