@@ -1,17 +1,20 @@
-"""Procedural level generation with a solvability guarantee.
+"""Procedural generation of deep, clustered, section-solvable organisations.
 
-A generated level is a densely coupled position with one authoritative team and
-the rest lacking authority, so a collapsing or delegating move is always strong.
-The randomness varies the flavour (size, delays, skew, workload), never the
-existence of a solution, so every level is playable and provably has a great
-move.
+A generated org models a large enterprise: a handful of leaf clusters of teams,
+nested four or five tiers deep (division, department and so on down to the leaf),
+with people counts that roll up into the hundreds of thousands. Each leaf cluster
+is a densely coupled puzzle with one authoritative team and the rest lacking
+authority, so a collapsing or delegating move is strong inside it. Clusters are
+linked only sparsely across the org, so the whole position stays legible.
 
-Every level nests into a real multi-tier hierarchy. Two root divisions branch
-into departments, then larger orgs branch once more into groups, with teams
-spread across the leaf domains. A generated org therefore reads like a real
-organisation rather than one flat level and exercises the hierarchy, the
-navigable map and the per-domain plan. The nesting is navigational metadata over
-the same teams, so it never changes the score or the guaranteed great move.
+Solvability is guaranteed per section, not globally. Every leaf cluster is
+resampled until its own focused sub-org reaches a great move, which is exactly
+the slice the player scores when they drill into that domain. The cross-cluster
+links never enter a focused slice, so the guarantee holds however the org is
+assembled, and there is no global resample to stall on a large dense position.
+This is the structural meaning of "a great move may live within a small domain":
+the whole org need not present one, but every section the player drills into
+does.
 """
 
 from __future__ import annotations
@@ -31,7 +34,6 @@ from fulcrum.domain.models import (
 from fulcrum.domain.moves import apply_move
 from fulcrum.domain.simulation import MoveClassification
 
-_TEAM_CHOICES: tuple[int, ...] = (6, 7, 8, 9, 10)
 _LOOKAHEAD: int = 10
 _MIN_DELAY: int = 3
 _MAX_DELAY: int = 6
@@ -41,15 +43,23 @@ _MIN_SKEW: float = 0.3
 _MAX_SKEW: float = 0.9
 _SKEW_DECIMALS: int = 2
 
-# Generated orgs nest into a real multi-tier hierarchy rather than one flat
-# level: two root divisions branch into departments, then larger orgs branch
-# once more into groups. Teams are spread across the leaf domains. The nesting
-# is metadata only and never changes the score.
-_ROOT_DOMAINS: int = 2
-_CHILDREN_PER_DOMAIN: int = 2
-_DEPTH_MEDIUM: int = 2
-_DEPTH_DEEP: int = 3
-_DEEP_THRESHOLD: int = 12
+# Hierarchy shape. The org nests four or five tiers deep under two root
+# divisions, branching by at most two at each tier, with a handful of leaf
+# clusters spread across the bottom. Teams live only in the leaf clusters, so a
+# generated org reads like a real multi-level structure rather than one flat
+# level and exercises the hierarchy, the navigable map and per-domain play.
+_ROOT_DIVISIONS: int = 2
+_FANOUT: int = 2
+_DEPTH_CHOICES: tuple[int, ...] = (4, 5)
+_LEAF_CHOICES: tuple[int, ...] = (5, 6, 7)
+_TEAMS_PER_LEAF_CHOICES: tuple[int, ...] = (4, 5)
+
+# A leaf cluster in a huge org stands for a sizeable unit, so people counts are
+# large: the per-team count rolls up through the domains into an org total in the
+# hundreds of thousands without a rendered node per person. Headcount is
+# descriptive and never changes the structural score.
+_MIN_PEOPLE: int = 400
+_MAX_PEOPLE: int = 9000
 
 # Cosmetic name pools for generated domains and their leads, the structural
 # equivalent of the "Team N" team names: drawn at random, never load-bearing.
@@ -95,83 +105,155 @@ def _tier_category(tier: int) -> str:
     return GROUP_CATEGORIES[min(tier, len(GROUP_CATEGORIES) - 1)]
 
 
-def _domain_total(depth: int) -> int:
-    total = 0
-    tier_size = _ROOT_DOMAINS
-    for _ in range(depth):
-        total += tier_size
-        tier_size *= _CHILDREN_PER_DOMAIN
-    return total
+def _split(total: int, parts: int) -> tuple[int, ...]:
+    """Split a count into `parts` near-equal pieces, each at least one."""
+    base, extra = divmod(total, parts)
+    return tuple(base + 1 if i < extra else base for i in range(parts))
 
 
-def _build_domains(rng: Random, count: int) -> tuple[tuple[Domain, ...], list[str]]:
-    """Return the domains and a per-team leaf-domain id for `count` teams.
+def _build_hierarchy(
+    rng: Random, depth: int, leaf_count: int
+) -> tuple[tuple[Domain, ...], tuple[str, ...]]:
+    """Build a domain tree `depth` tiers deep with `leaf_count` leaf clusters.
 
-    The org nests into two tiers (divisions then departments), or three for
-    larger orgs (divisions, departments then groups). Teams are spread across
-    the leaf domains, so a generated org is a real multi-level structure.
+    The leaves are distributed across two root divisions and branch by at most
+    two at each tier, so every leaf sits at the bottom tier and the tree reaches
+    the requested depth. Returns the domains and the ordered leaf-domain ids the
+    team clusters attach to.
     """
-    depth = _DEPTH_DEEP if count >= _DEEP_THRESHOLD else _DEPTH_MEDIUM
-    total = _domain_total(depth)
-    names = rng.sample(_DOMAIN_NAMES, total)
-    leads = rng.sample(_LEAD_NAMES, total)
     domains: list[Domain] = []
-    index = 0
-    current: list[str] = []
-    for _ in range(_ROOT_DOMAINS):
-        domain_id = f"domain_{index + 1}"
+    leaf_ids: list[str] = []
+    counter = [0]
+
+    def add_node(parent_id: str | None, tier: int, leaves_here: int) -> None:
+        counter[0] += 1
+        domain_id = f"domain_{counter[0]}"
         domains.append(
             Domain(
                 id=domain_id,
-                name=names[index],
-                lead=leads[index],
-                category=_tier_category(0),
+                name=rng.choice(_DOMAIN_NAMES),
+                parent_id=parent_id,
+                lead=rng.choice(_LEAD_NAMES),
+                category=_tier_category(tier),
             )
         )
-        current.append(domain_id)
-        index += 1
-    for tier in range(1, depth):
-        children: list[str] = []
-        for parent_id in current:
-            for _ in range(_CHILDREN_PER_DOMAIN):
-                domain_id = f"domain_{index + 1}"
-                domains.append(
-                    Domain(
-                        id=domain_id,
-                        name=names[index],
-                        parent_id=parent_id,
-                        lead=leads[index],
-                        category=_tier_category(tier),
-                    )
-                )
-                children.append(domain_id)
-                index += 1
-        current = children
-    domain_of = [current[i % len(current)] for i in range(count)]
-    return tuple(domains), domain_of
+        if tier == depth - 1:
+            leaf_ids.append(domain_id)
+            return
+        children = min(_FANOUT, leaves_here)
+        for share in _split(leaves_here, children):
+            add_node(domain_id, tier + 1, share)
+
+    for share in _split(leaf_count, _ROOT_DIVISIONS):
+        add_node(None, 0, share)
+    return tuple(domains), tuple(leaf_ids)
 
 
-def _random_org(rng: Random) -> OrgState:
-    count = rng.choice(_TEAM_CHOICES)
-    domains, domain_of = _build_domains(rng, count)
-    teams = tuple(
-        Team(
-            id=f"team_{i + 1}",
-            name=f"Team {i + 1}",
-            has_local_authority=(i == 0),
-            incentive_skew=round(rng.uniform(_MIN_SKEW, _MAX_SKEW), _SKEW_DECIMALS),
-            domain_id=domain_of[i],
+def _random_cluster(
+    rng: Random,
+    simulator: DeterministicSimulator,
+    workload: int,
+    start_index: int,
+    size: int,
+) -> tuple[tuple[Team, ...], tuple[Dependency, ...]]:
+    """Generate one leaf cluster whose own focused sub-org reaches a great move.
+
+    A cluster is one authoritative team and the rest without authority, densely
+    coupled. Only its flavour (skew, delays, headcount) is resampled, never its
+    solvability, so it always offers a reachable great move when drilled into.
+    """
+    while True:
+        teams = tuple(
+            Team(
+                id=f"team_{start_index + i + 1}",
+                name=f"Team {start_index + i + 1}",
+                has_local_authority=(i == 0),
+                incentive_skew=round(rng.uniform(_MIN_SKEW, _MAX_SKEW), _SKEW_DECIMALS),
+                headcount=rng.randint(_MIN_PEOPLE, _MAX_PEOPLE),
+            )
+            for i in range(size)
         )
-        for i in range(count)
-    )
-    dependencies = tuple(
-        Dependency(
-            f"team_{i + 1}", f"team_{j + 1}", rng.randint(_MIN_DELAY, _MAX_DELAY)
+        ids = [team.id for team in teams]
+        dependencies = tuple(
+            Dependency(ids[i], ids[j], rng.randint(_MIN_DELAY, _MAX_DELAY))
+            for i in range(size)
+            for j in range(i + 1, size)
         )
-        for i in range(count)
-        for j in range(i + 1, count)
-    )
+        section = OrgState(
+            teams=teams,
+            dependencies=dependencies,
+            workload=workload,
+            origin=Origin.GENERATED,
+        )
+        if _reaches_great_move(section, simulator):
+            return teams, dependencies
+
+
+def _cross_dependencies(
+    rng: Random, clusters: list[tuple[str, ...]]
+) -> tuple[Dependency, ...]:
+    """Link consecutive clusters by a single dependency each: a sparse surface.
+
+    These are the only inter-cluster edges, so the cross-domain dependency count
+    grows with the number of clusters rather than the square of the team count,
+    and they never fall inside a focused leaf slice.
+    """
+    edges: list[Dependency] = []
+    for index in range(len(clusters) - 1):
+        upstream = rng.choice(clusters[index])
+        downstream = rng.choice(clusters[index + 1])
+        edges.append(
+            Dependency(upstream, downstream, rng.randint(_MIN_DELAY, _MAX_DELAY))
+        )
+    return tuple(edges)
+
+
+def _build_clusters(
+    rng: Random,
+    simulator: DeterministicSimulator,
+    workload: int,
+    leaf_ids: tuple[str, ...],
+) -> tuple[tuple[Team, ...], tuple[Dependency, ...]]:
+    """Fill every leaf domain with a solvable cluster and link them sparsely."""
+    teams: list[Team] = []
+    dependencies: list[Dependency] = []
+    clusters: list[tuple[str, ...]] = []
+    for leaf_id in leaf_ids:
+        size = rng.choice(_TEAMS_PER_LEAF_CHOICES)
+        cluster_teams, cluster_deps = _random_cluster(
+            rng, simulator, workload, len(teams), size
+        )
+        tagged = tuple(
+            Team(
+                id=team.id,
+                name=team.name,
+                has_local_authority=team.has_local_authority,
+                incentive_skew=team.incentive_skew,
+                domain_id=leaf_id,
+                headcount=team.headcount,
+            )
+            for team in cluster_teams
+        )
+        teams.extend(tagged)
+        dependencies.extend(cluster_deps)
+        clusters.append(tuple(team.id for team in tagged))
+    dependencies.extend(_cross_dependencies(rng, clusters))
+    return tuple(teams), tuple(dependencies)
+
+
+def generate_level(rng: Random) -> OrgState:
+    """Generate a deep, clustered org whose every leaf section is solvable.
+
+    The whole position need not present a great move; each leaf cluster does,
+    and that is the slice the player scores when they drill into a domain. So a
+    large dense org is generated quickly, with no global resample to stall on.
+    """
+    simulator = DeterministicSimulator()
+    depth = rng.choice(_DEPTH_CHOICES)
+    leaf_count = rng.choice(_LEAF_CHOICES)
     workload = rng.randint(_MIN_WORKLOAD, _MAX_WORKLOAD)
+    domains, leaf_ids = _build_hierarchy(rng, depth, leaf_count)
+    teams, dependencies = _build_clusters(rng, simulator, workload, leaf_ids)
     return OrgState(
         teams=teams,
         dependencies=dependencies,
@@ -179,21 +261,6 @@ def _random_org(rng: Random) -> OrgState:
         origin=Origin.GENERATED,
         domains=domains,
     )
-
-
-def generate_level(rng: Random) -> OrgState:
-    """Generate a playable level whose great move is reachable, not immediate.
-
-    Resample until the position can reach a great move along its greedy
-    improvement path. Relaxing the old "great move available now" rule lets
-    larger, deeper orgs through: their dominant move often only opens up after a
-    few setup moves, which is fine for a playable level.
-    """
-    simulator = DeterministicSimulator()
-    while True:
-        org = _random_org(rng)
-        if _reaches_great_move(org, simulator):
-            return org
 
 
 def has_great_move(
@@ -214,7 +281,7 @@ def _reaches_great_move(
 
     A great move need not be available now: following the best improving move
     step by step, the position may open one up within a few moves, which is
-    enough for a playable level.
+    enough for a playable section.
     """
     current = org
     for _ in range(lookahead + 1):
