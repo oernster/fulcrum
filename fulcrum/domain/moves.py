@@ -28,6 +28,7 @@ _GROWTH_TARGET_COUNT: int = 1
 _SPLIT_OWNER_COUNT: int = 2
 _ADDED_OWNER_INTAKE: int = 1
 _MIN_TEAM_SIZE: int = 1
+_MIN_HEADCOUNT: int = 1
 _SPLIT_SIBLING_ID_SUFFIX: str = "_b"
 _SPLIT_SIBLING_NAME_SUFFIX: str = " (split)"
 _ADDED_OWNER_ID_SUFFIX: str = "_owner"
@@ -127,6 +128,7 @@ def _collapse_boundary(org: OrgState, move: Move) -> OrgState:
         domain_id=keep.domain_id,
         size=keep.size + drop.size,
         owner=keep.owner,
+        headcount=keep.headcount + drop.headcount,
     )
     new_teams = tuple(
         merged if t.id == keep_id else t for t in org.teams if t.id != drop_id
@@ -161,6 +163,8 @@ def _split_team(org: OrgState, move: Move) -> OrgState:
     sibling_id = _unique_team_id(org, f"{team_id}{_SPLIT_SIBLING_ID_SUFFIX}")
     sibling_size = max(_MIN_TEAM_SIZE, source.size // _SPLIT_OWNER_COUNT)
     source_size = max(_MIN_TEAM_SIZE, source.size - sibling_size)
+    sibling_headcount = max(_MIN_HEADCOUNT, source.headcount // _SPLIT_OWNER_COUNT)
+    source_headcount = max(_MIN_HEADCOUNT, source.headcount - sibling_headcount)
     sibling = Team(
         id=sibling_id,
         name=f"{source.name}{_SPLIT_SIBLING_NAME_SUFFIX}",
@@ -169,6 +173,7 @@ def _split_team(org: OrgState, move: Move) -> OrgState:
         domain_id=source.domain_id,
         size=sibling_size,
         owner=source.owner,
+        headcount=sibling_headcount,
     )
     touching = sorted((d for d in org.dependencies if d.touches(team_id)), key=_dep_key)
     untouched = tuple(d for d in org.dependencies if not d.touches(team_id))
@@ -176,7 +181,12 @@ def _split_team(org: OrgState, move: Move) -> OrgState:
     kept = tuple(touching[:kept_count])
     moved = tuple(_repoint(d, team_id, sibling_id) for d in touching[kept_count:])
     resized = tuple(
-        t.with_size(source_size) if t.id == team_id else t for t in org.teams
+        (
+            t.with_size(source_size).with_headcount(source_headcount)
+            if t.id == team_id
+            else t
+        )
+        for t in org.teams
     )
     return OrgState(
         teams=resized + (sibling,),

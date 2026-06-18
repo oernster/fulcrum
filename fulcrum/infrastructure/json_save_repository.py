@@ -9,6 +9,7 @@ from pathlib import Path
 from fulcrum.application.dto import SavedGame
 from fulcrum.domain.models import (
     DEFAULT_CATEGORY,
+    DEFAULT_HEADCOUNT,
     Dependency,
     Domain,
     Origin,
@@ -33,6 +34,7 @@ def _team_to_dict(team: Team) -> dict:
         "domain_id": team.domain_id,
         "size": team.size,
         "owner": team.owner,
+        "headcount": team.headcount,
     }
 
 
@@ -90,6 +92,7 @@ def org_from_dict(data: dict) -> OrgState:
             t.get("domain_id"),
             t.get("size", _DEFAULT_SIZE),
             t.get("owner", _DEFAULT_OWNER),
+            t.get("headcount", DEFAULT_HEADCOUNT),
         )
         for t in data["teams"]
     )

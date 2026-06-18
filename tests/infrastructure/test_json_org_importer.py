@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+from fulcrum.domain.models import DEFAULT_HEADCOUNT
 from fulcrum.infrastructure.json_org_importer import JsonOrgImporter, OrgImportError
 
 
@@ -89,3 +90,16 @@ def test_import_with_domains(tmp_path):
 def test_import_bad_domain(tmp_path):
     with pytest.raises(OrgImportError):
         JsonOrgImporter().import_org(_write(tmp_path, {"domains": [{"name": "x"}]}))
+
+
+def test_import_reads_and_defaults_headcount(tmp_path):
+    payload = {
+        "teams": [
+            {"id": "a", "name": "A", "has_local_authority": True, "headcount": 250},
+            {"id": "b", "name": "B", "has_local_authority": False},
+        ],
+        "workload": 1,
+    }
+    blueprint = JsonOrgImporter().import_org(_write(tmp_path, payload))
+    assert blueprint.teams[0].headcount == 250
+    assert blueprint.teams[1].headcount == DEFAULT_HEADCOUNT

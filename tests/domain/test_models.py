@@ -3,7 +3,14 @@
 import pytest
 
 from fulcrum.domain.errors import InvalidOrgStateError, UnknownTeamError
-from fulcrum.domain.models import Dependency, Domain, Origin, OrgState, Team
+from fulcrum.domain.models import (
+    DEFAULT_HEADCOUNT,
+    Dependency,
+    Domain,
+    Origin,
+    OrgState,
+    Team,
+)
 
 
 def _team(team_id="a", authority=True, skew=0.0):
@@ -129,6 +136,19 @@ def test_team_size_and_owner_validation_and_copies():
     assert team.with_incentive_skew(0.5).owner == "Ada"
     with pytest.raises(InvalidOrgStateError):
         Team("a", "A", True, 0.0, size=0)
+
+
+def test_team_headcount_default_validation_and_copies():
+    team = Team("a", "A", True, 0.0, domain_id="d1", size=4, owner="Ada")
+    assert team.headcount == DEFAULT_HEADCOUNT
+    custom = Team("a", "A", True, 0.0, headcount=120)
+    assert custom.headcount == 120
+    assert custom.with_headcount(50).headcount == 50
+    assert custom.with_size(2).headcount == 120
+    assert custom.with_authority(False).headcount == 120
+    assert custom.with_incentive_skew(0.5).headcount == 120
+    with pytest.raises(InvalidOrgStateError):
+        Team("a", "A", True, 0.0, headcount=0)
 
 
 def test_org_state_valid_hierarchy():

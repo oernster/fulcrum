@@ -45,3 +45,9 @@ def test_build_org_state_with_domains():
     assert org.team("a").domain_id == "core"
     assert tuple(d.id for d in org.domains) == ("core", "pay")
     assert org.domains[1].lead == "Dana"
+
+
+def test_build_org_state_carries_headcount():
+    blueprint = OrgBlueprint(teams=(TeamSpec("a", "A", True, 0.0, headcount=300),))
+    org = build_org_state(blueprint, Origin.WIZARD)
+    assert org.team("a").headcount == 300

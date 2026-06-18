@@ -3,7 +3,7 @@
 import pytest
 
 from fulcrum.domain.errors import InvalidMoveError, UnknownTeamError
-from fulcrum.domain.models import Dependency, Domain, OrgState, Team
+from fulcrum.domain.models import DEFAULT_HEADCOUNT, Dependency, Domain, OrgState, Team
 from fulcrum.domain.moves import Move, MoveKind, apply_move
 
 
@@ -217,3 +217,39 @@ def test_every_move_preserves_domains_and_domain_id():
     grown = apply_move(org, Move(MoveKind.ADD_TEAM, ("a",)))
     assert grown.domains == org.domains
     assert grown.team("a_owner").domain_id == "d1"
+
+
+def test_collapse_sums_team_headcount():
+    org = OrgState(
+        teams=(
+            Team("a", "A", True, 0.0, headcount=30),
+            Team("b", "B", True, 0.0, headcount=12),
+        ),
+        dependencies=(Dependency("a", "b", 1),),
+        workload=2,
+    )
+    out = apply_move(org, Move(MoveKind.COLLAPSE_BOUNDARY, ("a", "b")))
+    assert out.team("a").headcount == 42
+
+
+def test_split_halves_team_headcount():
+    org = OrgState(
+        teams=(Team("a", "A", True, 0.0, headcount=40), _t("b", True)),
+        dependencies=(Dependency("a", "b", 1), Dependency("b", "a", 1)),
+        workload=2,
+    )
+    out = apply_move(org, Move(MoveKind.SPLIT_TEAM, ("a",)))
+    assert out.team("a").headcount == 20
+    assert out.team("a_b").headcount == 20
+
+
+def test_added_owner_and_gate_take_the_default_headcount():
+    org = OrgState(
+        teams=(_t("a"), _t("b", True)),
+        dependencies=(Dependency("a", "b", 3),),
+        workload=2,
+    )
+    grown = apply_move(org, Move(MoveKind.ADD_TEAM, ("a",)))
+    assert grown.team("a_owner").headcount == DEFAULT_HEADCOUNT
+    gated = apply_move(org, Move(MoveKind.ADD_APPROVAL_LAYER))
+    assert gated.teams[-1].headcount == DEFAULT_HEADCOUNT

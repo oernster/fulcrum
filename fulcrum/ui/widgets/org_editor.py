@@ -34,10 +34,16 @@ from PySide6.QtWidgets import (
 )
 
 from fulcrum.application.dto import DomainSpec, OrgBlueprint, TeamSpec
-from fulcrum.domain.models import DEFAULT_CATEGORY, GROUP_CATEGORIES
+from fulcrum.domain.models import DEFAULT_CATEGORY, DEFAULT_HEADCOUNT, GROUP_CATEGORIES
 from fulcrum.ui import ui_scale
 from fulcrum.ui.widgets.dependency_editor import DependencyEditor
 from fulcrum.ui.widgets.glossary_dialog import GlossaryDialog
+from fulcrum.ui.widgets.org_editor_widgets import (
+    action_button,
+    centered,
+    default_category,
+    labelled,
+)
 
 _KIND_DOMAIN = "domain"
 _KIND_TEAM = "team"
@@ -47,9 +53,17 @@ _ROLE_ID = int(Qt.ItemDataRole.UserRole) + 1
 _COL_NAME = 0
 _COL_AUTHORITY = 1
 _COL_SKEW = 2
-_COL_LEAD = 3
-_COL_ACTIONS = 4
-_HEADERS = ("Name", "Ships without asking", "Incentive skew %", "Lead / owner", "")
+_COL_PEOPLE = 3
+_COL_LEAD = 4
+_COL_ACTIONS = 5
+_HEADERS = (
+    "Name",
+    "Ships without asking",
+    "Incentive skew %",
+    "People",
+    "Lead / owner",
+    "",
+)
 
 _ACCENT = "#f59e0b"
 _ADD_TEAM_TEXT = "Add team here"
@@ -57,8 +71,6 @@ _ADD_SUBDOMAIN_TEXT = "Add a sub-group here"
 _ADD_GLYPH = "+"
 _REMOVE_GLYPH = "-"
 _ACTION_SPACING = 2
-_ACTION_BUTTON_W = 30
-_ACTION_BUTTON_H = 18
 _LEAD_COLUMN_WIDTH = 168
 _CATEGORY_WIDTH = 124
 _CATEGORY_SPACING = 6
@@ -70,6 +82,7 @@ _SKEW_TIP = (
 
 _MAX_SKEW_PERCENT = 100
 _DEFAULT_SKEW_PERCENT = 30
+_MAX_HEADCOUNT = 1_000_000
 _MIN_WORKLOAD = 1
 _MAX_WORKLOAD = 50
 _DEFAULT_WORKLOAD = 6
@@ -113,6 +126,9 @@ class OrgEditorDialog(QDialog):
             _COL_AUTHORITY, QHeaderView.ResizeMode.ResizeToContents
         )
         header.setSectionResizeMode(_COL_SKEW, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(
+            _COL_PEOPLE, QHeaderView.ResizeMode.ResizeToContents
+        )
         header.setSectionResizeMode(_COL_LEAD, QHeaderView.ResizeMode.Interactive)
         header.setSectionResizeMode(
             _COL_ACTIONS, QHeaderView.ResizeMode.ResizeToContents
@@ -128,7 +144,7 @@ class OrgEditorDialog(QDialog):
         layout.addWidget(self._tree, 1)
         layout.addLayout(self._build_buttons())
 
-        layout.addWidget(self._labelled(QLabel("Dependencies between teams")))
+        layout.addWidget(labelled(QLabel("Dependencies between teams")))
         self._deps = DependencyEditor()
         layout.addWidget(self._deps)
 
@@ -159,11 +175,6 @@ class OrgEditorDialog(QDialog):
         row.addStretch()
         return row
 
-    @staticmethod
-    def _labelled(label: QLabel) -> QLabel:
-        label.setObjectName("Heading")
-        return label
-
     def _seed(self) -> None:
         domain = self._add_root_domain()
         self._add_team_under(domain)
@@ -182,11 +193,16 @@ class OrgEditorDialog(QDialog):
         item.setData(_COL_NAME, _ROLE_KIND, _KIND_TEAM)
         item.setData(_COL_NAME, _ROLE_ID, self._new_id("team"))
         self._tree.setItemWidget(item, _COL_NAME, QLineEdit(f"Team {self._team_count}"))
-        self._tree.setItemWidget(item, _COL_AUTHORITY, self._centered(QCheckBox()))
+        self._tree.setItemWidget(item, _COL_AUTHORITY, centered(QCheckBox()))
         skew = QSpinBox()
         skew.setRange(0, _MAX_SKEW_PERCENT)
         skew.setValue(_DEFAULT_SKEW_PERCENT)
         self._tree.setItemWidget(item, _COL_SKEW, skew)
+        people = QSpinBox()
+        people.setRange(1, _MAX_HEADCOUNT)
+        people.setGroupSeparatorShown(True)
+        people.setValue(DEFAULT_HEADCOUNT)
+        self._tree.setItemWidget(item, _COL_PEOPLE, people)
         owner = QLineEdit()
         owner.setPlaceholderText("owner (optional)")
         self._tree.setItemWidget(item, _COL_LEAD, owner)
@@ -212,7 +228,7 @@ class OrgEditorDialog(QDialog):
         row = QHBoxLayout(holder)
         row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(ui_scale.px(_CATEGORY_SPACING))
-        default = self._default_category(parent)
+        default = default_category(parent)
         category = QComboBox()
         category.setObjectName("GroupCategory")
         category.setEditable(True)
@@ -226,44 +242,16 @@ class OrgEditorDialog(QDialog):
         row.addWidget(name)
         return holder
 
-    @staticmethod
-    def _default_category(parent: QTreeWidgetItem | None) -> str:
-        depth = 0
-        node = parent
-        while node is not None:
-            depth += 1
-            node = node.parent()
-        return GROUP_CATEGORIES[min(depth, len(GROUP_CATEGORIES) - 1)]
-
-    @staticmethod
-    def _centered(widget: QWidget) -> QWidget:
-        holder = QWidget()
-        row = QHBoxLayout(holder)
-        row.setContentsMargins(0, 0, 0, 0)
-        row.addStretch()
-        row.addWidget(widget)
-        row.addStretch()
-        return holder
-
-    def _action_button(self, glyph: str, tip: str) -> QPushButton:
-        button = QPushButton(glyph)
-        button.setObjectName("TreeAction")
-        button.setToolTip(tip)
-        button.setFixedSize(
-            ui_scale.px(_ACTION_BUTTON_W), ui_scale.px(_ACTION_BUTTON_H)
-        )
-        return button
-
     def _actions(self, item: QTreeWidgetItem, kind: str) -> QWidget:
         holder = QWidget()
         column = QVBoxLayout(holder)
         column.setContentsMargins(0, 0, 0, 0)
         column.setSpacing(ui_scale.px(_ACTION_SPACING))
         if kind == _KIND_DOMAIN:
-            add = self._action_button(_ADD_GLYPH, "Add a team or a sub-group here")
+            add = action_button(_ADD_GLYPH, "Add a team or a sub-group here")
             add.clicked.connect(lambda _=False, it=item: self._show_add_menu(it))
             column.addWidget(add)
-        remove = self._action_button(_REMOVE_GLYPH, "Remove this item")
+        remove = action_button(_REMOVE_GLYPH, "Remove this item")
         remove.clicked.connect(lambda _=False, it=item: self._remove_item(it))
         column.addWidget(remove)
         return holder
@@ -389,6 +377,7 @@ class OrgEditorDialog(QDialog):
                         / _MAX_SKEW_PERCENT,
                         parent_id,
                         owner=self._text(item, _COL_LEAD),
+                        headcount=self._tree.itemWidget(item, _COL_PEOPLE).value(),
                     )
                 )
         return OrgBlueprint(

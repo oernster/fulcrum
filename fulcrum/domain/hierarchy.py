@@ -86,3 +86,13 @@ def boundary_dependencies(org: OrgState, domain_id: str) -> tuple[Dependency, ..
         for d in org.dependencies
         if (d.upstream in inside) != (d.downstream in inside)
     )
+
+
+def headcount_in_domain(org: OrgState, domain_id: str) -> int:
+    """Total people in a domain's subtree: the sum of its teams' headcounts."""
+    return sum(team.headcount for team in teams_in_domain(org, domain_id))
+
+
+def total_headcount(org: OrgState) -> int:
+    """Total people across the whole org: the sum of every team's headcount."""
+    return sum(team.headcount for team in org.teams)

@@ -3,6 +3,7 @@
 from fulcrum.application.dto import SavedGame
 from fulcrum.domain.models import (
     DEFAULT_CATEGORY,
+    DEFAULT_HEADCOUNT,
     Dependency,
     Domain,
     Origin,
@@ -73,3 +74,28 @@ def test_org_from_dict_defaults_a_missing_category():
         "domains": [{"id": "d", "name": "D"}],
     }
     assert org_from_dict(data).domains[0].category == DEFAULT_CATEGORY
+
+
+def test_save_load_roundtrips_headcount(tmp_path):
+    repository = JsonSaveGameRepository(tmp_path / "saves")
+    org = OrgState(teams=(Team("a", "A", True, 0.0, headcount=1500),), workload=1)
+    repository.save("s", SavedGame(org=org, history=(), created_at="t"))
+    assert repository.load("s").org.team("a").headcount == 1500
+
+
+def test_org_from_dict_defaults_a_missing_headcount():
+    data = {
+        "teams": [
+            {
+                "id": "a",
+                "name": "A",
+                "has_local_authority": True,
+                "incentive_skew": 0.0,
+            }
+        ],
+        "dependencies": [],
+        "workload": 1,
+        "origin": "wizard",
+        "domains": [],
+    }
+    assert org_from_dict(data).team("a").headcount == DEFAULT_HEADCOUNT

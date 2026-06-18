@@ -67,3 +67,22 @@ def test_boundary_dependencies_are_the_cross_domain_surface():
         for d in hierarchy.boundary_dependencies(_org(), "pay")
     )
     assert pairs == [("a", "b"), ("c", "d")]
+
+
+def test_headcount_rolls_up_through_the_domain_subtree():
+    org = OrgState(
+        teams=(
+            Team("a", "A", True, 0.0, domain_id="plat", headcount=10),
+            Team("b", "B", True, 0.0, domain_id="pay", headcount=20),
+            Team("c", "C", True, 0.0, domain_id="pay", headcount=5),
+            Team("d", "D", True, 0.0, domain_id=None, headcount=7),
+        ),
+        workload=1,
+        domains=(
+            Domain("plat", "Platform"),
+            Domain("pay", "Payments", parent_id="plat"),
+        ),
+    )
+    assert hierarchy.headcount_in_domain(org, "pay") == 25
+    assert hierarchy.headcount_in_domain(org, "plat") == 35
+    assert hierarchy.total_headcount(org) == 42

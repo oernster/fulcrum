@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 from fulcrum.application.dto import MoveValuation
 from fulcrum.application.game_session import GameSession
 from fulcrum.application.move_text import describe_move, move_note
+from fulcrum.domain.hierarchy import total_headcount
 from fulcrum.domain.moves import MoveKind
 from fulcrum.domain.signals import SignalReading
 from fulcrum.ui import ui_scale
@@ -70,6 +71,8 @@ class BoardView(QWidget):
         self._score_label.setObjectName("ScoreValue")
         self._origin_label = QLabel("")
         self._origin_label.setObjectName("Muted")
+        self._headcount_label = QLabel("")
+        self._headcount_label.setObjectName("Muted")
         self._map_caption = QLabel(_MAP_CAPTION)
         self._map_caption.setObjectName("Muted")
         self._map = OrgMapView()
@@ -92,6 +95,7 @@ class BoardView(QWidget):
         layout.addWidget(health)
         layout.addWidget(self._score_label)
         layout.addWidget(self._origin_label)
+        layout.addWidget(self._headcount_label)
 
         layout.addWidget(self._map_caption)
         layout.addWidget(self._map)
@@ -141,6 +145,10 @@ class BoardView(QWidget):
         self._origin_label.setText(
             f"Origin: {self._session.org.origin.value}  ·  "
             f"moves played: {len(self._session.history)}"
+        )
+        self._headcount_label.setText(
+            f"{total_headcount(self._session.org):,} people across "
+            f"{len(self._session.org.teams)} teams"
         )
         self._map_caption.setText(_MAP_CAPTION)
         self._map_caption.setStyleSheet("")

@@ -22,6 +22,7 @@ def build_org_state(blueprint: OrgBlueprint, origin: Origin) -> OrgState:
             spec.domain_id,
             spec.size,
             spec.owner,
+            spec.headcount,
         )
         for spec in blueprint.teams
     )

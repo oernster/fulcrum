@@ -50,6 +50,7 @@ def build_level(
                 authority_ratio=_authority_ratio(members),
                 owner=domain.lead,
                 category=domain.category,
+                headcount=sum(t.headcount for t in members),
             )
         )
     for team in direct_teams:
@@ -62,6 +63,7 @@ def build_level(
                 team_count=1,
                 authority_ratio=_FULL if team.has_local_authority else _NONE,
                 owner=team.owner,
+                headcount=team.headcount,
             )
         )
     return tuple(nodes), _edges(org, node_of_team)

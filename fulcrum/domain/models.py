@@ -21,6 +21,13 @@ _MAX_SKEW: float = 1.0
 # a unit grows past the comfortable band.
 _MIN_TEAM_SIZE: int = 1
 
+# A team's headcount: the number of people in it. Headcount rolls up through the
+# domain hierarchy into the org total, so a structure can model 100k+ people
+# without a rendered node per person. It is descriptive and does not affect the
+# structural score.
+DEFAULT_HEADCOUNT: int = 8
+_MIN_HEADCOUNT: int = 1
+
 # The vocabulary of group tiers offered when modelling an org. Any group can be
 # any of these or a custom label, and they nest to any depth. The category is
 # descriptive: it names what a grouping is, it does not change the score.
@@ -53,6 +60,7 @@ class Team:
     domain_id: str | None = None
     size: int = _MIN_TEAM_SIZE
     owner: str = ""
+    headcount: int = DEFAULT_HEADCOUNT
 
     def __post_init__(self) -> None:
         if not self.id:
@@ -65,6 +73,10 @@ class Team:
             )
         if self.size < _MIN_TEAM_SIZE:
             raise InvalidOrgStateError(f"team size must be at least {_MIN_TEAM_SIZE}")
+        if self.headcount < _MIN_HEADCOUNT:
+            raise InvalidOrgStateError(
+                f"team headcount must be at least {_MIN_HEADCOUNT}"
+            )
 
     def with_authority(self, value: bool) -> "Team":
         return Team(
@@ -75,6 +87,7 @@ class Team:
             self.domain_id,
             self.size,
             self.owner,
+            self.headcount,
         )
 
     def with_incentive_skew(self, value: float) -> "Team":
@@ -86,6 +99,7 @@ class Team:
             self.domain_id,
             self.size,
             self.owner,
+            self.headcount,
         )
 
     def with_size(self, value: int) -> "Team":
@@ -97,6 +111,19 @@ class Team:
             self.domain_id,
             value,
             self.owner,
+            self.headcount,
+        )
+
+    def with_headcount(self, value: int) -> "Team":
+        return Team(
+            self.id,
+            self.name,
+            self.has_local_authority,
+            self.incentive_skew,
+            self.domain_id,
+            self.size,
+            self.owner,
+            value,
         )
 
 

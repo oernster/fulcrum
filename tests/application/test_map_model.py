@@ -58,3 +58,20 @@ def test_flat_org_without_domains_shows_every_team():
     assert {n.id for n in nodes} == {"x", "y"}
     assert all(n.kind == "team" for n in nodes)
     assert {(e.source, e.target): e.weight for e in edges} == {("x", "y"): 1}
+
+
+def test_headcount_sums_on_domain_nodes_and_shows_on_team_nodes():
+    org = OrgState(
+        teams=(
+            Team("a", "A", True, 0.0, domain_id="plat", headcount=10),
+            Team("b", "B", False, 0.0, domain_id="pay", headcount=20),
+            Team("c", "C", True, 0.0, domain_id="pay", headcount=5),
+            Team("u", "U", True, 0.0, domain_id=None, headcount=7),
+        ),
+        workload=1,
+        domains=(Domain("plat", "Platform"), Domain("pay", "Payments")),
+    )
+    nodes = {n.id: n for n in build_level(org)[0]}
+    assert nodes["plat"].headcount == 10
+    assert nodes["pay"].headcount == 25
+    assert nodes["u"].headcount == 7

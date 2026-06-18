@@ -3,7 +3,10 @@
 The file is a JSON object mirroring the blueprint:
     {
       "teams": [
-        {"id": "a", "name": "A", "has_local_authority": true, "incentive_skew": 0.2}
+        {
+          "id": "a", "name": "A", "has_local_authority": true,
+          "incentive_skew": 0.2, "headcount": 8
+        }
       ],
       "dependencies": [
         {"upstream": "a", "downstream": "b", "propagation_delay": 3}
@@ -20,7 +23,7 @@ from pathlib import Path
 
 from fulcrum.application.dto import DependencySpec, DomainSpec, OrgBlueprint, TeamSpec
 from fulcrum.domain.errors import FulcrumError
-from fulcrum.domain.models import DEFAULT_CATEGORY
+from fulcrum.domain.models import DEFAULT_CATEGORY, DEFAULT_HEADCOUNT
 
 _DEFAULT_WORKLOAD = 1
 _DEFAULT_SKEW = 0.0
@@ -48,6 +51,7 @@ def _team(entry: dict) -> TeamSpec:
             domain_id=_optional_id(entry.get("domain_id")),
             size=int(entry.get("size", _DEFAULT_SIZE)),
             owner=str(entry.get("owner", _DEFAULT_OWNER)),
+            headcount=int(entry.get("headcount", DEFAULT_HEADCOUNT)),
         )
     except (KeyError, TypeError, ValueError) as exc:
         raise OrgImportError(f"invalid team entry: {entry}") from exc

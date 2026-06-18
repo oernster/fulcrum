@@ -23,7 +23,12 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import QGraphicsScene, QGraphicsView
 
-from fulcrum.domain.hierarchy import child_domains, root_domains, teams_in_domain
+from fulcrum.domain.hierarchy import (
+    child_domains,
+    headcount_in_domain,
+    root_domains,
+    teams_in_domain,
+)
 from fulcrum.domain.models import Domain, OrgState
 
 _AUTHORITY = QColor("#34d399")
@@ -193,7 +198,8 @@ class CompleteMapView(QGraphicsView):
         path = QPainterPath()
         path.addRoundedRect(QRectF(x, y, box.w, box.h), _CORNER, _CORNER)
         self._scene.addPath(path, QPen(_NO_AUTHORITY, _PEN_W), QBrush(_DOMAIN_FILL))
-        category = self._scene.addSimpleText(domain.category, _font())
+        people = f"{headcount_in_domain(self._org, domain.id):,} people"
+        category = self._scene.addSimpleText(f"{domain.category} · {people}", _font())
         category.setBrush(_NO_AUTHORITY)
         category.setPos(x + _PAD, y + _DOMAIN_CATEGORY_DY)
         name = self._scene.addSimpleText(domain.name, _font(bold=True))
@@ -215,7 +221,8 @@ class CompleteMapView(QGraphicsView):
         name.setBrush(_TEXT)
         name.setPos(x + _PAD, y + _NAME_DY)
         status = "decides locally" if team.has_local_authority else "escalates"
-        sub = self._scene.addSimpleText(status, _font())
+        sub_text = f"{status} · {team.headcount:,} people"
+        sub = self._scene.addSimpleText(sub_text, _font())
         sub.setBrush(_TEXT_MUTED)
         sub.setPos(x + _PAD, y + _SUB_DY)
 
