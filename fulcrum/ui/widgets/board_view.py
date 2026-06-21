@@ -38,6 +38,11 @@ _SCOPE_HINT = (
     "Only neutral moves at this scope. Drill into a domain on the map to find "
     "the strong moves that really gain."
 )
+_OVERVIEW_HINT = (
+    "This scope is too large to score live. Drill into a section on the map to "
+    "play it, where the score and the strong moves appear."
+)
+_OVERVIEW_SCORE = "-"
 _MAP_PANE_W = 520
 _RIGHT_PANE_W = 480
 _RIGHT_PANE_MIN = 360
@@ -195,7 +200,6 @@ class BoardView(QWidget):
     def refresh(self) -> None:
         if self._session is None:
             return
-        self._score_label.setText(f"{self._session.score():.{_SCORE_DECIMALS}f} / 100")
         self._origin_label.setText(
             f"Origin: {self._session.org.origin.value}  ·  "
             f"moves played: {len(self._session.history)}"
@@ -209,13 +213,28 @@ class BoardView(QWidget):
         self._map_caption.setStyleSheet("")
         self._map.set_preview(False)
         self._map.set_org(self._session.org)
+        if self._session.is_active_scope_playable():
+            self._render_playable_scope()
+        else:
+            self._render_overview_scope()
+        self._set_last_move_note()
+
+    def _render_playable_scope(self) -> None:
+        self._score_label.setText(f"{self._session.score():.{_SCORE_DECIMALS}f} / 100")
         self._render_signals(self._session.signals())
         valuations = self._session.candidate_valuations()
         self._render_moves(valuations)
         self._update_scope_hint(valuations)
-        self._set_last_move_note()
+
+    def _render_overview_scope(self) -> None:
+        self._score_label.setText(_OVERVIEW_SCORE)
+        self._render_signals(())
+        self._render_moves(())
+        self._scope_hint.setText(_OVERVIEW_HINT)
+        self._scope_hint.setVisible(True)
 
     def _update_scope_hint(self, valuations) -> None:
+        self._scope_hint.setText(_SCOPE_HINT)
         strong = {MoveClassification.GOOD, MoveClassification.GREAT}
         has_strong = any(v.classification in strong for v in valuations)
         focused = self._session.focused_on

@@ -1,138 +1,85 @@
-"""Tests for deep, clustered procedural generation and its solvability."""
+"""Tests for band-sized procedural generation."""
 
-from pathlib import Path
 from random import Random
 
-from fulcrum.application.intake import build_org_state
-from fulcrum.application.level_generator import (
-    _BIG_TEAM_MAX,
-    _BIG_TEAM_MIN,
-    _DEPTH,
-    _MIN_FANOUT,
-    _ROOT_DIVISIONS,
-    _TEAM_MAX,
-    _TEAM_MIN,
-    _build_hierarchy,
-    _reaches_great_move,
-    _team_headcount,
-    generate_level,
-    has_great_move,
-)
+import pytest
+
+from fulcrum.application.cluster_pool import reaches_great_move
+from fulcrum.application.level_generator import _SHAPES, generate_level
 from fulcrum.application.simulator import DeterministicSimulator
 from fulcrum.domain.hierarchy import (
     focused_suborg,
     headcount_in_domain,
+    root_domains,
     total_headcount,
 )
-from fulcrum.domain.models import Origin, OrgState, Team
-from fulcrum.infrastructure.json_org_importer import JsonOrgImporter
-
-_SEED_COUNT = 12
-_ENTERPRISE = Path(__file__).resolve().parents[2] / "examples" / "org-3-enterprise.json"
+from fulcrum.domain.models import Origin, OrgState
+from fulcrum.domain.org_size import ORG_SIZE_BANDS
 
 
-def _enterprise():
-    return build_org_state(
-        JsonOrgImporter().import_org(str(_ENTERPRISE)), Origin.IMPORTED
-    )
+def _band(key):
+    return next(band for band in ORG_SIZE_BANDS if band.key == key)
 
 
-def _leaf_ids(org: OrgState) -> tuple[str, ...]:
+def _leaf_ids(org):
     parents = {d.parent_id for d in org.domains if d.parent_id is not None}
     return tuple(d.id for d in org.domains if d.id not in parents)
 
 
-def _tier_of(parent_of: dict, domain_id: str) -> int:
-    tier = 1
-    current = parent_of[domain_id]
-    while current is not None:
-        tier += 1
-        current = parent_of[current]
-    return tier
+def test_tiny_band_is_a_single_team_in_range():
+    band = _band("tiny")
+    org = generate_level(Random(0), band)
+    assert isinstance(org, OrgState)
+    assert org.origin == Origin.GENERATED
+    assert org.domains == ()
+    assert len(org.teams) == 1
+    assert band.contains(total_headcount(org))
 
 
-def _children_count(domains) -> dict:
-    counts = {domain.id: 0 for domain in domains}
-    for domain in domains:
-        if domain.parent_id is not None:
-            counts[domain.parent_id] += 1
-    return counts
-
-
-def test_generated_org_is_clustered_and_every_section_is_solvable():
-    sim = DeterministicSimulator()
-    for seed in range(_SEED_COUNT):
-        org = generate_level(Random(seed))
-        assert isinstance(org, OrgState)
-        assert org.origin == Origin.GENERATED
-        assert org.domains
-        leaves = _leaf_ids(org)
-        assert all(team.domain_id in leaves for team in org.teams)
-        for leaf in leaves:
-            assert _reaches_great_move(focused_suborg(org, leaf), sim)
-
-
-def test_generated_org_nests_to_depth_and_branches():
-    org = generate_level(Random(0))
-    parent_of = {d.id: d.parent_id for d in org.domains}
-    deepest = max(_tier_of(parent_of, did) for did in parent_of)
-    assert deepest == _DEPTH
-    counts = _children_count(org.domains)
-    assert all(count == 0 or count >= _MIN_FANOUT for count in counts.values())
-
-
-def test_generated_headcount_rolls_up_from_teams():
-    org = generate_level(Random(0))
-    assert total_headcount(org) == sum(team.headcount for team in org.teams)
-    roots = [d for d in org.domains if d.parent_id is None]
+def test_headcount_rolls_up_from_teams():
+    org = generate_level(Random(0), _band("medium"))
+    assert total_headcount(org) == sum(t.headcount for t in org.teams)
+    roots = root_domains(org)
     assert sum(headcount_in_domain(org, r.id) for r in roots) == total_headcount(org)
     assert all(headcount_in_domain(org, r.id) > 0 for r in roots)
 
 
-def test_team_headcount_stays_team_sized():
-    rng = Random(0)
-    sizes = {_team_headcount(rng) for _ in range(500)}
-    assert min(sizes) >= _TEAM_MIN
-    assert max(sizes) <= _BIG_TEAM_MAX
-    assert all(size <= _TEAM_MAX or size >= _BIG_TEAM_MIN for size in sizes)
+def test_every_team_sits_in_a_leaf_domain():
+    org = generate_level(Random(1), _band("medium"))
+    leaves = set(_leaf_ids(org))
+    assert all(t.domain_id in leaves for t in org.teams)
 
 
-def test_build_hierarchy_branches_and_reaches_the_depth():
-    domains, leaf_ids = _build_hierarchy(Random(0), _DEPTH)
-    parent_of = {d.id: d.parent_id for d in domains}
-    parents = {p for p in parent_of.values() if p is not None}
-    computed_leaves = {d.id for d in domains if d.id not in parents}
-    assert computed_leaves == set(leaf_ids)
-    assert all(_tier_of(parent_of, leaf) == _DEPTH for leaf in leaf_ids)
-    roots = [d for d in domains if d.parent_id is None]
-    assert len(roots) == _ROOT_DIVISIONS
-    counts = _children_count(domains)
-    assert all(count == 0 or count >= _MIN_FANOUT for count in counts.values())
-
-
-def test_has_great_move_false_for_healthy_org():
-    healthy = OrgState(
-        teams=(Team("a", "A", True, 0.0), Team("b", "B", True, 0.0)),
-        workload=1,
-    )
-    assert has_great_move(healthy, DeterministicSimulator()) is False
-
-
-def test_reaches_a_great_move_after_setup_moves():
-    org = _enterprise()
+def test_drilled_sections_are_solvable():
+    org = generate_level(Random(2), _band("small"))
     sim = DeterministicSimulator()
-    assert not has_great_move(org, sim)
-    assert _reaches_great_move(org, sim)
+    for leaf in _leaf_ids(org):
+        assert reaches_great_move(focused_suborg(org, leaf), sim)
 
 
-def test_no_great_move_reachable_without_lookahead():
-    org = _enterprise()
-    assert _reaches_great_move(org, DeterministicSimulator(), lookahead=0) is False
+def test_tier_categories_align_to_the_bottom():
+    org = generate_level(Random(3), _band("medium"))
+    by_id = {d.id: d for d in org.domains}
+    roots = root_domains(org)
+    assert len(roots) == 1
+    assert roots[0].category == "Division"
+    assert all(by_id[leaf].category == "Domain" for leaf in _leaf_ids(org))
 
 
-def test_reaches_great_move_false_for_healthy_org():
-    healthy = OrgState(
-        teams=(Team("a", "A", True, 0.0), Team("b", "B", True, 0.0)),
-        workload=1,
-    )
-    assert _reaches_great_move(healthy, DeterministicSimulator()) is False
+@pytest.mark.parametrize("key", ["small", "medium", "large", "huge"])
+def test_generated_org_lands_in_its_band(key):
+    band = _band(key)
+    org = generate_level(Random(5), band)
+    assert band.contains(total_headcount(org))
+
+
+def test_massive_band_generates_a_quarter_million_scale_org():
+    band = _band("massive")
+    org = generate_level(Random(5), band)
+    assert band.contains(total_headcount(org))
+    assert total_headcount(org) == sum(t.headcount for t in org.teams)
+
+
+def test_shapes_cover_every_non_tiny_band():
+    non_tiny = {band.key for band in ORG_SIZE_BANDS if band.key != "tiny"}
+    assert set(_SHAPES) == non_tiny

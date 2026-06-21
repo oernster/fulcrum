@@ -21,6 +21,14 @@ from fulcrum.domain.simulation import coupling_of
 _MIN_COUPLING_TO_SPLIT: int = 2
 _MIN_COUPLING_TO_ADD_OWNER: int = 1
 
+# The largest section scored and valuated live. Scoring is O(teams x deps) and
+# valuating every candidate move repeats it per move, so above this a scope is an
+# overview to drill into rather than a position to play, which keeps a hundred
+# thousand person org responsive: you narrow to a section, and that section plays.
+# Set so a single division's worth of teams still plays whole, and only larger
+# scopes become an overview.
+_MAX_PLAYABLE_TEAMS: int = 200
+
 
 def enumerate_moves(org: OrgState, allow_growth: bool = False) -> tuple[Move, ...]:
     """List the candidate moves offered for an org, including the blunder.
@@ -107,8 +115,18 @@ class GameSession:
     def signals(self) -> tuple[SignalReading, ...]:
         return compute_signals(self._active_org())
 
+    def is_active_scope_playable(self) -> bool:
+        """Whether the current scope is small enough to score and valuate live.
+
+        Above the playable size the board shows the scope as an overview to drill
+        into, since scoring and valuating the whole of a large org would stall.
+        """
+        return len(self._active_org().teams) <= _MAX_PLAYABLE_TEAMS
+
     def candidate_valuations(self) -> tuple[MoveValuation, ...]:
         active = self._active_org()
+        if len(active.teams) > _MAX_PLAYABLE_TEAMS:
+            return ()
         return self._simulator.valuate_moves(active, enumerate_moves(active))
 
     def play(self, move: Move) -> None:

@@ -34,6 +34,7 @@ from fulcrum.application.planner import ImprovementPlanner
 from fulcrum.domain.errors import FulcrumError
 from fulcrum.domain.hierarchy import child_domains, focused_suborg
 from fulcrum.domain.models import Origin
+from fulcrum.domain.org_size import DEFAULT_BAND, OrgSizeBand
 from fulcrum.shared.resources import find_model_licence, find_ui_licence
 from fulcrum.ui.widgets.about_dialog import AboutDialog, LicenceDialog
 from fulcrum.ui.widgets.board_view import BoardView
@@ -42,6 +43,7 @@ from fulcrum.ui.widgets.glossary_dialog import GlossaryDialog
 from fulcrum.ui.widgets.guide_dialog import GuideDialog
 from fulcrum.ui.widgets.org_editor import OrgEditorDialog
 from fulcrum.ui.widgets.org_overview_dialog import OrgOverviewDialog
+from fulcrum.ui.widgets.org_size_picker import OrgSizePicker
 from fulcrum.ui.widgets.org_wizard import OrgWizard
 from fulcrum.ui.widgets.plan_editor import PlanEditorDialog
 from fulcrum.version import APP_NAME, APP_TAGLINE
@@ -84,7 +86,7 @@ class MainWindow(QMainWindow):
         self._board = BoardView()
         self._build_menu()
         self._build_central()
-        self._new_level()
+        self._generate(DEFAULT_BAND)
 
     def _build_central(self) -> None:
         central = QWidget()
@@ -93,8 +95,8 @@ class MainWindow(QMainWindow):
         model_button = QPushButton("Model my organisation")
         model_button.setObjectName("Primary")
         model_button.clicked.connect(self._model_org)
-        new_button = QPushButton("New random level")
-        new_button.clicked.connect(self._new_level)
+        new_button = QPushButton("New random organisation")
+        new_button.clicked.connect(self._new_random_org)
         guide_button = QPushButton("Show the guide")
         guide_button.clicked.connect(self._show_guide)
         top.addWidget(model_button)
@@ -119,7 +121,7 @@ class MainWindow(QMainWindow):
 
     def _build_menu(self) -> None:
         file_menu = self.menuBar().addMenu("File")
-        file_menu.addAction("New random level", self._new_level)
+        file_menu.addAction("New random organisation...", self._new_random_org)
         file_menu.addAction("Model my organisation...", self._model_org)
         file_menu.addAction("Quick org (wizard)...", self._quick_org)
         file_menu.addAction("Import organisational state...", self._import_org)
@@ -148,9 +150,14 @@ class MainWindow(QMainWindow):
         self._session = session
         self._board.set_session(session)
 
-    def _new_level(self) -> None:
-        org = generate_level(self._rng)
+    def _generate(self, band: OrgSizeBand) -> None:
+        org = generate_level(self._rng, band)
         self._set_session(GameSession(org, self._simulator))
+
+    def _new_random_org(self) -> None:
+        band = OrgSizePicker.choose(self)
+        if band is not None:
+            self._generate(band)
 
     def _show_guide(self) -> None:
         if self._session is None:

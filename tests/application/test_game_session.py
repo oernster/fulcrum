@@ -157,3 +157,16 @@ def test_a_focused_move_applies_to_the_whole_org_and_keeps_focus():
     session.play(Move(MoveKind.DELEGATE_AUTHORITY, ("b",)))
     assert session.org.team("b").has_local_authority is True
     assert session.focused_on == "d1"
+
+
+def test_small_scope_is_playable_and_valuates():
+    session = GameSession(_org(), _FakeSimulator())
+    assert session.is_active_scope_playable() is True
+    assert len(session.candidate_valuations()) == len(enumerate_moves(_org()))
+
+
+def test_large_scope_is_not_playable_and_skips_valuation():
+    teams = tuple(Team(f"t{i}", f"T{i}", True, 0.0) for i in range(220))
+    session = GameSession(OrgState(teams=teams, workload=1), _FakeSimulator())
+    assert session.is_active_scope_playable() is False
+    assert session.candidate_valuations() == ()

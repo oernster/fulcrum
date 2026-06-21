@@ -28,15 +28,18 @@ _MIN_TEAM_SIZE: int = 1
 DEFAULT_HEADCOUNT: int = 8
 _MIN_HEADCOUNT: int = 1
 
-# The vocabulary of group tiers offered when modelling an org. Any group can be
-# any of these or a custom label, and they nest to any depth. The category is
-# descriptive: it names what a grouping is, it does not change the score.
+# The vocabulary of group tiers offered when modelling an org, largest first.
+# A grouping can be any of these or a custom label, and they nest to any depth;
+# a generated hierarchy aligns its leaves to the smallest tier and reads up
+# toward the company, so a shallow org uses the lower tiers and only a deep one
+# reaches Company. The category is descriptive: it names what a grouping is, it
+# does not change the score.
 GROUP_CATEGORIES: tuple[str, ...] = (
+    "Company",
+    "Group",
     "Division",
     "Department",
     "Domain",
-    "Group",
-    "Sub-team",
 )
 DEFAULT_CATEGORY: str = "Domain"
 

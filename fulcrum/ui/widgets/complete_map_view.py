@@ -68,6 +68,16 @@ _FULL = 1.0
 # when the full-size map is dragged to its limits.
 _VIEW_MARGIN = 40.0
 
+# Above this many teams the complete picture stops at the Division tier, drawing
+# each division as one summary box (its people and team totals) instead of its
+# whole subtree, so a hundred-thousand-person org reads as a spread of divisions
+# rather than tens of thousands of team boxes. The teams are reached by drilling
+# the navigable map instead.
+_SUMMARY_MAX_TEAMS = 300
+_SUMMARY_STOP_CATEGORY = "Division"
+_SUMMARY_W = 250.0
+_SUMMARY_H = _HEADER_H + _PAD
+
 
 def _font(bold: bool = False) -> QFont:
     font = QFont()
@@ -125,9 +135,11 @@ class CompleteMapView(QGraphicsView):
         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
         self.setBackgroundBrush(QBrush(_BG))
         self._org: OrgState | None = None
+        self._summarize = False
 
     def set_org(self, org: OrgState) -> None:
         self._org = org
+        self._summarize = len(org.teams) > _SUMMARY_MAX_TEAMS
         self._render()
         self.show_full_size()
 
@@ -164,6 +176,8 @@ class CompleteMapView(QGraphicsView):
     def _measure(self, kind: str, ident: str) -> _Box:
         if kind == _KIND_TEAM:
             return _Box(_KIND_TEAM, ident, _TEAM_W, _TEAM_H, [])
+        if self._is_summary(self._domain(ident)):
+            return _Box(_KIND_DOMAIN, ident, _SUMMARY_W, _SUMMARY_H, [])
         children = [
             self._measure(_KIND_DOMAIN, domain.id)
             for domain in child_domains(self._org, ident)
@@ -216,13 +230,19 @@ class CompleteMapView(QGraphicsView):
     def _domain(self, ident: str) -> Domain:
         return next(domain for domain in self._org.domains if domain.id == ident)
 
+    def _is_summary(self, domain: Domain) -> bool:
+        return self._summarize and domain.category == _SUMMARY_STOP_CATEGORY
+
     def _draw_domain(self, x, y, box) -> None:
         domain = self._domain(box.ident)
         path = QPainterPath()
         path.addRoundedRect(QRectF(x, y, box.w, box.h), _CORNER, _CORNER)
         self._scene.addPath(path, QPen(_NO_AUTHORITY, _PEN_W), QBrush(_DOMAIN_FILL))
-        people = f"{headcount_in_domain(self._org, domain.id):,} people"
-        category = self._scene.addSimpleText(f"{domain.category} · {people}", _font())
+        people = headcount_in_domain(self._org, domain.id)
+        detail = f"{domain.category} · {people:,} people"
+        if self._is_summary(domain):
+            detail = f"{detail} · {len(teams_in_domain(self._org, domain.id)):,} teams"
+        category = self._scene.addSimpleText(detail, _font())
         category.setBrush(_NO_AUTHORITY)
         category.setPos(x + _PAD, y + _DOMAIN_CATEGORY_DY)
         name = self._scene.addSimpleText(domain.name, _font(bold=True))
