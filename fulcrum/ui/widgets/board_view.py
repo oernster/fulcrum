@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
     QLabel,
     QLayout,
@@ -23,7 +22,7 @@ from fulcrum.domain.signals import SignalReading
 from fulcrum.domain.simulation import MoveClassification
 from fulcrum.ui import ui_scale
 from fulcrum.ui.analysis_thread import AnalysisThread
-from fulcrum.ui.widgets.definition_popover import DefinitionPopover
+from fulcrum.ui.widgets.definition_popover import HoverPopover
 from fulcrum.ui.widgets.org_map_view import OrgMapView
 
 _SCORE_DECIMALS = 1
@@ -70,8 +69,8 @@ def _clear(layout: QLayout) -> None:
             widget.deleteLater()
 
 
-class _MoveButton(QPushButton):
-    """A move button that announces hover enter and leave for map previews."""
+class _HoverButton(QPushButton):
+    """A button that announces hover enter and leave (previews and popovers)."""
 
     entered = Signal()
     left = Signal()
@@ -91,7 +90,7 @@ class BoardView(QWidget):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._session: GameSession | None = None
-        self._popover: DefinitionPopover | None = None
+        self._popovers = HoverPopover(self)
 
         self._score_label = QLabel("-")
         self._score_label.setObjectName("ScoreValue")
@@ -311,13 +310,13 @@ class BoardView(QWidget):
     def _render_signals(self, readings: tuple[SignalReading, ...]) -> None:
         _clear(self._signals_row)
         for reading in readings:
-            chip = QPushButton(
+            chip = _HoverButton(
                 f"{reading.definition.label}: "
                 f"{reading.value:.{_VALUE_DECIMALS}f} {reading.definition.unit}"
             )
             chip.setObjectName("SignalChip")
-            chip.setToolTip(reading.definition.gloss)
-            chip.clicked.connect(lambda _=False, r=reading: self._show_definition(r))
+            chip.entered.connect(lambda r=reading, c=chip: self._signal_hover(r, c))
+            chip.left.connect(self._popovers.hide)
             self._signals_row.addWidget(chip)
         self._signals_row.addStretch()
 
@@ -325,7 +324,7 @@ class BoardView(QWidget):
         _clear(self._moves_box)
         for valuation in valuations:
             description = describe_move(self._scope_active, valuation.move)
-            button = _MoveButton(
+            button = _HoverButton(
                 f"{description}   "
                 f"[{valuation.classification.value}]   "
                 f"{valuation.delta:+.{_VALUE_DECIMALS}f}"
@@ -333,7 +332,9 @@ class BoardView(QWidget):
             button.setObjectName("MoveButton")
             button.clicked.connect(lambda _=False, v=valuation: self._play(v))
             button.entered.connect(lambda v=valuation: self._preview_move(v))
+            button.entered.connect(lambda v=valuation, c=button: self._move_hover(v, c))
             button.left.connect(self._unpreview_move)
+            button.left.connect(self._popovers.hide)
             self._moves_box.addWidget(button)
         self._moves_box.addStretch()
 
@@ -367,8 +368,20 @@ class BoardView(QWidget):
         else:
             self._move_note.setText("")
 
-    def _show_definition(self, reading: SignalReading) -> None:
-        self._popover = DefinitionPopover(reading.definition, self)
-        self._popover.adjustSize()
-        self._popover.move(QCursor.pos())
-        self._popover.show()
+    def _signal_hover(self, reading: SignalReading, anchor: QWidget) -> None:
+        definition = reading.definition
+        rows = (
+            ("Measures", definition.measures),
+            ("Unit", definition.unit),
+            ("Reads high when", definition.reads_high_when),
+            ("Maps to", definition.maps_to),
+        )
+        self._popovers.show(definition.label, definition.gloss, rows, anchor)
+
+    def _move_hover(self, valuation: MoveValuation, anchor: QWidget) -> None:
+        self._popovers.show(
+            describe_move(self._scope_active, valuation.move),
+            move_note(valuation.move.kind),
+            (),
+            anchor,
+        )
