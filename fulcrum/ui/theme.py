@@ -217,6 +217,17 @@ QCheckBox::indicator {{
 }}
 QCheckBox::indicator:checked {{ background: {_ACCENT}; border-color: {_ACCENT}; }}
 
+QRadioButton {{ spacing: 8px; color: {_TEXT}; background: transparent; }}
+QRadioButton::indicator {{
+    width: 16px;
+    height: 16px;
+    border: 2px solid {_TEXT_MUTED};
+    border-radius: 10px;
+    background: transparent;
+}}
+QRadioButton::indicator:checked {{ background: {_ACCENT}; border-color: {_ACCENT}; }}
+QRadioButton::indicator:enabled:hover {{ border-color: {_ACCENT}; }}
+
 QSlider::groove:horizontal {{ height: 4px; background: {_BORDER}; border-radius: 2px; }}
 QSlider::handle:horizontal {{
     width: 16px;
