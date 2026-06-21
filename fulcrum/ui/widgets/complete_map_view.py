@@ -48,6 +48,9 @@ _HEADER_H = 56.0
 _PAD = 14.0
 _GAP = 16.0
 _PER_ROW = 3
+# Root divisions stack one per row so the whole tree fills a landscape viewport
+# instead of collapsing to a wide thin strip when the divisions sit side by side.
+_ROOT_COLUMNS = 1
 _CORNER = 10.0
 _PEN_W = 2
 _HALF = 2.0
@@ -90,12 +93,14 @@ class _Box:
         self.children = children
 
 
-def _flow(boxes: list[_Box]) -> tuple[list[tuple[float, float, _Box]], float, float]:
-    """Pack boxes into rows of _PER_ROW; return (placed, width, height)."""
+def _flow(
+    boxes: list[_Box], per_row: int = _PER_ROW
+) -> tuple[list[tuple[float, float, _Box]], float, float]:
+    """Pack boxes into rows of per_row; return (placed, width, height)."""
     placed: list[tuple[float, float, _Box]] = []
     x = y = row_h = right = 0.0
     for index, box in enumerate(boxes):
-        if index and index % _PER_ROW == 0:
+        if index and index % per_row == 0:
             x = 0.0
             y += row_h + _GAP
             row_h = 0.0
@@ -167,7 +172,7 @@ class CompleteMapView(QGraphicsView):
             for team in self._org.teams
             if team.domain_id is None
         ]
-        placed, _, _ = _flow(roots)
+        placed, _, _ = _flow(roots, _ROOT_COLUMNS)
         centers: dict[str, QPointF] = {}
         domains: list[tuple[float, float, _Box]] = []
         teams: list[tuple[float, float, _Box]] = []
