@@ -101,6 +101,12 @@ class MainWindow(QMainWindow):
 
     def _build_central(self) -> None:
         central = QWidget()
+        # An invisible, focusable start item: on launch nothing is highlighted
+        # and no menu drops; the first Tab or Right enters the ring. Mirrors
+        # Meridian's initialFocusItem.
+        self._focus_start = QWidget(central)
+        self._focus_start.setFixedSize(0, 0)
+        self._focus_start.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         layout = QVBoxLayout(central)
         top = QHBoxLayout()
         model_button = QPushButton("Model my organisation")
@@ -137,8 +143,6 @@ class MainWindow(QMainWindow):
         undo_button, map_view, moves_group, signals_group = self._board.nav_targets()
         self._nav = KeyboardNavigator(
             self,
-            self.menuBar(),
-            self.menuBar().actions(),
             (*buttons, undo_button, map_view),
             (moves_group, signals_group),
             map_view,
@@ -365,7 +369,7 @@ class MainWindow(QMainWindow):
         super().showEvent(event)
         if not self._started:
             self._started = True
-            self._nav.focus_start()
+            self._focus_start.setFocus(Qt.FocusReason.OtherFocusReason)
 
     def closeEvent(self, event) -> None:
         self._board.stop_analysis()
