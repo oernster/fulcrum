@@ -218,3 +218,34 @@ def test_playing_an_aggregate_move_empowers_the_real_teams():
     assert session.org.team("a").has_local_authority is True
     assert session.org.team("b").has_local_authority is True
     assert session.focused_on == "root"
+
+
+def test_take_back_restores_the_previous_position():
+    session = GameSession(_org(), _FakeSimulator())
+    session.play(Move(MoveKind.DELEGATE_AUTHORITY, ("b",)))
+    assert session.org.team("b").has_local_authority is True
+    assert session.can_take_back is True
+    session.take_back()
+    assert session.org.team("b").has_local_authority is False
+    assert session.history == ()
+    assert session.can_take_back is False
+
+
+def test_take_back_walks_back_to_the_start():
+    session = GameSession(_org(), _FakeSimulator())
+    session.play(Move(MoveKind.DELEGATE_AUTHORITY, ("b",)))
+    session.play(Move(MoveKind.STABILISE_INTERFACES))
+    assert len(session.history) == 2
+    session.take_back()
+    session.take_back()
+    assert session.history == ()
+    assert session.org == session.initial_org
+    assert session.can_take_back is False
+
+
+def test_take_back_with_no_history_is_a_no_op():
+    session = GameSession(_org(), _FakeSimulator())
+    assert session.can_take_back is False
+    session.take_back()
+    assert session.history == ()
+    assert session.org == session.initial_org

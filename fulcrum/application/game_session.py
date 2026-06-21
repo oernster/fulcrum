@@ -75,6 +75,7 @@ class GameSession:
         self._initial_org = org
         self._simulator = simulator
         self._history: list[Move] = []
+        self._past: list[OrgState] = []
         self._focus_id: str | None = None
 
     @property
@@ -143,8 +144,26 @@ class GameSession:
 
     def play(self, move: Move) -> None:
         real = translate_focused_move(self._org, self._focus_id, move)
+        self._past.append(self._org)
         self._org = apply_move(self._org, real)
         self._history.append(move)
+
+    @property
+    def can_take_back(self) -> bool:
+        """Whether there is a move played in this session to undo."""
+        return bool(self._past)
+
+    def take_back(self) -> None:
+        """Undo the last move played this session, restoring the prior org.
+
+        Each play snapshots the org it replaced, so repeated calls walk the
+        position back to where the session started. A session restored from a
+        saved game carries no snapshots, so its pre-load moves are not undone.
+        """
+        if not self._past:
+            return
+        self._org = self._past.pop()
+        self._history.pop()
 
     def preview(self, move: Move) -> OrgState:
         real = translate_focused_move(self._org, self._focus_id, move)

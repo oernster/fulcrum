@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
-    QLayout,
     QPushButton,
     QScrollArea,
     QSplitter,
@@ -16,20 +15,19 @@ from PySide6.QtWidgets import (
 
 from fulcrum.application.dto import MoveValuation
 from fulcrum.application.game_session import GameSession
-from fulcrum.application.move_text import describe_move, move_note
+from fulcrum.application.move_text import move_note
 from fulcrum.domain.hierarchy import child_domains, total_headcount
 from fulcrum.domain.moves import MoveKind
 from fulcrum.domain.signals import SignalReading
 from fulcrum.domain.simulation import MoveClassification
 from fulcrum.ui import ui_scale
 from fulcrum.ui.analysis_thread import AnalysisThread
+from fulcrum.ui.widgets.board_renderers import clear_layout, move_row, signal_chip
 from fulcrum.ui.widgets.definition_popover import HoverPopover
-from fulcrum.ui.widgets.hover_button import HoverButton
 from fulcrum.ui.widgets.move_preview_dialog import MovePreviewDialog
 from fulcrum.ui.widgets.org_map_view import OrgMapView
 
 _SCORE_DECIMALS = 1
-_VALUE_DECIMALS = 1
 _MAP_CAPTION = "Organisation map"
 _MAP_HINT = "click a domain to open"
 _MOVES_TOOLTIP = (
@@ -59,9 +57,8 @@ _RIGHT_PANE_W = 480
 _RIGHT_PANE_MIN = 360
 _MOVES_RIGHT_PAD = 12
 _PREVIEW_COLOR = "#fbbf24"
-_PREVIEW_ICON = "🔍"
-_PREVIEW_TIP = "Preview this move"
-_PREVIEW_BTN_W = 44
+_UNDO_LABEL = "Take a move back"
+_UNDO_TIP = "Undo the last move played"
 # The per-move note reserves the height of the tallest note at the current
 # width (recomputed on resize), so changing its text on hover never reflows the
 # layout: that reflow read as a jiggle as the mouse swept across the moves.
@@ -70,16 +67,10 @@ _MOVE_NOTE_MIN_HEIGHT = 40
 _WRAP_FLAG = int(Qt.TextFlag.TextWordWrap)
 
 
-def _clear(layout: QLayout) -> None:
-    while layout.count():
-        item = layout.takeAt(0)
-        widget = item.widget()
-        if widget is not None:
-            widget.deleteLater()
-
-
 class BoardView(QWidget):
     """Renders a GameSession: map, score, signals and clickable candidate moves."""
+
+    historyChanged = Signal(bool)
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -107,8 +98,14 @@ class BoardView(QWidget):
             Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
         )
         self._move_note.setFixedHeight(ui_scale.px(_MOVE_NOTE_MIN_HEIGHT))
+        self._undo_button = QPushButton(_UNDO_LABEL)
+        self._undo_button.setToolTip(_UNDO_TIP)
+        self._undo_button.setEnabled(False)
+        self._undo_button.clicked.connect(self.take_back)
         self._signals_row = QVBoxLayout()
         self._moves_box = QVBoxLayout()
+        self._moves_holder = QWidget()
+        self._signals_holder = QWidget()
         self._analysis_request = 0
         self._analyses: set[AnalysisThread] = set()
         self._scope_active = None
@@ -130,6 +127,10 @@ class BoardView(QWidget):
         layout.addWidget(self._origin_label)
         layout.addWidget(self._headcount_label)
         layout.addWidget(self._focus_label)
+        controls = QHBoxLayout()
+        controls.addWidget(self._undo_button)
+        controls.addStretch()
+        layout.addLayout(controls)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.addWidget(self._build_map_pane())
@@ -165,17 +166,15 @@ class BoardView(QWidget):
         column.addWidget(self._scope_hint)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        moves_holder = QWidget()
         self._moves_box.setContentsMargins(0, 0, ui_scale.px(_MOVES_RIGHT_PAD), 0)
-        moves_holder.setLayout(self._moves_box)
-        scroll.setWidget(moves_holder)
+        self._moves_holder.setLayout(self._moves_box)
+        scroll.setWidget(self._moves_holder)
         column.addWidget(scroll, 1)
         signals_caption = QLabel("Signals to watch")
         signals_caption.setObjectName("Muted")
         column.addWidget(signals_caption)
-        signals_holder = QWidget()
-        signals_holder.setLayout(self._signals_row)
-        column.addWidget(signals_holder)
+        self._signals_holder.setLayout(self._signals_row)
+        column.addWidget(self._signals_holder)
         return pane
 
     def resizeEvent(self, event) -> None:
@@ -226,7 +225,24 @@ class BoardView(QWidget):
         self._map.set_preview(False)
         self._map.set_org(self._session.org)
         self._set_last_move_note()
+        self._update_undo()
         self._start_analysis()
+
+    def take_back(self) -> None:
+        """Undo the last move played and re-render the position."""
+        if self._session is None or not self._session.can_take_back:
+            return
+        self._session.take_back()
+        self.refresh()
+
+    def _update_undo(self) -> None:
+        can = self._session is not None and self._session.can_take_back
+        self._undo_button.setEnabled(can)
+        self.historyChanged.emit(can)
+
+    def nav_targets(self) -> tuple[QWidget, ...]:
+        """The board's keyboard-nav stops, in reading order."""
+        return (self._undo_button, self._map, self._moves_holder, self._signals_holder)
 
     def _start_analysis(self) -> None:
         """Debounce scoring so a flurry of drills runs only one analysis."""
@@ -321,47 +337,20 @@ class BoardView(QWidget):
         return domain_id
 
     def _render_signals(self, readings: tuple[SignalReading, ...]) -> None:
-        _clear(self._signals_row)
+        clear_layout(self._signals_row)
         for reading in readings:
-            chip = HoverButton(
-                f"{reading.definition.label}: "
-                f"{reading.value:.{_VALUE_DECIMALS}f} {reading.definition.unit}"
-            )
-            chip.setObjectName("SignalChip")
-            chip.entered.connect(lambda r=reading, c=chip: self._signal_hover(r, c))
-            chip.left.connect(self._popovers.hide)
+            chip = signal_chip(reading, self._signal_hover, self._popovers.hide)
             self._signals_row.addWidget(chip)
         self._signals_row.addStretch()
 
     def _render_moves(self, valuations: tuple[MoveValuation, ...]) -> None:
-        _clear(self._moves_box)
+        clear_layout(self._moves_box)
         for valuation in valuations:
-            self._moves_box.addWidget(self._move_row(valuation))
+            row = move_row(
+                self._scope_active, valuation, self._play, self._open_move_preview
+            )
+            self._moves_box.addWidget(row)
         self._moves_box.addStretch()
-
-    def _move_row(self, valuation: MoveValuation) -> QWidget:
-        button = QPushButton(
-            f"{describe_move(self._scope_active, valuation.move)}   "
-            f"[{valuation.classification.value}]   "
-            f"{valuation.delta:+.{_VALUE_DECIMALS}f}"
-        )
-        button.setObjectName("MoveButton")
-        button.clicked.connect(lambda _=False, v=valuation: self._play(v))
-        magnifier = QPushButton(_PREVIEW_ICON)
-        magnifier.setObjectName("PreviewButton")
-        magnifier.setToolTip(_PREVIEW_TIP)
-        magnifier.setFixedWidth(ui_scale.px(_PREVIEW_BTN_W))
-        magnifier.setCursor(Qt.CursorShape.PointingHandCursor)
-        magnifier.clicked.connect(
-            lambda _=False, v=valuation: self._open_move_preview(v)
-        )
-        row = QHBoxLayout()
-        row.setContentsMargins(0, 0, 0, 0)
-        row.addWidget(button, 1)
-        row.addWidget(magnifier)
-        holder = QWidget()
-        holder.setLayout(row)
-        return holder
 
     def _play(self, valuation: MoveValuation) -> None:
         if self._session is None:

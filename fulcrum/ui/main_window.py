@@ -47,6 +47,7 @@ from fulcrum.ui.widgets.book_background_dialog import BookBackgroundDialog
 from fulcrum.ui.widgets.busy_dialog import BusyDialog
 from fulcrum.ui.widgets.glossary_dialog import GlossaryDialog
 from fulcrum.ui.widgets.guide_dialog import GuideDialog
+from fulcrum.ui.widgets.keyboard_nav import KeyboardNavigator
 from fulcrum.ui.widgets.org_editor import OrgEditorDialog
 from fulcrum.ui.widgets.org_overview_dialog import OrgOverviewDialog
 from fulcrum.ui.widgets.org_size_picker import OrgSizePicker
@@ -90,6 +91,7 @@ class MainWindow(QMainWindow):
         self._clock = clock
         self._rng = rng
         self._session: GameSession | None = None
+        self._started = False
 
         self.setWindowTitle(f"{APP_NAME} - {APP_TAGLINE}")
         self._board = BoardView()
@@ -127,6 +129,20 @@ class MainWindow(QMainWindow):
         layout.addLayout(top)
         layout.addWidget(self._board, 1)
         self.setCentralWidget(central)
+        self._install_keyboard_nav(
+            (model_button, new_button, guide_button, overview_link, glossary_link)
+        )
+
+    def _install_keyboard_nav(self, buttons) -> None:
+        undo_button, map_view, moves_group, signals_group = self._board.nav_targets()
+        self._nav = KeyboardNavigator(
+            self,
+            self.menuBar(),
+            self.menuBar().actions(),
+            (*buttons, undo_button, map_view),
+            (moves_group, signals_group),
+            map_view,
+        )
 
     def _build_menu(self) -> None:
         file_menu = self.menuBar().addMenu("File")
@@ -143,6 +159,14 @@ class MainWindow(QMainWindow):
         file_menu.addAction("Edit a plan...", self._edit_plan)
         file_menu.addSeparator()
         file_menu.addAction("Exit", self.close)
+
+        edit_menu = self.menuBar().addMenu("Edit")
+        self._undo_action = edit_menu.addAction(
+            "Take a move back", self._board.take_back
+        )
+        self._undo_action.setShortcut("Ctrl+Z")
+        self._undo_action.setEnabled(False)
+        self._board.historyChanged.connect(self._undo_action.setEnabled)
 
         view_menu = self.menuBar().addMenu("View")
         view_menu.addAction("Organisation overview...", self._org_overview)
@@ -336,6 +360,12 @@ class MainWindow(QMainWindow):
 
     def _inform(self, title: str, message: str) -> None:
         QMessageBox.information(self, title, message)
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        if not self._started:
+            self._started = True
+            self._nav.focus_start()
 
     def closeEvent(self, event) -> None:
         self._board.stop_analysis()
