@@ -9,7 +9,13 @@ from __future__ import annotations
 
 from fulcrum.application.dto import MoveValuation, SavedGame
 from fulcrum.application.interfaces import Clock, SaveGameRepository, Simulator
-from fulcrum.domain.hierarchy import domain_has_teams, focused_suborg
+from fulcrum.domain.hierarchy import (
+    AGGREGATE_MOVE_KINDS,
+    child_domains,
+    domain_has_teams,
+    focused_suborg,
+    translate_focused_move,
+)
 from fulcrum.domain.models import OrgState
 from fulcrum.domain.moves import Move, MoveKind, apply_move
 from fulcrum.domain.signals import SignalReading, compute_signals
@@ -130,14 +136,19 @@ class GameSession:
         active = self._active_org()
         if len(active.teams) > MAX_PLAYABLE_TEAMS:
             return ()
-        return self._simulator.valuate_moves(active, enumerate_moves(active))
+        moves = enumerate_moves(active)
+        if self._focus_id is not None and child_domains(self._org, self._focus_id):
+            moves = tuple(m for m in moves if m.kind in AGGREGATE_MOVE_KINDS)
+        return self._simulator.valuate_moves(active, moves)
 
     def play(self, move: Move) -> None:
-        self._org = apply_move(self._org, move)
+        real = translate_focused_move(self._org, self._focus_id, move)
+        self._org = apply_move(self._org, real)
         self._history.append(move)
 
     def preview(self, move: Move) -> OrgState:
-        return apply_move(self._org, move)
+        real = translate_focused_move(self._org, self._focus_id, move)
+        return apply_move(self._org, real)
 
     def to_saved_game(self, clock: Clock) -> SavedGame:
         return SavedGame(

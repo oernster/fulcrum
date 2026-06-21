@@ -9,6 +9,19 @@ and played on its own, which is how the CTO drills into a domain to decide.
 from __future__ import annotations
 
 from fulcrum.domain.models import Dependency, Domain, OrgState, Team
+from fulcrum.domain.moves import Move, MoveKind
+
+_SKEW_DECIMALS = 2
+
+# The move kinds that translate cleanly from an aggregate (non-leaf) scope down
+# to the real teams beneath it: empowering, realigning and stabilising a child
+# domain all map to the same act over its teams. Boundary-collapse at a level
+# means merging whole sub-orgs and is handled only at the team level for now.
+AGGREGATE_MOVE_KINDS = (
+    MoveKind.DELEGATE_AUTHORITY,
+    MoveKind.REALIGN_INCENTIVES,
+    MoveKind.STABILISE_INTERFACES,
+)
 
 
 def root_domains(org: OrgState) -> tuple[Domain, ...]:
@@ -51,13 +64,66 @@ def domain_has_teams(org: OrgState, domain_id: str) -> bool:
     return any(t.domain_id in ids for t in org.teams)
 
 
-def focused_suborg(org: OrgState, domain_id: str) -> OrgState:
-    """Flatten a domain's subtree into a standalone org for scoring and play.
+def _has_majority_authority(teams: tuple[Team, ...]) -> bool:
+    """Whether at least half of a grouping's teams decide locally."""
+    held = sum(1 for t in teams if t.has_local_authority)
+    return held * 2 >= len(teams)
 
-    Teams keep their structural properties but drop their domain tag, and only
-    dependencies internal to the subtree are kept, so the slice scores in
-    isolation. Requires the subtree to contain at least one team.
+
+def _aggregate_deps(
+    org: OrgState, node_of_team: dict[str, str]
+) -> tuple[Dependency, ...]:
+    """Roll real dependencies up to mean-delay edges between the child nodes."""
+    totals: dict[tuple[str, str], int] = {}
+    counts: dict[tuple[str, str], int] = {}
+    for dep in org.dependencies:
+        source = node_of_team.get(dep.upstream)
+        target = node_of_team.get(dep.downstream)
+        if source is not None and target is not None and source != target:
+            key = (source, target)
+            totals[key] = totals.get(key, 0) + dep.propagation_delay
+            counts[key] = counts.get(key, 0) + 1
+    return tuple(
+        Dependency(s, t, round(totals[(s, t)] / counts[(s, t)])) for (s, t) in totals
+    )
+
+
+def _aggregate_section(org: OrgState, parent_id: str) -> OrgState:
+    """Score a non-leaf domain as its immediate children, each a rolled-up node.
+
+    Each child domain becomes one synthetic team carrying its subtree's majority
+    authority and mean incentive skew, with dependencies aggregated between the
+    children, so a structural move at this level (empower a department, realign a
+    division) carries the proportional weight a team move has inside a leaf.
     """
+    nodes: list[Team] = []
+    node_of_team: dict[str, str] = {}
+    for child in child_domains(org, parent_id):
+        teams = teams_in_domain(org, child.id)
+        if not teams:
+            continue
+        for team in teams:
+            node_of_team[team.id] = child.id
+        skew = round(sum(t.incentive_skew for t in teams) / len(teams), _SKEW_DECIMALS)
+        nodes.append(Team(child.id, child.name, _has_majority_authority(teams), skew))
+    return OrgState(
+        teams=tuple(nodes),
+        dependencies=_aggregate_deps(org, node_of_team),
+        workload=org.workload,
+        origin=org.origin,
+    )
+
+
+def focused_suborg(org: OrgState, domain_id: str) -> OrgState:
+    """The standalone org scored when a domain is focused.
+
+    A non-leaf domain is scored as its immediate children rolled up into one
+    decision-node each, so structural moves appear at every level. A leaf domain
+    is its own teams, flattened with only their internal dependencies. Either way
+    the slice scores and plays in isolation.
+    """
+    if child_domains(org, domain_id):
+        return _aggregate_section(org, domain_id)
     ids = domain_subtree_ids(org, domain_id)
     teams = tuple(
         Team(t.id, t.name, t.has_local_authority, t.incentive_skew)
@@ -71,6 +137,23 @@ def focused_suborg(org: OrgState, domain_id: str) -> OrgState:
     return OrgState(
         teams=teams, dependencies=deps, workload=org.workload, origin=org.origin
     )
+
+
+def translate_focused_move(org: OrgState, focus_id: str | None, move: Move) -> Move:
+    """Map a move played at an aggregate scope onto the real teams beneath it.
+
+    At a non-leaf scope the move's targets are child-domain ids; empowering or
+    realigning a child means doing so to every team in its subtree. A whole-org or
+    leaf scope already targets real teams, so the move is returned unchanged.
+    """
+    if focus_id is None or not child_domains(org, focus_id):
+        return move
+    if not move.targets:
+        return move
+    team_ids = tuple(
+        team.id for child_id in move.targets for team in teams_in_domain(org, child_id)
+    )
+    return Move(move.kind, team_ids, move.label)
 
 
 def boundary_dependencies(org: OrgState, domain_id: str) -> tuple[Dependency, ...]:

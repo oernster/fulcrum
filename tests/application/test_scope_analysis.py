@@ -3,7 +3,9 @@
 from fulcrum.application.game_session import MAX_PLAYABLE_TEAMS, enumerate_moves
 from fulcrum.application.scope_analysis import active_org, analyze_scope
 from fulcrum.application.simulator import DeterministicSimulator
+from fulcrum.domain.hierarchy import AGGREGATE_MOVE_KINDS
 from fulcrum.domain.models import Dependency, Domain, OrgState, Team
+from fulcrum.domain.moves import MoveKind
 
 _SIM = DeterministicSimulator()
 
@@ -56,3 +58,28 @@ def test_analyze_large_scope_is_not_playable():
     assert result.score == 0.0
     assert result.signals == ()
     assert result.valuations == ()
+
+
+def _nested_org():
+    return OrgState(
+        teams=(
+            Team("a", "A", False, 0.5, domain_id="d1"),
+            Team("b", "B", False, 0.5, domain_id="d1"),
+            Team("c", "C", True, 0.0, domain_id="d2"),
+        ),
+        dependencies=(Dependency("a", "b", 2), Dependency("b", "c", 2)),
+        workload=2,
+        domains=(
+            Domain("root", "Org"),
+            Domain("d1", "Dept One", parent_id="root"),
+            Domain("d2", "Dept Two", parent_id="root"),
+        ),
+    )
+
+
+def test_analyze_aggregate_scope_offers_only_translatable_moves():
+    result = analyze_scope(_nested_org(), "root", _SIM)
+    assert result.playable is True
+    kinds = {v.move.kind for v in result.valuations}
+    assert kinds <= set(AGGREGATE_MOVE_KINDS)
+    assert MoveKind.COLLAPSE_BOUNDARY not in kinds

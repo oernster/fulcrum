@@ -181,3 +181,40 @@ def test_large_scope_is_not_playable_and_skips_valuation():
     session = GameSession(OrgState(teams=teams, workload=1), _FakeSimulator())
     assert session.is_active_scope_playable() is False
     assert session.candidate_valuations() == ()
+
+
+def _nested_org():
+    return OrgState(
+        teams=(
+            Team("a", "A", False, 0.5, domain_id="d1"),
+            Team("b", "B", False, 0.5, domain_id="d1"),
+            Team("c", "C", True, 0.0, domain_id="d2"),
+        ),
+        dependencies=(Dependency("a", "b", 2), Dependency("b", "c", 2)),
+        workload=2,
+        domains=(
+            Domain("root", "Org"),
+            Domain("d1", "Dept One", parent_id="root"),
+            Domain("d2", "Dept Two", parent_id="root"),
+        ),
+    )
+
+
+def test_aggregate_scope_offers_only_translatable_moves():
+    session = GameSession(_nested_org(), _FakeSimulator())
+    session.focus("root")
+    kinds = {v.move.kind for v in session.candidate_valuations()}
+    assert kinds <= {
+        MoveKind.DELEGATE_AUTHORITY,
+        MoveKind.REALIGN_INCENTIVES,
+        MoveKind.STABILISE_INTERFACES,
+    }
+
+
+def test_playing_an_aggregate_move_empowers_the_real_teams():
+    session = GameSession(_nested_org(), _FakeSimulator())
+    session.focus("root")
+    session.play(Move(MoveKind.DELEGATE_AUTHORITY, ("d1",)))
+    assert session.org.team("a").has_local_authority is True
+    assert session.org.team("b").has_local_authority is True
+    assert session.focused_on == "root"

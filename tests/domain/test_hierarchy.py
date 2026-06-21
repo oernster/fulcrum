@@ -2,6 +2,25 @@
 
 from fulcrum.domain import hierarchy
 from fulcrum.domain.models import Dependency, Domain, OrgState, Team
+from fulcrum.domain.moves import Move, MoveKind
+
+
+def _nested_org():
+    return OrgState(
+        teams=(
+            Team("a", "A", False, 0.8, domain_id="d1"),
+            Team("b", "B", False, 0.6, domain_id="d1"),
+            Team("c", "C", True, 0.2, domain_id="d2"),
+            Team("e", "E", True, 0.1, domain_id="d2"),
+        ),
+        dependencies=(Dependency("a", "b", 4), Dependency("b", "c", 2)),
+        workload=3,
+        domains=(
+            Domain("root", "Org"),
+            Domain("d1", "Dept One", parent_id="root"),
+            Domain("d2", "Dept Two", parent_id="root"),
+        ),
+    )
 
 
 def _org():
@@ -67,6 +86,47 @@ def test_boundary_dependencies_are_the_cross_domain_surface():
         for d in hierarchy.boundary_dependencies(_org(), "pay")
     )
     assert pairs == [("a", "b"), ("c", "d")]
+
+
+def test_focused_suborg_aggregates_a_non_leaf_into_child_nodes():
+    focus = hierarchy.focused_suborg(_nested_org(), "root")
+    nodes = {t.id: t for t in focus.teams}
+    assert set(nodes) == {"d1", "d2"}
+    assert nodes["d1"].has_local_authority is False
+    assert nodes["d2"].has_local_authority is True
+    assert nodes["d1"].incentive_skew == 0.7
+    assert nodes["d2"].incentive_skew == 0.15
+    assert [(d.upstream, d.downstream) for d in focus.dependencies] == [("d1", "d2")]
+
+
+def test_focused_suborg_skips_a_childless_empty_branch():
+    org = OrgState(
+        teams=(Team("a", "A", True, 0.0, domain_id="d1"),),
+        domains=(
+            Domain("root", "Org"),
+            Domain("d1", "Has teams", parent_id="root"),
+            Domain("d2", "Empty", parent_id="root"),
+        ),
+    )
+    focus = hierarchy.focused_suborg(org, "root")
+    assert {t.id for t in focus.teams} == {"d1"}
+
+
+def test_translate_focused_move_expands_to_subtree_teams():
+    real = hierarchy.translate_focused_move(
+        _nested_org(), "root", Move(MoveKind.DELEGATE_AUTHORITY, ("d1",))
+    )
+    assert real.kind == MoveKind.DELEGATE_AUTHORITY
+    assert set(real.targets) == {"a", "b"}
+
+
+def test_translate_focused_move_passes_through_leaf_and_global():
+    org = _nested_org()
+    leaf_move = Move(MoveKind.DELEGATE_AUTHORITY, ("a",))
+    assert hierarchy.translate_focused_move(org, "d1", leaf_move) is leaf_move
+    assert hierarchy.translate_focused_move(org, None, leaf_move) is leaf_move
+    stabilise = Move(MoveKind.STABILISE_INTERFACES)
+    assert hierarchy.translate_focused_move(org, "root", stabilise) is stabilise
 
 
 def test_headcount_rolls_up_through_the_domain_subtree():

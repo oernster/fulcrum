@@ -118,6 +118,7 @@ class BoardView(QWidget):
         self._moves_box = QVBoxLayout()
         self._analysis_request = 0
         self._analyses: set[AnalysisThread] = set()
+        self._scope_active = None
         self._computing_timer = QTimer(self)
         self._computing_timer.setSingleShot(True)
         self._computing_timer.timeout.connect(self._show_computing)
@@ -260,6 +261,7 @@ class BoardView(QWidget):
             self._render_overview_scope()
 
     def _render_analysis(self, analysis) -> None:
+        self._scope_active = analysis.active
         self._score_label.setText(f"{analysis.score:.{_SCORE_DECIMALS}f} / 100")
         self._render_signals(analysis.signals)
         self._render_moves(analysis.valuations)
@@ -322,7 +324,7 @@ class BoardView(QWidget):
     def _render_moves(self, valuations: tuple[MoveValuation, ...]) -> None:
         _clear(self._moves_box)
         for valuation in valuations:
-            description = describe_move(self._session.org, valuation.move)
+            description = describe_move(self._scope_active, valuation.move)
             button = _MoveButton(
                 f"{description}   "
                 f"[{valuation.classification.value}]   "
@@ -346,7 +348,7 @@ class BoardView(QWidget):
             return
         self._map.set_org(self._session.preview(valuation.move))
         self._map.set_preview(True)
-        description = describe_move(self._session.org, valuation.move)
+        description = describe_move(self._scope_active, valuation.move)
         self._map_caption.setText(f"{_MAP_CAPTION} · after: {description}")
         self._map_caption.setStyleSheet(f"color: {_PREVIEW_COLOR};")
         self._move_note.setText(move_note(valuation.move.kind))
