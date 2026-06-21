@@ -224,6 +224,10 @@ class MainWindow(QMainWindow):
                 "map first, then open the guide there.",
             )
             return
+        fixed, grown = self._plan_guides()
+        GuideDialog(fixed, grown, self._simulator, self._play_from_guide, self).exec()
+
+    def _plan_guides(self):
         org = self._session.org
         focused = self._session.focused_on
         section = focused_suborg(org, focused) if focused is not None else org
@@ -233,19 +237,20 @@ class MainWindow(QMainWindow):
         grown = ImprovementPlanner(self._simulator, allow_growth=True).plan(
             section, kinds
         )
-        GuideDialog(fixed, grown, self._simulator, self._play_from_guide, self).exec()
+        return fixed, grown
 
-    def _play_from_guide(self, move) -> bool:
+    def _play_from_guide(self, move):
+        """Play a guide move live; return the refreshed plan, or None if blocked."""
         if self._session is None:
-            return False
+            return None
         if not self._session.try_play(move):
             self._inform(
                 "Cannot play this move yet",
                 "This move builds on earlier moves in the path; play those first.",
             )
-            return False
+            return None
         self._board.refresh()
-        return True
+        return self._plan_guides()
 
     def _model_org(self) -> None:
         editor = OrgEditorDialog(self)

@@ -143,11 +143,20 @@ class GuideDialog(NeutralDialog):
         dialog = MovePreviewDialog(
             step.org_before, None, valuation, self._simulator, step.org_before, self
         )
-        if dialog.exec() and self._on_play is not None and self._on_play(step.move):
-            self.accept()
+        if dialog.exec() and self._on_play is not None:
+            guides = self._on_play(step.move)
+            if guides is not None:
+                self._set_guides(guides)
 
     def _on_growth_toggled(self, allow_growth: bool) -> None:
         self._render(self._growth_guide if allow_growth else self._guide)
+
+    def _set_guides(self, guides) -> None:
+        # After a play the guide stays open and re-renders the refreshed path
+        # from the new position, respecting the grow toggle.
+        self._guide, self._growth_guide = guides
+        showing_growth = self._toggle is not None and self._toggle.isChecked()
+        self._render(self._growth_guide if showing_growth else self._guide)
 
     # Focus ring: checkbox -> moves group -> Close -> wrap; Up and Down move
     # within the moves group (move and magnifier buttons), which is one Tab stop.
