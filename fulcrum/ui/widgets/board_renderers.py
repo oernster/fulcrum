@@ -33,6 +33,17 @@ def clear_layout(layout: QLayout) -> None:
             widget.deleteLater()
 
 
+def magnifier_button(on_click: Callable[[], None]) -> QPushButton:
+    """The preview magnifier, styled and sized as on the board's move rows."""
+    button = QPushButton(_PREVIEW_ICON)
+    button.setObjectName("PreviewButton")
+    button.setToolTip(_PREVIEW_TIP)
+    button.setFixedWidth(ui_scale.px(_PREVIEW_BTN_W))
+    button.setCursor(Qt.CursorShape.PointingHandCursor)
+    button.clicked.connect(lambda _=False: on_click())
+    return button
+
+
 def move_row(
     scope_active: OrgState,
     valuation: MoveValuation,
@@ -47,12 +58,7 @@ def move_row(
     )
     button.setObjectName("MoveButton")
     button.clicked.connect(lambda _=False, v=valuation: on_play(v))
-    magnifier = QPushButton(_PREVIEW_ICON)
-    magnifier.setObjectName("PreviewButton")
-    magnifier.setToolTip(_PREVIEW_TIP)
-    magnifier.setFixedWidth(ui_scale.px(_PREVIEW_BTN_W))
-    magnifier.setCursor(Qt.CursorShape.PointingHandCursor)
-    magnifier.clicked.connect(lambda _=False, v=valuation: on_preview(v))
+    magnifier = magnifier_button(lambda v=valuation: on_preview(v))
     row = QHBoxLayout()
     row.setContentsMargins(0, 0, 0, 0)
     row.addWidget(button, 1)
