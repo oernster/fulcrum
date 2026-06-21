@@ -33,6 +33,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import stamp_version
+
 # --- Project identity (single source of truth for build metadata) -----------
 APP_DISPLAY_NAME = "Fulcrum"
 APP_DESCRIPTION = "Decision Sandbox"
@@ -73,7 +75,7 @@ OUTPUT_DIR = PAYLOAD_DIR
 BUNDLE_DIR_NAME = APP_DISPLAY_NAME
 
 # Defaults that are structural, not domain values.
-DEFAULT_VERSION = "0.1.0"
+DEFAULT_VERSION = "0.0.0-dev"
 DEFAULT_JOBS = 1
 
 # Nuitka requires a 4-part numeric version (a.b.c.d) for the PE resource.
@@ -166,6 +168,10 @@ def build_exe() -> int:
     print(f"[buildexe] Parallel jobs: {jobs}")
     print(f"[buildexe] Windows console mode: {console_mode}")
     print(f"[buildexe] Output directory: {OUTPUT_DIR}")
+
+    # Re-stamp the static docs and GitHub Pages site from VERSION so a release
+    # never ships a stale version string (single source of truth: VERSION).
+    stamp_version.main()
 
     # Remove a previous standalone tree so stale files cannot leak into a build.
     standalone_dir = OUTPUT_DIR / f"{ENTRY_SCRIPT.stem}.dist"

@@ -31,6 +31,8 @@ import sys
 import time
 from pathlib import Path
 
+import stamp_version
+
 # --- Project identity (single source of truth for installer metadata) -------
 APP_DISPLAY_NAME = "Fulcrum"
 APP_DESCRIPTION = "Decision Sandbox"
@@ -62,7 +64,7 @@ FINAL_DIST_DIR = PROJECT_ROOT / "dist-installer"
 TEMP_DIST_DIR = PROJECT_ROOT / "dist-installer.build"
 
 # Structural defaults.
-DEFAULT_VERSION = "0.1.0"
+DEFAULT_VERSION = "0.0.0-dev"
 DEFAULT_JOBS = 1
 PE_VERSION_PARTS = 4
 PE_VERSION_PAD_VALUE = "0"
@@ -201,6 +203,10 @@ def build_installer() -> int:
     print(f"[buildinstaller] Installer UI: {INSTALLER_ENTRY}")
     print(f"[buildinstaller] Python: {python_exe}")
     print(f"[buildinstaller] Parallel jobs: {jobs}")
+
+    # Re-stamp the static docs and GitHub Pages site from VERSION so a release
+    # never ships a stale version string (single source of truth: VERSION).
+    stamp_version.main()
 
     # 1) Stage the payload (zip of the built bundle + LICENSE).
     stage_payload()
