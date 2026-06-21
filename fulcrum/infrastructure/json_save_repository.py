@@ -45,6 +45,7 @@ def _domain_to_dict(domain: Domain) -> dict:
         "parent_id": domain.parent_id,
         "lead": domain.lead,
         "category": domain.category,
+        "headcount": domain.headcount,
     }
 
 
@@ -107,6 +108,7 @@ def org_from_dict(data: dict) -> OrgState:
             d.get("parent_id"),
             d.get("lead", ""),
             d.get("category", DEFAULT_CATEGORY),
+            d.get("headcount", 0),
         )
         for d in data.get("domains", ())
     )

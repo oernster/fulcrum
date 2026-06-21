@@ -156,7 +156,9 @@ class Domain:
 
     Domains nest to any depth through parent_id, forming the hierarchy a large
     org is navigated and recommended through. lead names the senior owner the
-    CTO would hand this domain's recommendations to.
+    CTO would hand this domain's recommendations to. headcount is the unit's own
+    population, which the hierarchy queries roll up; it is zero for a unit whose
+    people are counted by its teams instead.
     """
 
     id: str
@@ -164,6 +166,7 @@ class Domain:
     parent_id: str | None = None
     lead: str = ""
     category: str = DEFAULT_CATEGORY
+    headcount: int = 0
 
     def __post_init__(self) -> None:
         if not self.id:

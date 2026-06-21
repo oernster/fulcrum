@@ -26,7 +26,7 @@ def _saved_game():
         dependencies=(Dependency("a", "b", 3),),
         workload=4,
         origin=Origin.WIZARD,
-        domains=(Domain("core", "Core", lead="Dana"),),
+        domains=(Domain("core", "Core", lead="Dana", headcount=1200),),
     )
     return SavedGame(
         org=org,
@@ -44,6 +44,7 @@ def test_save_load_roundtrip_and_slots(tmp_path):
     loaded = repository.load("slot1")
     assert loaded.org == game.org
     assert loaded.org.domains == game.org.domains
+    assert loaded.org.domains[0].headcount == 1200
     assert loaded.org.team("a").domain_id == "core"
     assert loaded.org.team("a").size == 2
     assert loaded.org.team("a").owner == "Ada"

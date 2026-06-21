@@ -8,6 +8,8 @@ from fulcrum.application.level_generator import (
     _BIG_TEAM_MAX,
     _BIG_TEAM_MIN,
     _DEPTH,
+    _MAX_COMPANY,
+    _MIN_COMPANY,
     _MIN_FANOUT,
     _ROOT_DIVISIONS,
     _TEAM_MAX,
@@ -19,7 +21,11 @@ from fulcrum.application.level_generator import (
     has_great_move,
 )
 from fulcrum.application.simulator import DeterministicSimulator
-from fulcrum.domain.hierarchy import focused_suborg, total_headcount
+from fulcrum.domain.hierarchy import (
+    focused_suborg,
+    headcount_in_domain,
+    total_headcount,
+)
 from fulcrum.domain.models import Origin, OrgState, Team
 from fulcrum.infrastructure.json_org_importer import JsonOrgImporter
 
@@ -77,10 +83,12 @@ def test_generated_org_nests_to_depth_and_branches():
     assert all(count == 0 or count >= _MIN_FANOUT for count in counts.values())
 
 
-def test_generated_headcount_rolls_up():
+def test_generated_headcount_is_company_scale_and_rolls_up():
     org = generate_level(Random(0))
-    assert total_headcount(org) == sum(team.headcount for team in org.teams)
-    assert total_headcount(org) >= len(org.teams) * _TEAM_MIN
+    assert _MIN_COMPANY <= total_headcount(org) <= _MAX_COMPANY
+    roots = [d for d in org.domains if d.parent_id is None]
+    assert sum(headcount_in_domain(org, r.id) for r in roots) == total_headcount(org)
+    assert all(headcount_in_domain(org, r.id) > 0 for r in roots)
 
 
 def test_team_headcount_stays_team_sized():

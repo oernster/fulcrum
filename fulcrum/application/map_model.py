@@ -12,6 +12,7 @@ from fulcrum.application.dto import MapEdge, MapNode
 from fulcrum.domain.hierarchy import (
     child_domains,
     domain_subtree_ids,
+    headcount_in_domain,
     root_domains,
     teams_in_domain,
 )
@@ -50,7 +51,7 @@ def build_level(
                 authority_ratio=_authority_ratio(members),
                 owner=domain.lead,
                 category=domain.category,
-                headcount=sum(t.headcount for t in members),
+                headcount=headcount_in_domain(org, domain.id),
             )
         )
     for team in direct_teams:
