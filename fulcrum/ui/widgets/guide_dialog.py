@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from PySide6.QtCore import QEvent, Qt
 from PySide6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QDialog,
     QHBoxLayout,
@@ -23,12 +25,17 @@ from fulcrum.ui.widgets.move_preview_dialog import MovePreviewDialog
 _MIN_WIDTH = 560
 _MIN_HEIGHT = 420
 _GROW_TOGGLE_TEXT = "Allow the organisation to grow (split or add teams)"
-_HINT = "🔍 previews a move."
+_HINT = "🔍 previews a move (Up and Down move between them)."
 _ALREADY_GOOD = (
     "This organisation is already in good shape; no single move improves it "
     "much from here."
 )
 _SCORE_DECIMALS = 1
+_MAGNIFIER_NAME = "PreviewButton"
+_WIDGET = "widget"
+_GROUP = "group"
+_FORWARD = 1
+_BACK = -1
 
 
 def _step_text(index: int, step: GuideStep) -> str:
@@ -42,9 +49,10 @@ def _step_text(index: int, step: GuideStep) -> str:
 class GuideDialog(QDialog):
     """Lists the improving move chain, like a chess engine's best line.
 
-    When a growth_guide is supplied a checkbox switches between the fixed-size
-    plan and the plan allowed to grow the org. Each step carries a real magnifier
-    button, tabbable and amber-on-hover, that previews the move as the board does.
+    A checkbox switches between the fixed-size plan and the plan allowed to grow
+    the org. Each step carries a magnifier that previews the move as the board
+    does. Tab cycles the checkbox, the magnifier group then Close (and wraps);
+    Up and Down move between the magnifiers, which are one Tab stop.
     """
 
     def __init__(
@@ -60,6 +68,8 @@ class GuideDialog(QDialog):
         self._guide = guide
         self._growth_guide = growth_guide
         self._simulator = simulator
+        self._toggle: QCheckBox | None = None
+        self._started = False
         layout = QVBoxLayout(self)
 
         heading = QLabel("Path to a stronger org")
@@ -69,9 +79,9 @@ class GuideDialog(QDialog):
         self._summary.setObjectName("Muted")
         layout.addWidget(self._summary)
         if growth_guide is not None:
-            toggle = QCheckBox(_GROW_TOGGLE_TEXT)
-            toggle.toggled.connect(self._on_growth_toggled)
-            layout.addWidget(toggle)
+            self._toggle = QCheckBox(_GROW_TOGGLE_TEXT)
+            self._toggle.toggled.connect(self._on_growth_toggled)
+            layout.addWidget(self._toggle)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -81,13 +91,14 @@ class GuideDialog(QDialog):
         layout.addWidget(scroll, 1)
 
         row = QHBoxLayout()
-        close_button = QPushButton("Close")
-        close_button.clicked.connect(self.accept)
+        self._close_button = QPushButton("Close")
+        self._close_button.clicked.connect(self.accept)
         row.addStretch()
-        row.addWidget(close_button)
+        row.addWidget(self._close_button)
         layout.addLayout(row)
 
         self._render(guide)
+        QApplication.instance().installEventFilter(self)
 
     def _render(self, guide: Guide) -> None:
         clear_layout(self._rows)
@@ -133,3 +144,95 @@ class GuideDialog(QDialog):
 
     def _on_growth_toggled(self, allow_growth: bool) -> None:
         self._render(self._growth_guide if allow_growth else self._guide)
+
+    # Focus ring: checkbox -> magnifier group -> Close -> wrap; Up and Down move
+    # within the magnifier group, which is a single Tab stop.
+    def eventFilter(self, obj, event) -> bool:
+        if event.type() != QEvent.Type.KeyPress:
+            return False
+        if QApplication.activeModalWidget() is not self:
+            return False
+        key = event.key()
+        if key in (Qt.Key.Key_Tab, Qt.Key.Key_Backtab):
+            shift = key == Qt.Key.Key_Backtab or bool(
+                event.modifiers() & Qt.KeyboardModifier.ShiftModifier
+            )
+            self._step(_BACK if shift else _FORWARD)
+            return True
+        focus = QApplication.focusWidget()
+        if key == Qt.Key.Key_Down:
+            return self._step_magnifier(focus, _FORWARD)
+        if key == Qt.Key.Key_Up:
+            return self._step_magnifier(focus, _BACK)
+        return False
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        if not self._started:
+            self._started = True
+            stops = self._ring()
+            if stops:
+                self._focus_stop(stops[0])
+
+    def done(self, result: int) -> None:
+        QApplication.instance().removeEventFilter(self)
+        super().done(result)
+
+    def _ring(self) -> list:
+        stops = []
+        if self._toggle is not None:
+            stops.append((_WIDGET, self._toggle))
+        stops.append((_GROUP, self._rows_holder))
+        stops.append((_WIDGET, self._close_button))
+        return stops
+
+    def _magnifiers(self) -> list:
+        return [
+            widget
+            for widget in self._rows_holder.findChildren(QPushButton)
+            if widget.objectName() == _MAGNIFIER_NAME
+            and widget.isVisibleTo(self._rows_holder)
+            and widget.isEnabled()
+        ]
+
+    def _step(self, delta) -> None:
+        stops = self._ring()
+        index = self._current_index(stops)
+        if index < 0:
+            index = -1 if delta == _FORWARD else 0
+        for _ in range(len(stops)):
+            index = (index + delta) % len(stops)
+            if self._focus_stop(stops[index]):
+                return
+
+    def _current_index(self, stops) -> int:
+        focus = QApplication.focusWidget()
+        if focus is None:
+            return -1
+        for index, (kind, target) in enumerate(stops):
+            if kind == _WIDGET and target is focus:
+                return index
+            if kind == _GROUP and target.isAncestorOf(focus):
+                return index
+        return -1
+
+    def _focus_stop(self, stop) -> bool:
+        kind, target = stop
+        if kind == _GROUP:
+            magnifiers = self._magnifiers()
+            if not magnifiers:
+                return False
+            magnifiers[0].setFocus(Qt.FocusReason.TabFocusReason)
+            return True
+        if not (target.isEnabled() and target.isVisible()):
+            return False
+        target.setFocus(Qt.FocusReason.TabFocusReason)
+        return True
+
+    def _step_magnifier(self, focus, delta) -> bool:
+        magnifiers = self._magnifiers()
+        if focus in magnifiers and len(magnifiers) > 1:
+            index = (magnifiers.index(focus) + delta) % len(magnifiers)
+            magnifiers[index].setFocus(Qt.FocusReason.TabFocusReason)
+            return True
+        return False
