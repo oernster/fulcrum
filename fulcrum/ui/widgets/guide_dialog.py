@@ -6,7 +6,6 @@ from PySide6.QtCore import QEvent, Qt
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
-    QDialog,
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -20,6 +19,7 @@ from fulcrum.application.interfaces import Simulator
 from fulcrum.application.planner import Guide, GuideStep
 from fulcrum.ui import ui_scale
 from fulcrum.ui.widgets.board_renderers import clear_layout, magnifier_button
+from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 from fulcrum.ui.widgets.move_preview_dialog import MovePreviewDialog
 
 _MIN_WIDTH = 560
@@ -46,7 +46,7 @@ def _step_text(index: int, step: GuideStep) -> str:
     )
 
 
-class GuideDialog(QDialog):
+class GuideDialog(NeutralDialog):
     """Lists the improving move chain, like a chess engine's best line.
 
     A checkbox switches between the fixed-size plan and the plan allowed to grow
@@ -69,7 +69,6 @@ class GuideDialog(QDialog):
         self._growth_guide = growth_guide
         self._simulator = simulator
         self._toggle: QCheckBox | None = None
-        self._started = False
         layout = QVBoxLayout(self)
 
         heading = QLabel("Path to a stronger org")
@@ -165,14 +164,6 @@ class GuideDialog(QDialog):
         if key == Qt.Key.Key_Up:
             return self._step_magnifier(focus, _BACK)
         return False
-
-    def showEvent(self, event) -> None:
-        super().showEvent(event)
-        if not self._started:
-            self._started = True
-            stops = self._ring()
-            if stops:
-                self._focus_stop(stops[0])
 
     def done(self, result: int) -> None:
         QApplication.instance().removeEventFilter(self)

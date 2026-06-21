@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 
 from fulcrum.shared.resources import find_about_png
 from fulcrum.ui import ui_scale
+from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 from fulcrum.version import APP_AUTHOR, APP_NAME, APP_TAGLINE, __version__
 
 _ICON_PX = 96
@@ -58,7 +59,7 @@ def _close_row(dialog: QDialog) -> QHBoxLayout:
     return row
 
 
-class AboutDialog(QDialog):
+class AboutDialog(NeutralDialog):
     """About Fulcrum: icon, version, author and library credits."""
 
     def __init__(self, parent=None) -> None:
@@ -96,7 +97,7 @@ class AboutDialog(QDialog):
         layout.addLayout(_close_row(self))
 
 
-class LicenceDialog(QDialog):
+class LicenceDialog(NeutralDialog):
     """Shows a bundled licence text verbatim."""
 
     def __init__(self, title: str, path: Path | None, parent=None) -> None:

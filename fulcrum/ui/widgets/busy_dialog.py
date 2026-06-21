@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QDialog, QLabel, QProgressBar, QVBoxLayout
+from PySide6.QtWidgets import QLabel, QProgressBar, QVBoxLayout
 
 from fulcrum.ui import ui_scale
+from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 
 _MIN_WIDTH = 320
 _BUSY_RANGE = 0
 
 
-class BusyDialog(QDialog):
+class BusyDialog(NeutralDialog):
     """A modal, cancel-less 'working' dialog with an indeterminate bar.
 
     Shown without blocking the event loop (via show, not exec), so the worker

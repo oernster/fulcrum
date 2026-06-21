@@ -17,7 +17,6 @@ from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
-    QDialog,
     QDialogButtonBox,
     QHBoxLayout,
     QHeaderView,
@@ -37,6 +36,7 @@ from fulcrum.application.dto import DomainSpec, OrgBlueprint, TeamSpec
 from fulcrum.domain.models import DEFAULT_CATEGORY, DEFAULT_HEADCOUNT, GROUP_CATEGORIES
 from fulcrum.ui import ui_scale
 from fulcrum.ui.widgets.dependency_editor import DependencyEditor
+from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 from fulcrum.ui.widgets.glossary_dialog import GlossaryDialog
 from fulcrum.ui.widgets.org_editor_widgets import (
     action_button,
@@ -98,7 +98,7 @@ _HINT = (
 )
 
 
-class OrgEditorDialog(QDialog):
+class OrgEditorDialog(NeutralDialog):
     """Collects a hierarchical OrgBlueprint: domains, teams, dependencies."""
 
     def __init__(self, parent=None) -> None:

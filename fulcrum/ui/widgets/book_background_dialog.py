@@ -11,7 +11,6 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
-    QDialog,
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -26,6 +25,7 @@ from fulcrum.application.books import build_book_showcase
 from fulcrum.domain.books import BookEntry
 from fulcrum.shared.resources import find_book_cover
 from fulcrum.ui import ui_scale
+from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 
 _ACCENT = "#f59e0b"
 _DIALOG_MIN_WIDTH = 760
@@ -105,7 +105,7 @@ def _series_card(book: BookEntry) -> QFrame:
     return card
 
 
-class BookBackgroundDialog(QDialog):
+class BookBackgroundDialog(NeutralDialog):
     """The Decision Architecture books behind Fulcrum, with buy links."""
 
     def __init__(self, parent=None) -> None:

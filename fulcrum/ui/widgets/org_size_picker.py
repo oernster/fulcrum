@@ -13,12 +13,13 @@ from PySide6.QtWidgets import (
 
 from fulcrum.domain.org_size import DEFAULT_BAND, ORG_SIZE_BANDS, OrgSizeBand
 from fulcrum.ui import ui_scale
+from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 
 _MIN_WIDTH = 440
 _PROMPT = "Choose the rough size of the organisation to generate:"
 
 
-class OrgSizePicker(QDialog):
+class OrgSizePicker(NeutralDialog):
     """Lists the size bands as radio choices and returns the one picked."""
 
     def __init__(self, parent=None) -> None:

@@ -10,7 +10,6 @@ the same linear apply_move the board uses, quick enough to run on open.
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
-    QDialog,
     QDialogButtonBox,
     QHBoxLayout,
     QLabel,
@@ -26,6 +25,7 @@ from fulcrum.domain.hierarchy import focused_suborg, translate_focused_move
 from fulcrum.domain.models import OrgState
 from fulcrum.domain.moves import Move, apply_move
 from fulcrum.ui import ui_scale
+from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 from fulcrum.ui.widgets.org_map_view import OrgMapView
 
 _SCORE_DECIMALS = 1
@@ -39,7 +39,7 @@ _ESCALATES = "escalates"
 _PLAY_LABEL = "Play this move"
 
 
-class MovePreviewDialog(QDialog):
+class MovePreviewDialog(NeutralDialog):
     """Explains a move, names what changes and shows a ringed before/after map."""
 
     def __init__(

@@ -9,7 +9,6 @@ from __future__ import annotations
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import (
     QComboBox,
-    QDialog,
     QHBoxLayout,
     QLabel,
     QStackedWidget,
@@ -18,6 +17,7 @@ from PySide6.QtWidgets import (
 
 from fulcrum.domain.hierarchy import total_headcount
 from fulcrum.domain.models import OrgState
+from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 from fulcrum.ui import ui_scale
 from fulcrum.ui.widgets.complete_map_view import CompleteMapView
 from fulcrum.ui.widgets.org_map_view import OrgMapView
@@ -32,7 +32,7 @@ _HEIGHT = 680
 _COMPLETE_INDEX = 0
 
 
-class OrgOverviewDialog(QDialog):
+class OrgOverviewDialog(NeutralDialog):
     """Shows the whole organisation, as a complete picture or a drill-down map."""
 
     def __init__(self, org: OrgState, parent=None) -> None:

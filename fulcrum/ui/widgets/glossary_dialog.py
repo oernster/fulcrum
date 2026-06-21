@@ -7,7 +7,6 @@ and the core ideas); a low-key 'Further reading' link points to the books.
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
-    QDialog,
     QHBoxLayout,
     QPushButton,
     QTextBrowser,
@@ -16,6 +15,7 @@ from PySide6.QtWidgets import (
 
 from fulcrum.application.glossary import build_glossary
 from fulcrum.ui import ui_scale
+from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 from fulcrum.ui.widgets.book_background_dialog import BookBackgroundDialog
 
 _MIN_WIDTH = 640
@@ -38,7 +38,7 @@ def _glossary_html() -> str:
     return "".join(parts)
 
 
-class GlossaryDialog(QDialog):
+class GlossaryDialog(NeutralDialog):
     """Shows the decision glossary with a books 'Further reading' link."""
 
     def __init__(self, parent=None) -> None:

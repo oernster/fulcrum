@@ -8,7 +8,6 @@ final score only while the whole sequence still applies.
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
-    QDialog,
     QDialogButtonBox,
     QHBoxLayout,
     QLabel,
@@ -22,6 +21,7 @@ from fulcrum.application.dto import Plan
 from fulcrum.application.interfaces import Simulator
 from fulcrum.application.plan import build_plan_report
 from fulcrum.ui import ui_scale
+from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 
 _MIN_WIDTH = 620
 _MIN_HEIGHT = 520
@@ -30,7 +30,7 @@ _OK_SCORE = "Re-evaluated final score: {0:.1f} / 100"
 _BAD_SCORE = "Sequence is invalid after this edit; trimming on save will fix it."
 
 
-class PlanEditorDialog(QDialog):
+class PlanEditorDialog(NeutralDialog):
     """Reorders and removes a plan's moves, re-scoring as it goes."""
 
     def __init__(self, plan: Plan, simulator: Simulator, parent=None) -> None:
