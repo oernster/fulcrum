@@ -372,14 +372,16 @@ class BoardView(QWidget):
     def _open_move_preview(self, valuation: MoveValuation) -> None:
         if self._session is None:
             return
-        MovePreviewDialog(
+        dialog = MovePreviewDialog(
             self._session.org,
             self._session.focused_on,
             valuation,
             self._session.simulator,
             self._scope_active,
             self,
-        ).exec()
+        )
+        if dialog.exec():
+            self._play(valuation)
 
     def _set_last_move_note(self) -> None:
         if self._session is not None and self._session.history:

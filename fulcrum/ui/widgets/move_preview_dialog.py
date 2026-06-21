@@ -36,6 +36,7 @@ _DIALOG_H = 560
 _CHANGE_COLOR = "#22d3ee"
 _DECIDES = "decides locally"
 _ESCALATES = "escalates"
+_PLAY_LABEL = "Play this move"
 
 
 class MovePreviewDialog(QDialog):
@@ -69,6 +70,9 @@ class MovePreviewDialog(QDialog):
         self._add_changes(layout, org, after_org, real)
         layout.addWidget(self._before_after(before, after, ringed), 1)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        play = buttons.addButton(_PLAY_LABEL, QDialogButtonBox.ButtonRole.AcceptRole)
+        play.setDefault(True)
+        buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
 
