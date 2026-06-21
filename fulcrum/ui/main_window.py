@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from random import Random
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QDialog,
     QFileDialog,
@@ -33,12 +33,14 @@ from fulcrum.application.plan_edit import first_invalid_index
 from fulcrum.application.planner import ImprovementPlanner
 from fulcrum.domain.errors import FulcrumError
 from fulcrum.domain.hierarchy import child_domains, focused_suborg
-from fulcrum.domain.models import Origin
+from fulcrum.domain.models import Origin, OrgState
 from fulcrum.domain.org_size import DEFAULT_BAND, OrgSizeBand
 from fulcrum.shared.resources import find_model_licence, find_ui_licence
+from fulcrum.ui.generation_thread import GenerationThread
 from fulcrum.ui.widgets.about_dialog import AboutDialog, LicenceDialog
 from fulcrum.ui.widgets.board_view import BoardView
 from fulcrum.ui.widgets.book_background_dialog import BookBackgroundDialog
+from fulcrum.ui.widgets.busy_dialog import BusyDialog
 from fulcrum.ui.widgets.glossary_dialog import GlossaryDialog
 from fulcrum.ui.widgets.guide_dialog import GuideDialog
 from fulcrum.ui.widgets.org_editor import OrgEditorDialog
@@ -58,6 +60,9 @@ _GLOSSARY_GLYPH = "\N{SCROLL}"
 _GLOSSARY_TOOLTIP = "Decision glossary"
 _OVERVIEW_GLYPH = "\N{WORLD MAP}\N{VARIATION SELECTOR-16}"
 _OVERVIEW_TOOLTIP = "Organisation overview"
+# Show the busy dialog only if generation outlasts this, so small bands that
+# build in a few milliseconds never flash it.
+_BUSY_DELAY_MS = 200
 
 
 class MainWindow(QMainWindow):
@@ -157,7 +162,23 @@ class MainWindow(QMainWindow):
     def _new_random_org(self) -> None:
         band = OrgSizePicker.choose(self)
         if band is not None:
-            self._generate(band)
+            self._generate_async(band)
+
+    def _generate_async(self, band: OrgSizeBand) -> None:
+        self._generation = GenerationThread(self._rng, band)
+        self._generation.generated.connect(self._on_generated)
+        self._generation.finished.connect(self._generation.deleteLater)
+        self._busy = BusyDialog("Generating organisation...", self)
+        self._busy_timer = QTimer(self)
+        self._busy_timer.setSingleShot(True)
+        self._busy_timer.timeout.connect(self._busy.show)
+        self._busy_timer.start(_BUSY_DELAY_MS)
+        self._generation.start()
+
+    def _on_generated(self, org: OrgState) -> None:
+        self._busy_timer.stop()
+        self._busy.close()
+        self._set_session(GameSession(org, self._simulator))
 
     def _show_guide(self) -> None:
         if self._session is None:

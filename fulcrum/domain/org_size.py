@@ -67,6 +67,7 @@ ORG_SIZE_BANDS: tuple[OrgSizeBand, ...] = (
     ),
 )
 
-# The mid band is offered first: a recognisable org big enough to drill through
-# without being so large that a first generation feels heavy.
-DEFAULT_BAND: OrgSizeBand = ORG_SIZE_BANDS[2]
+# A small org is offered first and built at startup: it is fully playable at once
+# and scores instantly, so the app opens on a live position rather than an
+# overview. The larger bands are one click away in the picker.
+DEFAULT_BAND: OrgSizeBand = ORG_SIZE_BANDS[1]

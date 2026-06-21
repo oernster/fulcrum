@@ -22,12 +22,12 @@ _MIN_COUPLING_TO_SPLIT: int = 2
 _MIN_COUPLING_TO_ADD_OWNER: int = 1
 
 # The largest section scored and valuated live. Scoring is O(teams x deps) and
-# valuating every candidate move repeats it per move, so above this a scope is an
-# overview to drill into rather than a position to play, which keeps a hundred
-# thousand person org responsive: you narrow to a section, and that section plays.
-# Set so a single division's worth of teams still plays whole, and only larger
-# scopes become an overview.
-_MAX_PLAYABLE_TEAMS: int = 200
+# valuating every candidate move repeats it, so the cost climbs steeply: a few
+# dozen teams score in well under a second, but a few hundred take several. Above
+# this a scope is an overview to drill into rather than a position to play, so
+# only sections that score fast (a department and the leaf clusters below it) are
+# ever scored live, which is what keeps a large org responsive.
+_MAX_PLAYABLE_TEAMS: int = 50
 
 
 def enumerate_moves(org: OrgState, allow_growth: bool = False) -> tuple[Move, ...]:
