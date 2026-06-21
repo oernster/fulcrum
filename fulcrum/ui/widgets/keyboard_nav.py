@@ -52,13 +52,13 @@ class KeyboardNavigator(QObject):
             return False  # the toolkit drives an open menu's items
         if QApplication.activeModalWidget() is not None:
             return False
+        if self._menubar.activeAction() is not None:
+            return self._handle_menu(key)
         focus = QApplication.focusWidget()
         if focus is None or not self._within(focus):
             return False
         if focus is self._map:
             return False
-        if focus is self._menubar:
-            return self._handle_menu(key)
         return self._handle_arrows(focus, key)
 
     def _handle_tab(self, key, event) -> bool:
@@ -77,6 +77,9 @@ class KeyboardNavigator(QObject):
             return True
         if QApplication.activeModalWidget() is not None:
             return False
+        if self._menubar.activeAction() is not None:
+            self._step(delta)
+            return True
         focus = QApplication.focusWidget()
         if focus is None or not self._within(focus):
             return False
@@ -142,10 +145,11 @@ class KeyboardNavigator(QObject):
                 return
 
     def _current_index(self) -> int:
+        active = self._menubar.activeAction()
         focus = QApplication.focusWidget()
         for index, (kind, target) in enumerate(self._stops):
             if kind == _MENU:
-                if self._menubar.hasFocus() and self._menubar.activeAction() is target:
+                if active is not None and target is active:
                     return index
             elif focus is not None and kind == _WIDGET and target is focus:
                 return index
@@ -160,6 +164,9 @@ class KeyboardNavigator(QObject):
             self._menubar.setFocus(Qt.FocusReason.TabFocusReason)
             self._menubar.setActiveAction(target)
             return True
+        # Leaving the menu bar: clear its highlight so it is no longer the active
+        # region, otherwise it keeps consuming the arrow keys as native menu nav.
+        self._menubar.setActiveAction(None)
         if kind == _WIDGET:
             # A disabled stop (the undo button with no history) cannot hold
             # focus, so skip it rather than stall the ring on a dead stop.
