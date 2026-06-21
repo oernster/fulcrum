@@ -71,3 +71,24 @@ def test_plan_without_growth_offers_no_growth_moves():
     kinds = {step.move.kind for step in guide.steps}
     assert MoveKind.ADD_TEAM not in kinds
     assert MoveKind.SPLIT_TEAM not in kinds
+
+
+def test_plan_restricts_to_allowed_move_kinds():
+    guide = ImprovementPlanner(DeterministicSimulator()).plan(
+        _broken(), allowed_kinds=(MoveKind.DELEGATE_AUTHORITY,)
+    )
+    assert guide.steps
+    assert {step.move.kind for step in guide.steps} == {MoveKind.DELEGATE_AUTHORITY}
+
+
+def test_plan_with_no_allowed_kinds_yields_no_steps():
+    guide = ImprovementPlanner(DeterministicSimulator()).plan(
+        _broken(), allowed_kinds=()
+    )
+    assert guide.steps == ()
+
+
+def test_plan_labels_each_step_with_a_description():
+    guide = ImprovementPlanner(DeterministicSimulator()).plan(_broken())
+    assert guide.steps
+    assert all(step.move.label for step in guide.steps)

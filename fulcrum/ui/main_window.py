@@ -32,7 +32,11 @@ from fulcrum.application.plan import build_plan_report
 from fulcrum.application.plan_edit import first_invalid_index
 from fulcrum.application.planner import ImprovementPlanner
 from fulcrum.domain.errors import FulcrumError
-from fulcrum.domain.hierarchy import child_domains, focused_suborg
+from fulcrum.domain.hierarchy import (
+    AGGREGATE_MOVE_KINDS,
+    child_domains,
+    focused_suborg,
+)
 from fulcrum.domain.models import Origin, OrgState
 from fulcrum.domain.org_size import DEFAULT_BAND, OrgSizeBand
 from fulcrum.shared.resources import find_model_licence, find_ui_licence
@@ -183,18 +187,22 @@ class MainWindow(QMainWindow):
     def _show_guide(self) -> None:
         if self._session is None:
             return
-        org = self._session.org
-        focused = self._session.focused_on
-        if focused is None or child_domains(org, focused):
+        if not self._session.is_active_scope_playable():
             self._inform(
                 "Guide",
-                "Drill into a section on the map first. The guide plans the "
-                "section you are in, where the strong moves are.",
+                "This scope is too large to plan. Drill into a section on the "
+                "map first, then open the guide there.",
             )
             return
-        section = focused_suborg(org, focused)
-        fixed = ImprovementPlanner(self._simulator).plan(section)
-        grown = ImprovementPlanner(self._simulator, allow_growth=True).plan(section)
+        org = self._session.org
+        focused = self._session.focused_on
+        section = focused_suborg(org, focused) if focused is not None else org
+        aggregate = focused is not None and bool(child_domains(org, focused))
+        kinds = AGGREGATE_MOVE_KINDS if aggregate else None
+        fixed = ImprovementPlanner(self._simulator).plan(section, kinds)
+        grown = ImprovementPlanner(self._simulator, allow_growth=True).plan(
+            section, kinds
+        )
         GuideDialog(fixed, grown, self).exec()
 
     def _model_org(self) -> None:

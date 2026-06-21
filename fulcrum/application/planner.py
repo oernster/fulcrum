@@ -13,8 +13,9 @@ from dataclasses import dataclass
 
 from fulcrum.application.game_session import enumerate_moves
 from fulcrum.application.interfaces import Simulator
+from fulcrum.application.move_text import describe_move
 from fulcrum.domain.models import OrgState
-from fulcrum.domain.moves import Move, apply_move
+from fulcrum.domain.moves import Move, MoveKind, apply_move
 from fulcrum.domain.simulation import MoveClassification
 
 _DEFAULT_MAX_STEPS = 12
@@ -48,23 +49,31 @@ class ImprovementPlanner:
     min_gain: float = _DEFAULT_MIN_GAIN
     allow_growth: bool = False
 
-    def plan(self, org: OrgState) -> Guide:
+    def plan(
+        self, org: OrgState, allowed_kinds: tuple[MoveKind, ...] | None = None
+    ) -> Guide:
         start = self.simulator.score(org).value
         current = org
         current_score = start
         steps: list[GuideStep] = []
         for _ in range(self.max_steps):
-            valuations = self.simulator.valuate_moves(
-                current, enumerate_moves(current, allow_growth=self.allow_growth)
+            moves = enumerate_moves(current, allow_growth=self.allow_growth)
+            if allowed_kinds is not None:
+                moves = tuple(m for m in moves if m.kind in allowed_kinds)
+            if not moves:
+                break
+            best = max(
+                self.simulator.valuate_moves(current, moves),
+                key=lambda valuation: valuation.delta,
             )
-            best = max(valuations, key=lambda valuation: valuation.delta)
             if best.delta < self.min_gain:
                 break
+            label = describe_move(current, best.move)
             current = apply_move(current, best.move)
             current_score = best.score_after
             steps.append(
                 GuideStep(
-                    move=best.move,
+                    move=Move(best.move.kind, best.move.targets, label),
                     classification=best.classification,
                     score_after=current_score,
                 )
