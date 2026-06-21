@@ -28,6 +28,11 @@ _SCORE_DECIMALS = 1
 _VALUE_DECIMALS = 1
 _MAP_CAPTION = "Organisation map"
 _MAP_HINT = "click a domain to open"
+_MOVES_TOOLTIP = (
+    "At a high-level scope the moves are mostly neutral with very small score "
+    "gains. To really gain, drill into a domain on the map and play that "
+    "section, where the strong moves appear."
+)
 _MAP_PANE_W = 520
 _RIGHT_PANE_W = 480
 _RIGHT_PANE_MIN = 360
@@ -132,6 +137,7 @@ class BoardView(QWidget):
         column.setContentsMargins(0, 0, 0, 0)
         moves_caption = QLabel("Available moves within current scope")
         moves_caption.setObjectName("Muted")
+        moves_caption.setToolTip(_MOVES_TOOLTIP)
         column.addWidget(moves_caption)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
