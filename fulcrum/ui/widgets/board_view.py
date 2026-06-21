@@ -17,9 +17,10 @@ from PySide6.QtWidgets import (
 from fulcrum.application.dto import MoveValuation
 from fulcrum.application.game_session import GameSession
 from fulcrum.application.move_text import describe_move, move_note
-from fulcrum.domain.hierarchy import total_headcount
+from fulcrum.domain.hierarchy import child_domains, total_headcount
 from fulcrum.domain.moves import MoveKind
 from fulcrum.domain.signals import SignalReading
+from fulcrum.domain.simulation import MoveClassification
 from fulcrum.ui import ui_scale
 from fulcrum.ui.widgets.definition_popover import DefinitionPopover
 from fulcrum.ui.widgets.org_map_view import OrgMapView
@@ -32,6 +33,10 @@ _MOVES_TOOLTIP = (
     "At a high-level scope the moves are mostly neutral with very small score "
     "gains. To really gain, drill into a domain on the map and play that "
     "section, where the strong moves appear."
+)
+_SCOPE_HINT = (
+    "Only neutral moves at this scope. Drill into a domain on the map to find "
+    "the strong moves that really gain."
 )
 _MAP_PANE_W = 520
 _RIGHT_PANE_W = 480
@@ -139,6 +144,12 @@ class BoardView(QWidget):
         moves_caption.setObjectName("Muted")
         moves_caption.setToolTip(_MOVES_TOOLTIP)
         column.addWidget(moves_caption)
+        self._scope_hint = QLabel(_SCOPE_HINT)
+        self._scope_hint.setObjectName("Muted")
+        self._scope_hint.setWordWrap(True)
+        self._scope_hint.setStyleSheet(f"color: {_PREVIEW_COLOR};")
+        self._scope_hint.setVisible(False)
+        column.addWidget(self._scope_hint)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         moves_holder = QWidget()
@@ -199,8 +210,17 @@ class BoardView(QWidget):
         self._map.set_preview(False)
         self._map.set_org(self._session.org)
         self._render_signals(self._session.signals())
-        self._render_moves(self._session.candidate_valuations())
+        valuations = self._session.candidate_valuations()
+        self._render_moves(valuations)
+        self._update_scope_hint(valuations)
         self._set_last_move_note()
+
+    def _update_scope_hint(self, valuations) -> None:
+        strong = {MoveClassification.GOOD, MoveClassification.GREAT}
+        has_strong = any(v.classification in strong for v in valuations)
+        focused = self._session.focused_on
+        can_drill = focused is None or bool(child_domains(self._session.org, focused))
+        self._scope_hint.setVisible(can_drill and not has_strong)
 
     def _map_caption_text(self) -> str:
         if self._session is not None and self._session.org.domains:
