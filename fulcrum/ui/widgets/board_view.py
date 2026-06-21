@@ -46,9 +46,9 @@ _OVERVIEW_HINT = (
 _OVERVIEW_SCORE = "-"
 _COMPUTING_SCORE = "..."
 _COMPUTING_HINT = "Scoring this section..."
-# Show the scoring note only if the analysis outlasts this, so a fast section (a
-# leaf or a small department) refreshes without flickering the note.
-_COMPUTING_DELAY_MS = 120
+# Show the scoring note only if the analysis outlasts this, so a section that
+# scores quickly refreshes without flickering the note in and straight out.
+_COMPUTING_DELAY_MS = 200
 _MAP_PANE_W = 520
 _RIGHT_PANE_W = 480
 _RIGHT_PANE_MIN = 360

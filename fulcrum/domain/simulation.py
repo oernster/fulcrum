@@ -98,13 +98,53 @@ class StructuralScore:
     rework_penalty: float
 
 
-def coupling_of(org: OrgState, team_id: str) -> int:
+@dataclass(frozen=True, slots=True)
+class CouplingIndex:
+    """Per-team dependency aggregates, gathered in one pass over the edges.
+
+    Scoring reads each team's coupling, mean incoming delay and inbound demand
+    repeatedly; gathering them once turns the per-team dependency rescans into
+    dictionary lookups, so scoring a section is linear in teams plus edges rather
+    than their product. It is an optimisation only: each value equals what the
+    on-demand helpers compute, so passing an index never changes a score.
+    """
+
+    coupling: dict[str, int]
+    incoming_delay: dict[str, float]
+    depended_upon: dict[str, int]
+
+
+def dependency_index(org: OrgState) -> CouplingIndex:
+    """Gather every team's dependency aggregates in a single pass over the edges."""
+    coupling = {team.id: 0 for team in org.teams}
+    delay_sum = {team.id: 0 for team in org.teams}
+    delay_count = {team.id: 0 for team in org.teams}
+    depended = {team.id: 0 for team in org.teams}
+    for dep in org.dependencies:
+        coupling[dep.upstream] += 1
+        coupling[dep.downstream] += 1
+        delay_sum[dep.downstream] += dep.propagation_delay
+        delay_count[dep.downstream] += 1
+        depended[dep.upstream] += 1
+    incoming: dict[str, float] = {}
+    for team_id, count in delay_count.items():
+        incoming[team_id] = delay_sum[team_id] / count if count else _ZERO
+    return CouplingIndex(coupling, incoming, depended)
+
+
+def coupling_of(org: OrgState, team_id: str, index: CouplingIndex | None = None) -> int:
     """Number of dependencies that touch a team in either direction."""
+    if index is not None:
+        return index.coupling[team_id]
     return sum(1 for dep in org.dependencies if dep.touches(team_id))
 
 
-def incoming_delay(org: OrgState, team_id: str) -> float:
+def incoming_delay(
+    org: OrgState, team_id: str, index: CouplingIndex | None = None
+) -> float:
     """Mean propagation delay on the dependencies this team waits on."""
+    if index is not None:
+        return index.incoming_delay[team_id]
     delays = [d.propagation_delay for d in org.dependencies if d.downstream == team_id]
     if not delays:
         return _ZERO
@@ -112,13 +152,16 @@ def incoming_delay(org: OrgState, team_id: str) -> float:
 
 
 def team_capacity(
-    org: OrgState, team: Team, params: SimulationParameters = DEFAULT_PARAMETERS
+    org: OrgState,
+    team: Team,
+    params: SimulationParameters = DEFAULT_PARAMETERS,
+    index: CouplingIndex | None = None,
 ) -> float:
     """Decisions a team can clear per turn, after structural penalties."""
     capacity = params.base_capacity
     if not team.has_local_authority:
         capacity *= params.authority_penalty
-    capacity /= _UNIT + params.coupling_weight * coupling_of(org, team.id)
+    capacity /= _UNIT + params.coupling_weight * coupling_of(org, team.id, index)
     capacity /= _UNIT + params.incentive_weight * team.incentive_skew
     excess_size = max(_ZERO, float(team.size - params.ideal_team_size))
     capacity /= _UNIT + params.cognitive_load_weight * excess_size
@@ -126,28 +169,41 @@ def team_capacity(
 
 
 def team_arrivals(
-    org: OrgState, team: Team, params: SimulationParameters = DEFAULT_PARAMETERS
+    org: OrgState,
+    team: Team,
+    params: SimulationParameters = DEFAULT_PARAMETERS,
+    index: CouplingIndex | None = None,
 ) -> float:
     """Effective decisions arriving per turn, inflated by incoming delay."""
-    delay_factor = _UNIT + params.delay_arrival_weight * incoming_delay(org, team.id)
-    return org.workload * delay_factor
+    delay = incoming_delay(org, team.id, index)
+    return org.workload * (_UNIT + params.delay_arrival_weight * delay)
 
 
 def team_imbalance(
-    org: OrgState, team: Team, params: SimulationParameters = DEFAULT_PARAMETERS
+    org: OrgState,
+    team: Team,
+    params: SimulationParameters = DEFAULT_PARAMETERS,
+    index: CouplingIndex | None = None,
 ) -> float:
     """Per-turn backlog growth for a team (arrivals over capacity, floored)."""
-    shortfall = team_arrivals(org, team, params) - team_capacity(org, team, params)
-    return max(_ZERO, shortfall)
+    arrivals = team_arrivals(org, team, params, index)
+    return max(_ZERO, arrivals - team_capacity(org, team, params, index))
 
 
-def depended_upon(org: OrgState, team_id: str) -> int:
+def depended_upon(
+    org: OrgState, team_id: str, index: CouplingIndex | None = None
+) -> int:
     """Number of teams that wait on this team (it is their upstream)."""
+    if index is not None:
+        return index.depended_upon[team_id]
     return sum(1 for dep in org.dependencies if dep.upstream == team_id)
 
 
 def influence_without_authority(
-    org: OrgState, team: Team, params: SimulationParameters = DEFAULT_PARAMETERS
+    org: OrgState,
+    team: Team,
+    params: SimulationParameters = DEFAULT_PARAMETERS,
+    index: CouplingIndex | None = None,
 ) -> float:
     """Excess inbound dependence on a team that cannot decide locally.
 
@@ -157,24 +213,27 @@ def influence_without_authority(
     """
     if team.has_local_authority:
         return _ZERO
-    excess = depended_upon(org, team.id) - params.influence_tolerance
+    excess = depended_upon(org, team.id, index) - params.influence_tolerance
     return float(max(0, excess))
 
 
 def influence_load(
-    org: OrgState, params: SimulationParameters = DEFAULT_PARAMETERS
+    org: OrgState,
+    params: SimulationParameters = DEFAULT_PARAMETERS,
+    index: CouplingIndex | None = None,
 ) -> float:
     """Total influence-without-authority carried across the whole org."""
-    return sum(influence_without_authority(org, t, params) for t in org.teams)
+    return sum(influence_without_authority(org, t, params, index) for t in org.teams)
 
 
 def evaluate(
     org: OrgState, params: SimulationParameters = DEFAULT_PARAMETERS
 ) -> StructuralScore:
     """Fold the structural penalties into a single 0..100 health score."""
+    index = dependency_index(org)
     team_count = len(org.teams)
-    total_arrivals = sum(team_arrivals(org, t, params) for t in org.teams)
-    total_imbalance = sum(team_imbalance(org, t, params) for t in org.teams)
+    total_arrivals = sum(team_arrivals(org, t, params, index) for t in org.teams)
+    total_imbalance = sum(team_imbalance(org, t, params, index) for t in org.teams)
     latency = total_imbalance / total_arrivals
     escalation = sum(1 for t in org.teams if not t.has_local_authority) / team_count
     rework = sum(t.incentive_skew for t in org.teams) / team_count
@@ -184,7 +243,7 @@ def evaluate(
         + params.rework_weight * rework
     )
     value = params.max_score * (_UNIT - penalty)
-    value /= _UNIT + params.influence_weight * influence_load(org, params)
+    value /= _UNIT + params.influence_weight * influence_load(org, params, index)
     return StructuralScore(
         value=max(_ZERO, min(params.max_score, value)),
         latency_penalty=latency,

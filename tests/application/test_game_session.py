@@ -1,7 +1,11 @@
 """Tests for the game session coordinator, using Protocol fakes."""
 
 from fulcrum.application.dto import MoveValuation, SavedGame
-from fulcrum.application.game_session import GameSession, enumerate_moves
+from fulcrum.application.game_session import (
+    MAX_PLAYABLE_TEAMS,
+    GameSession,
+    enumerate_moves,
+)
 from fulcrum.domain.models import Dependency, Domain, OrgState, Team
 from fulcrum.domain.moves import Move, MoveKind
 from fulcrum.domain.simulation import MoveClassification, StructuralScore
@@ -171,7 +175,9 @@ def test_small_scope_is_playable_and_valuates():
 
 
 def test_large_scope_is_not_playable_and_skips_valuation():
-    teams = tuple(Team(f"t{i}", f"T{i}", True, 0.0) for i in range(220))
+    teams = tuple(
+        Team(f"t{i}", f"T{i}", True, 0.0) for i in range(MAX_PLAYABLE_TEAMS + 1)
+    )
     session = GameSession(OrgState(teams=teams, workload=1), _FakeSimulator())
     assert session.is_active_scope_playable() is False
     assert session.candidate_valuations() == ()

@@ -21,13 +21,12 @@ from fulcrum.domain.simulation import coupling_of
 _MIN_COUPLING_TO_SPLIT: int = 2
 _MIN_COUPLING_TO_ADD_OWNER: int = 1
 
-# The largest section scored and valuated live. Scoring is O(teams x deps) and
-# valuating every candidate move repeats it, so the cost climbs steeply: a few
-# dozen teams score in well under a second, but a few hundred take several. Above
-# this a scope is an overview to drill into rather than a position to play, so
-# only sections that score fast (a department and the leaf clusters below it) are
-# ever scored live, which is what keeps a large org responsive.
-MAX_PLAYABLE_TEAMS: int = 50
+# The largest section scored and valuated live. With the precomputed coupling
+# index a section down to a whole division (a few hundred teams) scores in under
+# a second on its worker thread. Valuating every candidate move still repeats the
+# evaluation, so a whole group or company (thousands of teams) stays too heavy to
+# score live; above this a scope is an overview to drill into rather than played.
+MAX_PLAYABLE_TEAMS: int = 500
 
 
 def enumerate_moves(org: OrgState, allow_growth: bool = False) -> tuple[Move, ...]:

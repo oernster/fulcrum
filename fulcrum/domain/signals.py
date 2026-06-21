@@ -12,6 +12,7 @@ from fulcrum.domain.models import OrgState
 from fulcrum.domain.simulation import (
     DEFAULT_PARAMETERS,
     SimulationParameters,
+    dependency_index,
     influence_load,
     team_capacity,
     team_imbalance,
@@ -111,18 +112,19 @@ def compute_signals(
     org: OrgState, params: SimulationParameters = DEFAULT_PARAMETERS
 ) -> tuple[SignalReading, ...]:
     """Compute the current value of every signal for an org state."""
+    index = dependency_index(org)
     team_count = len(org.teams)
     queue_age = (
         sum(
-            team_imbalance(org, t, params)
-            / max(_MIN_CAPACITY, team_capacity(org, t, params))
+            team_imbalance(org, t, params, index)
+            / max(_MIN_CAPACITY, team_capacity(org, t, params, index))
             for t in org.teams
         )
         / team_count
     )
     escalations = float(sum(1 for t in org.teams if not t.has_local_authority))
     rework = (sum(t.incentive_skew for t in org.teams) / team_count) * _PERCENT
-    influence = influence_load(org, params)
+    influence = influence_load(org, params, index)
     values = {
         QUEUE_AGE: queue_age,
         ESCALATIONS: escalations,

@@ -34,7 +34,15 @@ class DeterministicSimulator:
         return evaluate(org, self.params)
 
     def valuate_move(self, org: OrgState, move: Move) -> MoveValuation:
+        return self._valuation(org, move, evaluate(org, self.params).value)
+
+    def valuate_moves(
+        self, org: OrgState, moves: tuple[Move, ...]
+    ) -> tuple[MoveValuation, ...]:
         before = evaluate(org, self.params).value
+        return tuple(self._valuation(org, move, before) for move in moves)
+
+    def _valuation(self, org: OrgState, move: Move, before: float) -> MoveValuation:
         after = evaluate(apply_move(org, move), self.params).value
         return MoveValuation(
             move=move,
@@ -42,8 +50,3 @@ class DeterministicSimulator:
             score_after=after,
             classification=classify_delta(after - before, self.thresholds),
         )
-
-    def valuate_moves(
-        self, org: OrgState, moves: tuple[Move, ...]
-    ) -> tuple[MoveValuation, ...]:
-        return tuple(self.valuate_move(org, move) for move in moves)
