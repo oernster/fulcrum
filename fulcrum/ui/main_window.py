@@ -143,6 +143,8 @@ class MainWindow(QMainWindow):
         undo_button, map_view, moves_group, signals_group = self._board.nav_targets()
         self._nav = KeyboardNavigator(
             self,
+            self.menuBar(),
+            self.menuBar().actions(),
             (*buttons, undo_button, map_view),
             (moves_group, signals_group),
             map_view,

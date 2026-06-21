@@ -22,6 +22,7 @@ _TEXT = "#e6e9ee"
 _TEXT_MUTED = "#9aa3af"
 _ACCENT = "#f59e0b"
 _ACCENT_BRIGHT = "#fbbf24"
+_PRIMARY_BG = "#7fb0ff"
 _DISABLED_TEXT = "#5b6470"
 
 _BASE_FONT_PT = 14
@@ -83,8 +84,9 @@ QPushButton:enabled:focus {{ border-color: {_ACCENT}; outline: none; }}
 QPushButton:pressed {{ background-color: {_SURFACE}; }}
 QPushButton:disabled {{ color: {_DISABLED_TEXT}; background-color: {_SURFACE}; }}
 
-QPushButton#Primary {{ background-color: {_ACCENT}; color: {_BG}; }}
+QPushButton#Primary {{ background-color: {_PRIMARY_BG}; color: {_BG}; }}
 QPushButton#Primary:enabled:hover {{ border-color: {_ACCENT_BRIGHT}; }}
+QPushButton#Primary:enabled:focus {{ border-color: {_ACCENT}; }}
 QPushButton#MoveButton {{
     text-align: left;
     padding: 6px 12px;
@@ -102,6 +104,10 @@ QPushButton#IconLink:enabled:hover {{
     border-color: {_ACCENT};
     color: {_ACCENT_BRIGHT};
 }}
+QPushButton#IconLink:enabled:focus {{
+    border-color: {_ACCENT};
+    color: {_ACCENT_BRIGHT};
+}}
 QPushButton#PreviewButton {{
     background: transparent;
     border: 2px solid transparent;
@@ -109,6 +115,10 @@ QPushButton#PreviewButton {{
     font-size: {glyph_pt}pt;
 }}
 QPushButton#PreviewButton:enabled:hover {{
+    border-color: {_ACCENT};
+    color: {_ACCENT_BRIGHT};
+}}
+QPushButton#PreviewButton:enabled:focus {{
     border-color: {_ACCENT};
     color: {_ACCENT_BRIGHT};
 }}
