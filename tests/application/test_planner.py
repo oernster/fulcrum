@@ -92,3 +92,12 @@ def test_plan_labels_each_step_with_a_description():
     guide = ImprovementPlanner(DeterministicSimulator()).plan(_broken())
     assert guide.steps
     assert all(step.move.label for step in guide.steps)
+
+
+def test_plan_steps_carry_the_org_and_score_before_each_move():
+    guide = ImprovementPlanner(DeterministicSimulator()).plan(_broken())
+    assert guide.steps
+    assert guide.steps[0].score_before == guide.start_score
+    for earlier, later in zip(guide.steps, guide.steps[1:]):
+        assert later.score_before == earlier.score_after
+    assert all(isinstance(step.org_before, OrgState) for step in guide.steps)

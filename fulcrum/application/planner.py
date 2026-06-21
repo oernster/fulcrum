@@ -24,11 +24,13 @@ _DEFAULT_MIN_GAIN = 0.5
 
 @dataclass(frozen=True, slots=True)
 class GuideStep:
-    """One move in the guide, with the score that follows it."""
+    """One move in the guide, with the org and score it acts on and produces."""
 
     move: Move
     classification: MoveClassification
     score_after: float
+    org_before: OrgState
+    score_before: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,6 +71,8 @@ class ImprovementPlanner:
             if best.delta < self.min_gain:
                 break
             label = describe_move(current, best.move)
+            before = current
+            score_before = current_score
             current = apply_move(current, best.move)
             current_score = best.score_after
             steps.append(
@@ -76,6 +80,8 @@ class ImprovementPlanner:
                     move=Move(best.move.kind, best.move.targets, label),
                     classification=best.classification,
                     score_after=current_score,
+                    org_before=before,
+                    score_before=score_before,
                 )
             )
         return Guide(start_score=start, final_score=current_score, steps=tuple(steps))

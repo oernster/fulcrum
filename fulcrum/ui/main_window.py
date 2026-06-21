@@ -233,7 +233,7 @@ class MainWindow(QMainWindow):
         grown = ImprovementPlanner(self._simulator, allow_growth=True).plan(
             section, kinds
         )
-        GuideDialog(fixed, grown, self).exec()
+        GuideDialog(fixed, grown, self._simulator, self).exec()
 
     def _model_org(self) -> None:
         editor = OrgEditorDialog(self)
