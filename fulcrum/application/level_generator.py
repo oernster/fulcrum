@@ -3,9 +3,9 @@
 A generated org models a company: a branching tree of domains four tiers deep
 (division, department, domain, group), every domain fanning out into two or
 three sub-domains so the tree branches at each tier rather than trailing a single
-child, with a small team cluster at each leaf. The people live on the units: each
-leaf carries a slice of a 100k-200k company total that rolls up the tree, while a
-team stays four to six people. Each leaf cluster is a densely coupled puzzle with
+child, with a small team cluster at each leaf. Headcount lives on the teams (four
+to six people each) and rolls up the tree, so every unit's people are exactly the
+sum of its teams. Each leaf cluster is a densely coupled puzzle with
 one authoritative team and the rest lacking authority, so a collapsing or
 delegating move is strong inside it. Clusters are linked only sparsely across the
 org, so the whole position stays legible.
@@ -22,7 +22,6 @@ does.
 
 from __future__ import annotations
 
-from dataclasses import replace
 from random import Random
 
 from fulcrum.application.game_session import enumerate_moves
@@ -58,19 +57,14 @@ _MAX_FANOUT: int = 3
 _DEPTH: int = 4
 _TEAMS_PER_LEAF_CHOICES: tuple[int, ...] = (4, 5)
 
-# A team is four to six people, occasionally eight to twelve, never more: the
-# modelled decision-points inside a unit. The people live on the units, not the
-# teams; a leaf unit carries a slice of a 100k-200k company total that rolls up
-# the tree. Headcount is descriptive and never changes the structural score.
+# A team is four to six people, occasionally eight to twelve, never more. Every
+# person sits in a team; team headcounts roll up the tree, so a unit's people are
+# exactly the sum of its teams. Headcount never changes the structural score.
 _TEAM_MIN: int = 4
 _TEAM_MAX: int = 6
 _BIG_TEAM_MIN: int = 8
 _BIG_TEAM_MAX: int = 12
 _BIG_TEAM_CHANCE: float = 0.15
-_MIN_COMPANY: int = 100_000
-_MAX_COMPANY: int = 200_000
-_MIN_LEAF_WEIGHT: float = 0.5
-_MAX_LEAF_WEIGHT: float = 1.5
 
 # Cosmetic name pools for generated domains and their leads, the structural
 # equivalent of the "Team N" team names: drawn at random, never load-bearing.
@@ -158,32 +152,6 @@ def _build_hierarchy(
     for _ in range(_ROOT_DIVISIONS):
         add_node(None, 0)
     return tuple(domains), tuple(leaf_ids)
-
-
-def _assign_leaf_headcounts(
-    rng: Random, domains: tuple[Domain, ...], leaf_ids: tuple[str, ...]
-) -> tuple[Domain, ...]:
-    """Spread a 100k-200k company total across the leaf units by random weight.
-
-    The people live on the leaf units, not on the small teams inside them, so a
-    generated org reaches a realistic six-figure headcount while every team stays
-    four to six people. The shares sum to exactly the drawn total, and internal
-    domains keep a zero own-headcount and roll the leaves up through the queries.
-    """
-    total = rng.randint(_MIN_COMPANY, _MAX_COMPANY)
-    weights = [rng.uniform(_MIN_LEAF_WEIGHT, _MAX_LEAF_WEIGHT) for _ in leaf_ids]
-    scale = total / sum(weights)
-    shares = [max(1, int(weight * scale)) for weight in weights]
-    shares[0] += total - sum(shares)
-    headcounts = dict(zip(leaf_ids, shares))
-    return tuple(
-        (
-            replace(domain, headcount=headcounts[domain.id])
-            if domain.id in headcounts
-            else domain
-        )
-        for domain in domains
-    )
 
 
 def _random_cluster(
@@ -288,7 +256,6 @@ def generate_level(rng: Random) -> OrgState:
     simulator = DeterministicSimulator()
     workload = rng.randint(_MIN_WORKLOAD, _MAX_WORKLOAD)
     domains, leaf_ids = _build_hierarchy(rng, _DEPTH)
-    domains = _assign_leaf_headcounts(rng, domains, leaf_ids)
     teams, dependencies = _build_clusters(rng, simulator, workload, leaf_ids)
     return OrgState(
         teams=teams,

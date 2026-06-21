@@ -8,8 +8,6 @@ from fulcrum.application.level_generator import (
     _BIG_TEAM_MAX,
     _BIG_TEAM_MIN,
     _DEPTH,
-    _MAX_COMPANY,
-    _MIN_COMPANY,
     _MIN_FANOUT,
     _ROOT_DIVISIONS,
     _TEAM_MAX,
@@ -83,9 +81,9 @@ def test_generated_org_nests_to_depth_and_branches():
     assert all(count == 0 or count >= _MIN_FANOUT for count in counts.values())
 
 
-def test_generated_headcount_is_company_scale_and_rolls_up():
+def test_generated_headcount_rolls_up_from_teams():
     org = generate_level(Random(0))
-    assert _MIN_COMPANY <= total_headcount(org) <= _MAX_COMPANY
+    assert total_headcount(org) == sum(team.headcount for team in org.teams)
     roots = [d for d in org.domains if d.parent_id is None]
     assert sum(headcount_in_domain(org, r.id) for r in roots) == total_headcount(org)
     assert all(headcount_in_domain(org, r.id) > 0 for r in roots)
