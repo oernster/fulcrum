@@ -73,7 +73,7 @@ def test_generated_org_nests_to_depth_and_branches():
     assert all(count == 0 or count >= _MIN_FANOUT for count in counts.values())
 
 
-def test_generated_headcount_rolls_up_and_is_large():
+def test_generated_headcount_rolls_up():
     org = generate_level(Random(0))
     assert total_headcount(org) == sum(team.headcount for team in org.teams)
     assert total_headcount(org) >= len(org.teams) * _MIN_PEOPLE

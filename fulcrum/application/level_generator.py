@@ -1,13 +1,13 @@
 """Procedural generation of deep, clustered, section-solvable organisations.
 
-A generated org models a large enterprise: a branching tree of domains three
-tiers deep (division, department, domain), every domain fanning out into two or
-three sub-domains so the tree branches at each tier rather than trailing a single
-child, with a team cluster at each leaf and people counts that roll up into the
-hundreds of thousands. Each leaf cluster is a densely coupled puzzle with one
-authoritative team and the rest lacking authority, so a collapsing or delegating
-move is strong inside it. Clusters are linked only sparsely across the org, so
-the whole position stays legible.
+A generated org models a company: a branching tree of domains three tiers deep
+(division, department, domain), every domain fanning out into two or three
+sub-domains so the tree branches at each tier rather than trailing a single
+child, with a team cluster at each leaf and realistic team headcounts that roll
+up through the tiers into a believable company total. Each leaf cluster is a
+densely coupled puzzle with one authoritative team and the rest lacking
+authority, so a collapsing or delegating move is strong inside it. Clusters are
+linked only sparsely across the org, so the whole position stays legible.
 
 Solvability is guaranteed per section, not globally. Every leaf cluster is
 resampled until its own focused sub-org reaches a great move, which is exactly
@@ -56,12 +56,11 @@ _MAX_FANOUT: int = 3
 _DEPTH: int = 3
 _TEAMS_PER_LEAF_CHOICES: tuple[int, ...] = (4, 5)
 
-# A leaf cluster in a huge org stands for a sizeable unit, so people counts are
-# large: the per-team count rolls up through the domains into an org total in the
-# hundreds of thousands without a rendered node per person. Headcount is
+# Per-team headcounts are realistic team sizes (a handful to a few dozen people)
+# that roll up through the domains into a believable company total. Headcount is
 # descriptive and never changes the structural score.
-_MIN_PEOPLE: int = 400
-_MAX_PEOPLE: int = 9000
+_MIN_PEOPLE: int = 5
+_MAX_PEOPLE: int = 50
 
 # Cosmetic name pools for generated domains and their leads, the structural
 # equivalent of the "Team N" team names: drawn at random, never load-bearing.
