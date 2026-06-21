@@ -31,6 +31,7 @@ _TEXT_MUTED = QColor("#9aa3af")
 _EDGE = QColor("#5b6470")
 _PREVIEW = QColor("#fbbf24")
 _HOVER_RING = QColor("#60a5fa")
+_CHANGE_RING = QColor("#22d3ee")
 _BG = QColor("#0d0f12")
 
 _MIN_HEIGHT = 340
@@ -107,6 +108,7 @@ class OrgMapView(QGraphicsView):
         self._press_pos = None
         self._hover_id: str | None = None
         self._hover_back = False
+        self._highlight: frozenset[str] = frozenset()
         self.setMouseTracking(True)
         self.viewport().setMouseTracking(True)
 
@@ -120,6 +122,11 @@ class OrgMapView(QGraphicsView):
 
     def set_preview(self, value: bool) -> None:
         self._preview = value
+        self.viewport().update()
+
+    def set_highlight(self, node_ids) -> None:
+        """Ring the given node ids to mark them as changed, then repaint."""
+        self._highlight = frozenset(node_ids)
         self.viewport().update()
 
     def reset_view(self) -> None:
@@ -355,6 +362,9 @@ class OrgMapView(QGraphicsView):
 
     def drawForeground(self, painter: QPainter, rect: QRectF) -> None:
         self._paint_hover_ring(painter)
+        for node_rect, _kind, node_id in self._hot:
+            if node_id in self._highlight:
+                self._draw_ring(painter, node_rect, _CHANGE_RING)
         if not self._preview:
             return
         painter.save()
@@ -376,13 +386,13 @@ class OrgMapView(QGraphicsView):
 
     def _paint_hover_ring(self, painter: QPainter) -> None:
         target = self._hover_rect()
-        if target is None:
-            return
-        outer = target.adjusted(
-            -_DRILL_INSET, -_DRILL_INSET, _DRILL_INSET, _DRILL_INSET
-        )
+        if target is not None:
+            self._draw_ring(painter, target, _HOVER_RING)
+
+    def _draw_ring(self, painter: QPainter, rect: QRectF, color: QColor) -> None:
+        outer = rect.adjusted(-_DRILL_INSET, -_DRILL_INSET, _DRILL_INSET, _DRILL_INSET)
         painter.save()
-        painter.setPen(QPen(_HOVER_RING, _DRILL_PEN))
+        painter.setPen(QPen(color, _DRILL_PEN))
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawRoundedRect(outer, _CORNER + _DRILL_INSET, _CORNER + _DRILL_INSET)
         painter.restore()

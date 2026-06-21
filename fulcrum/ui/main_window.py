@@ -336,3 +336,10 @@ class MainWindow(QMainWindow):
 
     def _inform(self, title: str, message: str) -> None:
         QMessageBox.information(self, title, message)
+
+    def closeEvent(self, event) -> None:
+        self._board.stop_analysis()
+        generation = getattr(self, "_generation", None)
+        if generation is not None:
+            generation.wait()
+        super().closeEvent(event)

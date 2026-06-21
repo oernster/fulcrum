@@ -18,7 +18,6 @@ from fulcrum.application.dto import MoveValuation
 from fulcrum.application.game_session import GameSession
 from fulcrum.application.move_text import describe_move, move_note
 from fulcrum.domain.hierarchy import child_domains, total_headcount
-from fulcrum.domain.models import OrgState
 from fulcrum.domain.moves import MoveKind
 from fulcrum.domain.signals import SignalReading
 from fulcrum.domain.simulation import MoveClassification
@@ -26,7 +25,7 @@ from fulcrum.ui import ui_scale
 from fulcrum.ui.analysis_thread import AnalysisThread
 from fulcrum.ui.widgets.definition_popover import HoverPopover
 from fulcrum.ui.widgets.hover_button import HoverButton
-from fulcrum.ui.widgets.move_preview import MovePreview
+from fulcrum.ui.widgets.move_preview_dialog import MovePreviewDialog
 from fulcrum.ui.widgets.org_map_view import OrgMapView
 
 _SCORE_DECIMALS = 1
@@ -52,13 +51,17 @@ _COMPUTING_HINT = "Scoring this section..."
 # Show the scoring note only if the analysis outlasts this, so a section that
 # scores quickly refreshes without flickering the note in and straight out.
 _COMPUTING_DELAY_MS = 200
+# Coalesce a flurry of drills into one scoring pass: the score and moves update
+# once navigation settles, so rapid drilling never piles up worker threads.
+_ANALYSIS_DELAY_MS = 120
 _MAP_PANE_W = 520
 _RIGHT_PANE_W = 480
 _RIGHT_PANE_MIN = 360
 _MOVES_RIGHT_PAD = 12
 _PREVIEW_COLOR = "#fbbf24"
 _PREVIEW_ICON = "🔍"
-_PREVIEW_TIP = "Preview this move on the map"
+_PREVIEW_TIP = "Preview this move"
+_PREVIEW_BTN_W = 44
 # The per-move note reserves the height of the tallest note at the current
 # width (recomputed on resize), so changing its text on hover never reflows the
 # layout: that reflow read as a jiggle as the mouse swept across the moves.
@@ -112,7 +115,9 @@ class BoardView(QWidget):
         self._computing_timer = QTimer(self)
         self._computing_timer.setSingleShot(True)
         self._computing_timer.timeout.connect(self._show_computing)
-        self._preview = MovePreview(self, self._show_preview, self._restore_preview)
+        self._analysis_timer = QTimer(self)
+        self._analysis_timer.setSingleShot(True)
+        self._analysis_timer.timeout.connect(self._run_analysis)
         self._build()
 
     def _build(self) -> None:
@@ -197,8 +202,12 @@ class BoardView(QWidget):
     def _on_drilled(self, domain_id) -> None:
         if self._session is None:
             return
+        # The map already redrew the new level in its own click handler, so only
+        # the scope-dependent parts refresh here: re-rendering the whole map
+        # again per drill is what made deep drilling stutter.
         self._session.focus(domain_id)
-        self.refresh()
+        self._set_focus_note()
+        self._start_analysis()
 
     def refresh(self) -> None:
         if self._session is None:
@@ -214,14 +223,25 @@ class BoardView(QWidget):
         self._set_focus_note()
         self._map_caption.setText(self._map_caption_text())
         self._map_caption.setStyleSheet("")
-        self._preview.reset()
         self._map.set_preview(False)
         self._map.set_org(self._session.org)
         self._set_last_move_note()
         self._start_analysis()
 
     def _start_analysis(self) -> None:
-        """Score the current scope on a worker thread; render only the latest."""
+        """Debounce scoring so a flurry of drills runs only one analysis."""
+        self._analysis_timer.start(_ANALYSIS_DELAY_MS)
+
+    def stop_analysis(self) -> None:
+        """Stop pending and running scoring so the app closes without a crash."""
+        self._analysis_timer.stop()
+        self._computing_timer.stop()
+        for worker in tuple(self._analyses):
+            worker.wait()
+
+    def _run_analysis(self) -> None:
+        if self._session is None:
+            return
         self._analysis_request += 1
         worker = AnalysisThread(
             self._analysis_request,
@@ -320,19 +340,21 @@ class BoardView(QWidget):
         self._moves_box.addStretch()
 
     def _move_row(self, valuation: MoveValuation) -> QWidget:
-        button = HoverButton(
+        button = QPushButton(
             f"{describe_move(self._scope_active, valuation.move)}   "
             f"[{valuation.classification.value}]   "
             f"{valuation.delta:+.{_VALUE_DECIMALS}f}"
         )
         button.setObjectName("MoveButton")
         button.clicked.connect(lambda _=False, v=valuation: self._play(v))
-        button.entered.connect(lambda v=valuation, c=button: self._move_hover(v, c))
-        button.left.connect(self._popovers.hide)
         magnifier = QPushButton(_PREVIEW_ICON)
         magnifier.setObjectName("PreviewButton")
         magnifier.setToolTip(_PREVIEW_TIP)
-        magnifier.clicked.connect(lambda _=False, v=valuation: self._toggle_preview(v))
+        magnifier.setFixedWidth(ui_scale.px(_PREVIEW_BTN_W))
+        magnifier.setCursor(Qt.CursorShape.PointingHandCursor)
+        magnifier.clicked.connect(
+            lambda _=False, v=valuation: self._open_move_preview(v)
+        )
         row = QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
         row.addWidget(button, 1)
@@ -347,25 +369,17 @@ class BoardView(QWidget):
         self._session.play(valuation.move)
         self.refresh()
 
-    def _show_preview(self, preview: OrgState, valuation: MoveValuation) -> None:
-        self._map.set_org(preview)
-        self._map.set_preview(True)
-        description = describe_move(self._scope_active, valuation.move)
-        self._map_caption.setText(f"{_MAP_CAPTION} · after: {description}")
-        self._map_caption.setStyleSheet(f"color: {_PREVIEW_COLOR};")
-        self._move_note.setText(move_note(valuation.move.kind))
-
-    def _toggle_preview(self, valuation: MoveValuation) -> None:
-        if self._session is not None:
-            self._preview.toggle(self._session.org, self._session.focused_on, valuation)
-
-    def _restore_preview(self) -> None:
-        if self._session is not None:
-            self._map.set_org(self._session.org)
-            self._map.set_preview(False)
-            self._map_caption.setText(self._map_caption_text())
-            self._map_caption.setStyleSheet("")
-            self._set_last_move_note()
+    def _open_move_preview(self, valuation: MoveValuation) -> None:
+        if self._session is None:
+            return
+        MovePreviewDialog(
+            self._session.org,
+            self._session.focused_on,
+            valuation,
+            self._session.simulator,
+            self._scope_active,
+            self,
+        ).exec()
 
     def _set_last_move_note(self) -> None:
         if self._session is not None and self._session.history:
@@ -382,11 +396,3 @@ class BoardView(QWidget):
             ("Maps to", definition.maps_to),
         )
         self._popovers.show(definition.label, definition.gloss, rows, anchor)
-
-    def _move_hover(self, valuation: MoveValuation, anchor: QWidget) -> None:
-        self._popovers.show(
-            describe_move(self._scope_active, valuation.move),
-            move_note(valuation.move.kind),
-            (),
-            anchor,
-        )
