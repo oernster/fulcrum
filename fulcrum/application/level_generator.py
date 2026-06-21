@@ -1,11 +1,13 @@
 """Procedural generation of deep, clustered, section-solvable organisations.
 
-A generated org models a large enterprise: a handful of leaf clusters of teams,
-nested four or five tiers deep (division, department and so on down to the leaf),
-with people counts that roll up into the hundreds of thousands. Each leaf cluster
-is a densely coupled puzzle with one authoritative team and the rest lacking
-authority, so a collapsing or delegating move is strong inside it. Clusters are
-linked only sparsely across the org, so the whole position stays legible.
+A generated org models a large enterprise: a branching tree of domains three
+tiers deep (division, department, domain), every domain fanning out into two or
+three sub-domains so the tree branches at each tier rather than trailing a single
+child, with a team cluster at each leaf and people counts that roll up into the
+hundreds of thousands. Each leaf cluster is a densely coupled puzzle with one
+authoritative team and the rest lacking authority, so a collapsing or delegating
+move is strong inside it. Clusters are linked only sparsely across the org, so
+the whole position stays legible.
 
 Solvability is guaranteed per section, not globally. Every leaf cluster is
 resampled until its own focused sub-org reaches a great move, which is exactly
@@ -43,15 +45,15 @@ _MIN_SKEW: float = 0.3
 _MAX_SKEW: float = 0.9
 _SKEW_DECIMALS: int = 2
 
-# Hierarchy shape. The org nests four or five tiers deep under two root
-# divisions, branching by at most two at each tier, with a handful of leaf
-# clusters spread across the bottom. Teams live only in the leaf clusters, so a
-# generated org reads like a real multi-level structure rather than one flat
-# level and exercises the hierarchy, the navigable map and per-domain play.
+# Hierarchy shape. Two root divisions, each a tree three tiers deep whose every
+# domain fans out into two or three sub-domains, so the org branches at each tier
+# instead of trailing single children down to one fat leaf. Teams live only in
+# the leaf domains, so a generated org reads like a real branching org chart and
+# exercises the hierarchy, the navigable map and per-domain play.
 _ROOT_DIVISIONS: int = 2
-_FANOUT: int = 2
-_DEPTH_CHOICES: tuple[int, ...] = (4, 5)
-_LEAF_CHOICES: tuple[int, ...] = (5, 6, 7)
+_MIN_FANOUT: int = 2
+_MAX_FANOUT: int = 3
+_DEPTH: int = 3
 _TEAMS_PER_LEAF_CHOICES: tuple[int, ...] = (4, 5)
 
 # A leaf cluster in a huge org stands for a sizeable unit, so people counts are
@@ -105,27 +107,21 @@ def _tier_category(tier: int) -> str:
     return GROUP_CATEGORIES[min(tier, len(GROUP_CATEGORIES) - 1)]
 
 
-def _split(total: int, parts: int) -> tuple[int, ...]:
-    """Split a count into `parts` near-equal pieces, each at least one."""
-    base, extra = divmod(total, parts)
-    return tuple(base + 1 if i < extra else base for i in range(parts))
-
-
 def _build_hierarchy(
-    rng: Random, depth: int, leaf_count: int
+    rng: Random, depth: int
 ) -> tuple[tuple[Domain, ...], tuple[str, ...]]:
-    """Build a domain tree `depth` tiers deep with `leaf_count` leaf clusters.
+    """Build a branching domain tree `depth` tiers deep.
 
-    The leaves are distributed across two root divisions and branch by at most
-    two at each tier, so every leaf sits at the bottom tier and the tree reaches
-    the requested depth. Returns the domains and the ordered leaf-domain ids the
-    team clusters attach to.
+    Every internal domain fans out into two or three sub-domains, so the tree
+    branches at each tier rather than trailing a single child, and each leaf at
+    the bottom tier carries a team cluster. Returns the domains and the ordered
+    leaf-domain ids the team clusters attach to.
     """
     domains: list[Domain] = []
     leaf_ids: list[str] = []
     counter = [0]
 
-    def add_node(parent_id: str | None, tier: int, leaves_here: int) -> None:
+    def add_node(parent_id: str | None, tier: int) -> None:
         counter[0] += 1
         domain_id = f"domain_{counter[0]}"
         domains.append(
@@ -140,12 +136,11 @@ def _build_hierarchy(
         if tier == depth - 1:
             leaf_ids.append(domain_id)
             return
-        children = min(_FANOUT, leaves_here)
-        for share in _split(leaves_here, children):
-            add_node(domain_id, tier + 1, share)
+        for _ in range(rng.randint(_MIN_FANOUT, _MAX_FANOUT)):
+            add_node(domain_id, tier + 1)
 
-    for share in _split(leaf_count, _ROOT_DIVISIONS):
-        add_node(None, 0, share)
+    for _ in range(_ROOT_DIVISIONS):
+        add_node(None, 0)
     return tuple(domains), tuple(leaf_ids)
 
 
@@ -249,10 +244,8 @@ def generate_level(rng: Random) -> OrgState:
     large dense org is generated quickly, with no global resample to stall on.
     """
     simulator = DeterministicSimulator()
-    depth = rng.choice(_DEPTH_CHOICES)
-    leaf_count = rng.choice(_LEAF_CHOICES)
     workload = rng.randint(_MIN_WORKLOAD, _MAX_WORKLOAD)
-    domains, leaf_ids = _build_hierarchy(rng, depth, leaf_count)
+    domains, leaf_ids = _build_hierarchy(rng, _DEPTH)
     teams, dependencies = _build_clusters(rng, simulator, workload, leaf_ids)
     return OrgState(
         teams=teams,

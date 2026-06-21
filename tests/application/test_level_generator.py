@@ -5,10 +5,12 @@ from random import Random
 
 from fulcrum.application.intake import build_org_state
 from fulcrum.application.level_generator import (
+    _DEPTH,
+    _MIN_FANOUT,
     _MIN_PEOPLE,
+    _ROOT_DIVISIONS,
     _build_hierarchy,
     _reaches_great_move,
-    _split,
     generate_level,
     has_great_move,
 )
@@ -18,7 +20,6 @@ from fulcrum.domain.models import Origin, OrgState, Team
 from fulcrum.infrastructure.json_org_importer import JsonOrgImporter
 
 _SEED_COUNT = 12
-_MIN_TIERS = 4
 _ENTERPRISE = Path(__file__).resolve().parents[2] / "examples" / "org-3-enterprise.json"
 
 
@@ -42,6 +43,14 @@ def _tier_of(parent_of: dict, domain_id: str) -> int:
     return tier
 
 
+def _children_count(domains) -> dict:
+    counts = {domain.id: 0 for domain in domains}
+    for domain in domains:
+        if domain.parent_id is not None:
+            counts[domain.parent_id] += 1
+    return counts
+
+
 def test_generated_org_is_clustered_and_every_section_is_solvable():
     sim = DeterministicSimulator()
     for seed in range(_SEED_COUNT):
@@ -55,11 +64,13 @@ def test_generated_org_is_clustered_and_every_section_is_solvable():
             assert _reaches_great_move(focused_suborg(org, leaf), sim)
 
 
-def test_generated_org_nests_at_least_four_tiers():
+def test_generated_org_nests_to_depth_and_branches():
     org = generate_level(Random(0))
     parent_of = {d.id: d.parent_id for d in org.domains}
     deepest = max(_tier_of(parent_of, did) for did in parent_of)
-    assert deepest >= _MIN_TIERS
+    assert deepest == _DEPTH
+    counts = _children_count(org.domains)
+    assert all(count == 0 or count >= _MIN_FANOUT for count in counts.values())
 
 
 def test_generated_headcount_rolls_up_and_is_large():
@@ -68,25 +79,17 @@ def test_generated_headcount_rolls_up_and_is_large():
     assert total_headcount(org) >= len(org.teams) * _MIN_PEOPLE
 
 
-def test_split_is_near_equal_and_every_part_is_positive():
-    assert _split(7, 2) == (4, 3)
-    assert _split(6, 3) == (2, 2, 2)
-    assert _split(1, 1) == (1,)
-    assert all(part >= 1 for part in _split(5, 3))
-
-
-def test_build_hierarchy_reaches_the_depth_with_the_requested_leaves():
-    depth = 5
-    leaf_count = 6
-    domains, leaf_ids = _build_hierarchy(Random(0), depth, leaf_count)
-    assert len(leaf_ids) == leaf_count
+def test_build_hierarchy_branches_and_reaches_the_depth():
+    domains, leaf_ids = _build_hierarchy(Random(0), _DEPTH)
     parent_of = {d.id: d.parent_id for d in domains}
     parents = {p for p in parent_of.values() if p is not None}
     computed_leaves = {d.id for d in domains if d.id not in parents}
     assert computed_leaves == set(leaf_ids)
-    assert all(_tier_of(parent_of, leaf) == depth for leaf in leaf_ids)
+    assert all(_tier_of(parent_of, leaf) == _DEPTH for leaf in leaf_ids)
     roots = [d for d in domains if d.parent_id is None]
-    assert len(roots) == 2
+    assert len(roots) == _ROOT_DIVISIONS
+    counts = _children_count(domains)
+    assert all(count == 0 or count >= _MIN_FANOUT for count in counts.values())
 
 
 def test_has_great_move_false_for_healthy_org():
