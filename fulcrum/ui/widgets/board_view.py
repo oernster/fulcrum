@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
     QLabel,
@@ -22,6 +22,7 @@ from fulcrum.domain.moves import MoveKind
 from fulcrum.domain.signals import SignalReading
 from fulcrum.domain.simulation import MoveClassification
 from fulcrum.ui import ui_scale
+from fulcrum.ui.analysis_thread import AnalysisThread
 from fulcrum.ui.widgets.definition_popover import DefinitionPopover
 from fulcrum.ui.widgets.org_map_view import OrgMapView
 
@@ -43,6 +44,11 @@ _OVERVIEW_HINT = (
     "play it, where the score and the strong moves appear."
 )
 _OVERVIEW_SCORE = "-"
+_COMPUTING_SCORE = "..."
+_COMPUTING_HINT = "Scoring this section..."
+# Show the scoring note only if the analysis outlasts this, so a fast section (a
+# leaf or a small department) refreshes without flickering the note.
+_COMPUTING_DELAY_MS = 120
 _MAP_PANE_W = 520
 _RIGHT_PANE_W = 480
 _RIGHT_PANE_MIN = 360
@@ -110,6 +116,11 @@ class BoardView(QWidget):
         self._move_note.setFixedHeight(ui_scale.px(_MOVE_NOTE_MIN_HEIGHT))
         self._signals_row = QVBoxLayout()
         self._moves_box = QVBoxLayout()
+        self._analysis_request = 0
+        self._analyses: set[AnalysisThread] = set()
+        self._computing_timer = QTimer(self)
+        self._computing_timer.setSingleShot(True)
+        self._computing_timer.timeout.connect(self._show_computing)
         self._build()
 
     def _build(self) -> None:
@@ -213,18 +224,46 @@ class BoardView(QWidget):
         self._map_caption.setStyleSheet("")
         self._map.set_preview(False)
         self._map.set_org(self._session.org)
-        if self._session.is_active_scope_playable():
-            self._render_playable_scope()
+        self._set_last_move_note()
+        self._start_analysis()
+
+    def _start_analysis(self) -> None:
+        """Score the current scope on a worker thread; render only the latest."""
+        self._analysis_request += 1
+        worker = AnalysisThread(
+            self._analysis_request,
+            self._session.org,
+            self._session.focused_on,
+            self._session.simulator,
+        )
+        worker.analysed.connect(self._on_analysed)
+        worker.finished.connect(lambda w=worker: self._analyses.discard(w))
+        worker.finished.connect(worker.deleteLater)
+        self._analyses.add(worker)
+        self._computing_timer.start(_COMPUTING_DELAY_MS)
+        worker.start()
+
+    def _show_computing(self) -> None:
+        self._score_label.setText(_COMPUTING_SCORE)
+        self._render_signals(())
+        self._render_moves(())
+        self._scope_hint.setText(_COMPUTING_HINT)
+        self._scope_hint.setVisible(True)
+
+    def _on_analysed(self, request: int, analysis) -> None:
+        if request != self._analysis_request:
+            return
+        self._computing_timer.stop()
+        if analysis.playable:
+            self._render_analysis(analysis)
         else:
             self._render_overview_scope()
-        self._set_last_move_note()
 
-    def _render_playable_scope(self) -> None:
-        self._score_label.setText(f"{self._session.score():.{_SCORE_DECIMALS}f} / 100")
-        self._render_signals(self._session.signals())
-        valuations = self._session.candidate_valuations()
-        self._render_moves(valuations)
-        self._update_scope_hint(valuations)
+    def _render_analysis(self, analysis) -> None:
+        self._score_label.setText(f"{analysis.score:.{_SCORE_DECIMALS}f} / 100")
+        self._render_signals(analysis.signals)
+        self._render_moves(analysis.valuations)
+        self._update_scope_hint(analysis.valuations)
 
     def _render_overview_scope(self) -> None:
         self._score_label.setText(_OVERVIEW_SCORE)

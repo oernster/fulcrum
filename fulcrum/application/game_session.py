@@ -27,7 +27,7 @@ _MIN_COUPLING_TO_ADD_OWNER: int = 1
 # this a scope is an overview to drill into rather than a position to play, so
 # only sections that score fast (a department and the leaf clusters below it) are
 # ever scored live, which is what keeps a large org responsive.
-_MAX_PLAYABLE_TEAMS: int = 50
+MAX_PLAYABLE_TEAMS: int = 50
 
 
 def enumerate_moves(org: OrgState, allow_growth: bool = False) -> tuple[Move, ...]:
@@ -77,6 +77,10 @@ class GameSession:
         return self._org
 
     @property
+    def simulator(self) -> Simulator:
+        return self._simulator
+
+    @property
     def initial_org(self) -> OrgState:
         return self._initial_org
 
@@ -121,11 +125,11 @@ class GameSession:
         Above the playable size the board shows the scope as an overview to drill
         into, since scoring and valuating the whole of a large org would stall.
         """
-        return len(self._active_org().teams) <= _MAX_PLAYABLE_TEAMS
+        return len(self._active_org().teams) <= MAX_PLAYABLE_TEAMS
 
     def candidate_valuations(self) -> tuple[MoveValuation, ...]:
         active = self._active_org()
-        if len(active.teams) > _MAX_PLAYABLE_TEAMS:
+        if len(active.teams) > MAX_PLAYABLE_TEAMS:
             return ()
         return self._simulator.valuate_moves(active, enumerate_moves(active))
 

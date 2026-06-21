@@ -78,6 +78,11 @@ def test_enumerate_moves_growth_is_opt_in():
     assert add_targets == {("a",), ("b",), ("c",)}
 
 
+def test_session_exposes_its_simulator():
+    simulator = _FakeSimulator()
+    assert GameSession(_org(), simulator).simulator is simulator
+
+
 def test_game_session_flow():
     session = GameSession(_org(), _FakeSimulator())
     assert session.score() == 50.0
