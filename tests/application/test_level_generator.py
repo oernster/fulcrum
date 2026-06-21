@@ -5,7 +5,7 @@ from random import Random
 import pytest
 
 from fulcrum.application.cluster_pool import reaches_great_move
-from fulcrum.application.level_generator import _SHAPES, generate_level
+from fulcrum.application.level_generator import _DEPTHS, generate_level
 from fulcrum.application.simulator import DeterministicSimulator
 from fulcrum.domain.hierarchy import (
     focused_suborg,
@@ -15,6 +15,12 @@ from fulcrum.domain.hierarchy import (
 )
 from fulcrum.domain.models import Origin, OrgState
 from fulcrum.domain.org_size import ORG_SIZE_BANDS
+
+_LOW = 0.6
+_HIGH = 1.4
+_END = 0.25
+_SPAN_FRACTION = 0.6
+_SPREAD_SEEDS = 40
 
 
 def _band(key):
@@ -67,19 +73,34 @@ def test_tier_categories_align_to_the_bottom():
 
 
 @pytest.mark.parametrize("key", ["small", "medium", "large", "huge"])
-def test_generated_org_lands_in_its_band(key):
+def test_band_generates_roughly_its_scale_and_rolls_up(key):
     band = _band(key)
-    org = generate_level(Random(5), band)
-    assert band.contains(total_headcount(org))
+    org = generate_level(Random(1), band)
+    total = total_headcount(org)
+    assert total == sum(t.headcount for t in org.teams)
+    assert band.min_people * _LOW <= total <= band.max_people * _HIGH
 
 
-def test_massive_band_generates_a_quarter_million_scale_org():
+def test_massive_band_is_large_and_coherent():
     band = _band("massive")
     org = generate_level(Random(5), band)
-    assert band.contains(total_headcount(org))
-    assert total_headcount(org) == sum(t.headcount for t in org.teams)
+    total = total_headcount(org)
+    assert total == sum(t.headcount for t in org.teams)
+    assert total >= band.min_people * _LOW
 
 
-def test_shapes_cover_every_non_tiny_band():
+def test_sizes_span_the_band_not_just_the_midpoint():
+    band = _band("medium")
+    totals = sorted(
+        total_headcount(generate_level(Random(seed), band))
+        for seed in range(_SPREAD_SEEDS)
+    )
+    span = band.max_people - band.min_people
+    assert totals[-1] - totals[0] > span * _SPAN_FRACTION
+    assert totals[0] < band.min_people + span * _END
+    assert totals[-1] > band.max_people - span * _END
+
+
+def test_depths_cover_every_non_tiny_band():
     non_tiny = {band.key for band in ORG_SIZE_BANDS if band.key != "tiny"}
-    assert set(_SHAPES) == non_tiny
+    assert set(_DEPTHS) == non_tiny

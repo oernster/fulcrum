@@ -16,12 +16,12 @@ player scores when they drill into that domain.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from random import Random
 
 from fulcrum.application.cluster_pool import (
     assemble_clusters,
     build_cluster_pool,
+    mean_cluster_people,
     pick_workload,
 )
 from fulcrum.application.simulator import DeterministicSimulator
@@ -68,42 +68,41 @@ _LEAD_NAMES: tuple[str, ...] = (
 )
 
 
-@dataclass(frozen=True, slots=True)
-class _Shape:
-    """The tree a band is built as: how many tiers deep and how wide each tier."""
-
-    depth: int
-    fanout: int
-
-
-# Each band's tree shape, chosen so leaves (a regular fanout**(depth-1)) times the
-# roughly twenty-six people a cluster holds land near the band's midpoint. The
-# tiny band has no entry: it is a single team, not a hierarchy.
-_SHAPES: dict[str, _Shape] = {
-    "small": _Shape(depth=2, fanout=3),
-    "medium": _Shape(depth=3, fanout=6),
-    "large": _Shape(depth=4, fanout=6),
-    "huge": _Shape(depth=5, fanout=6),
-    "massive": _Shape(depth=5, fanout=9),
+# Each band's tree depth (its number of domain tiers). The leaf count is chosen
+# per generation from the target people, so a band is always the same depth (its
+# leaves are Domains, its root the tier the depth reaches) while its size ranges
+# across the whole band. The tiny band has no entry: it is a single team.
+_DEPTHS: dict[str, int] = {
+    "small": 2,
+    "medium": 3,
+    "large": 4,
+    "huge": 5,
+    "massive": 5,
 }
 
 
-def _build_hierarchy(
-    rng: Random, shape: _Shape
-) -> tuple[tuple[Domain, ...], tuple[str, ...]]:
-    """Build a regular branching domain tree of the shape's depth and fan-out.
+def _split(total: int, parts: int) -> list[int]:
+    """Divide `total` into `parts` whole shares as evenly as possible."""
+    base, extra = divmod(total, parts)
+    return [base + 1 if index < extra else base for index in range(parts)]
 
-    A single root fans out `fanout` children per tier down to the leaf tier; the
-    tier categories are aligned to the bottom of the vocabulary, so the leaves
-    are Domains and the root is whichever tier the depth reaches. Returns the
-    domains and the ordered leaf-domain ids the team clusters attach to.
+
+def _build_tree(
+    rng: Random, depth: int, leaf_count: int
+) -> tuple[tuple[Domain, ...], tuple[str, ...]]:
+    """Build a balanced tree of the given depth holding exactly leaf_count leaves.
+
+    Each node's branching is chosen so the leaves spread evenly down the tiers;
+    categories align to the bottom of the vocabulary, so leaves are Domains and the
+    root is whichever tier the depth reaches. Returns the domains and the ordered
+    leaf-domain ids the clusters attach to.
     """
     domains: list[Domain] = []
     leaf_ids: list[str] = []
     counter = [0]
-    base = len(GROUP_CATEGORIES) - shape.depth
+    base = len(GROUP_CATEGORIES) - depth
 
-    def add_node(parent_id: str | None, tier: int) -> None:
+    def add_node(parent_id: str | None, tier: int, leaves_here: int) -> None:
         counter[0] += 1
         domain_id = f"domain_{counter[0]}"
         domains.append(
@@ -115,13 +114,15 @@ def _build_hierarchy(
                 category=GROUP_CATEGORIES[base + tier],
             )
         )
-        if tier == shape.depth - 1:
+        if tier == depth - 1:
             leaf_ids.append(domain_id)
             return
-        for _ in range(shape.fanout):
-            add_node(domain_id, tier + 1)
+        tiers_below = depth - 1 - tier
+        children = max(1, round(leaves_here ** (1 / tiers_below)))
+        for share in _split(leaves_here, children):
+            add_node(domain_id, tier + 1, share)
 
-    add_node(None, 0)
+    add_node(None, 0, leaf_count)
     return tuple(domains), tuple(leaf_ids)
 
 
@@ -137,19 +138,22 @@ def _single_team_org(rng: Random, band: OrgSizeBand, workload: int) -> OrgState:
 
 
 def generate_level(rng: Random, band: OrgSizeBand = DEFAULT_BAND) -> OrgState:
-    """Generate an org whose rolled-up headcount fills the chosen size band.
+    """Generate an org whose rolled-up headcount falls anywhere in the size band.
 
-    A bandless tiny org is a single team; every larger band builds a tree sized
-    to its people range and fills each leaf with a cloned solvable cluster, so a
-    quarter-million-person org generates as quickly as a small one.
+    The target people count is drawn uniformly across the band, then the tree is
+    sized to it, so repeated generations spread over the whole range rather than
+    clustering at the midpoint. A tiny org is a single team; every larger band
+    fills each leaf with a cloned solvable cluster.
     """
     simulator = DeterministicSimulator()
     workload = pick_workload(rng)
-    shape = _SHAPES.get(band.key)
-    if shape is None:
+    depth = _DEPTHS.get(band.key)
+    if depth is None:
         return _single_team_org(rng, band, workload)
-    domains, leaf_ids = _build_hierarchy(rng, shape)
-    pool = build_cluster_pool(rng, simulator, workload, len(leaf_ids))
+    target = rng.randint(band.min_people, band.max_people)
+    leaf_count = max(1, round(target / mean_cluster_people()))
+    domains, leaf_ids = _build_tree(rng, depth, leaf_count)
+    pool = build_cluster_pool(rng, simulator, workload, leaf_count)
     teams, dependencies = assemble_clusters(rng, pool, leaf_ids)
     return OrgState(
         teams=teams,

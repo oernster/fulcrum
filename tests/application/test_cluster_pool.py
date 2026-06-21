@@ -9,17 +9,22 @@ from fulcrum.application.cluster_pool import (
     _POOL_SIZE_CAP,
     _TEAM_MAX,
     _TEAM_MIN,
+    _TEAMS_PER_LEAF_CHOICES,
+    _random_cluster,
     _team_headcount,
     assemble_clusters,
     build_cluster_pool,
     clone_cluster,
     has_great_move,
+    mean_cluster_people,
     pick_workload,
     reaches_great_move,
 )
+from fulcrum.application.dto import MoveValuation
 from fulcrum.application.intake import build_org_state
 from fulcrum.application.simulator import DeterministicSimulator
 from fulcrum.domain.models import Domain, Origin, OrgState, Team
+from fulcrum.domain.simulation import MoveClassification
 from fulcrum.infrastructure.json_org_importer import JsonOrgImporter
 
 _MIN_WORKLOAD = 6
@@ -142,3 +147,24 @@ def test_assemble_tags_leaves_and_links_clusters_in_a_chain():
         d for d in deps if _leaf_of(teams, d.upstream) != _leaf_of(teams, d.downstream)
     ]
     assert len(cross) == len(leaf_ids) - 1
+
+
+class _NeverGreat:
+    """A simulator stub for which no move is ever great or improving."""
+
+    def valuate_moves(self, org, moves):
+        return tuple(
+            MoveValuation(move, 50.0, 50.0, MoveClassification.NEUTRAL)
+            for move in moves
+        )
+
+
+def test_random_cluster_falls_back_after_the_try_cap():
+    teams, deps = _random_cluster(Random(0), _NeverGreat(), 6, 0, 4)
+    assert len(teams) == 4
+    assert teams[0].has_local_authority is True
+
+
+def test_mean_cluster_people_tracks_team_sizing():
+    average = mean_cluster_people()
+    assert _TEAM_MIN <= average <= _BIG_TEAM_MAX * max(_TEAMS_PER_LEAF_CHOICES)

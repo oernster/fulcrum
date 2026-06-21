@@ -48,6 +48,12 @@ _TEAMS_PER_LEAF_CHOICES: tuple[int, ...] = (4, 5)
 # runs a bounded number of times however big the org grows.
 _POOL_SIZE_CAP: int = 24
 
+# A cluster is resampled until it is section-solvable, but never more than this:
+# clusters are reliably solvable, so the cap is only a guard against an unlucky
+# run looping forever. If it is ever reached, the last sample is used as-is, since
+# a section with a weaker move beats a generation that never returns.
+_MAX_CLUSTER_TRIES: int = 200
+
 
 def pick_workload(rng: Random) -> int:
     """Choose the org-wide decision workload the clusters are scored against."""
@@ -59,6 +65,15 @@ def _team_headcount(rng: Random) -> int:
     if rng.random() < _BIG_TEAM_CHANCE:
         return rng.randint(_BIG_TEAM_MIN, _BIG_TEAM_MAX)
     return rng.randint(_TEAM_MIN, _TEAM_MAX)
+
+
+def mean_cluster_people() -> float:
+    """Average people in a leaf cluster, for sizing an org to a target count."""
+    small = (_TEAM_MIN + _TEAM_MAX) / 2
+    big = (_BIG_TEAM_MIN + _BIG_TEAM_MAX) / 2
+    mean_team = (1 - _BIG_TEAM_CHANCE) * small + _BIG_TEAM_CHANCE * big
+    mean_teams = sum(_TEAMS_PER_LEAF_CHOICES) / len(_TEAMS_PER_LEAF_CHOICES)
+    return mean_teams * mean_team
 
 
 def has_great_move(
@@ -97,6 +112,33 @@ def reaches_great_move(
     return False
 
 
+def _sample_cluster(
+    rng: Random, start_index: int, size: int
+) -> tuple[tuple[Team, ...], tuple[Dependency, ...]]:
+    """Sample one densely coupled cluster, without checking its solvability.
+
+    One authoritative team and the rest without authority, every pair linked, so
+    a collapsing or delegating move is strong inside it.
+    """
+    teams = tuple(
+        Team(
+            id=f"team_{start_index + i + 1}",
+            name=f"Team {start_index + i + 1}",
+            has_local_authority=(i == 0),
+            incentive_skew=round(rng.uniform(_MIN_SKEW, _MAX_SKEW), _SKEW_DECIMALS),
+            headcount=_team_headcount(rng),
+        )
+        for i in range(size)
+    )
+    ids = [team.id for team in teams]
+    dependencies = tuple(
+        Dependency(ids[i], ids[j], rng.randint(_MIN_DELAY, _MAX_DELAY))
+        for i in range(size)
+        for j in range(i + 1, size)
+    )
+    return teams, dependencies
+
+
 def _random_cluster(
     rng: Random,
     simulator: DeterministicSimulator,
@@ -104,30 +146,15 @@ def _random_cluster(
     start_index: int,
     size: int,
 ) -> tuple[tuple[Team, ...], tuple[Dependency, ...]]:
-    """Resample a densely coupled cluster until its own sub-org reaches a great move.
+    """Resample a cluster until its own sub-org reaches a great move.
 
-    One authoritative team and the rest without authority, every pair linked, so
-    a collapsing or delegating move is strong inside it. Only its flavour (skew,
-    delays) is resampled, never the guarantee, so the returned cluster always
-    offers a reachable great move when drilled into.
+    Only its flavour (skew, delays, headcount) is resampled, never the guarantee,
+    so the returned cluster offers a reachable great move when drilled into. The
+    resampling is capped: if no sample is solvable within the cap the last one is
+    returned, so an unlucky run can never loop forever.
     """
-    while True:
-        teams = tuple(
-            Team(
-                id=f"team_{start_index + i + 1}",
-                name=f"Team {start_index + i + 1}",
-                has_local_authority=(i == 0),
-                incentive_skew=round(rng.uniform(_MIN_SKEW, _MAX_SKEW), _SKEW_DECIMALS),
-                headcount=_team_headcount(rng),
-            )
-            for i in range(size)
-        )
-        ids = [team.id for team in teams]
-        dependencies = tuple(
-            Dependency(ids[i], ids[j], rng.randint(_MIN_DELAY, _MAX_DELAY))
-            for i in range(size)
-            for j in range(i + 1, size)
-        )
+    teams, dependencies = _sample_cluster(rng, start_index, size)
+    for _ in range(_MAX_CLUSTER_TRIES):
         section = OrgState(
             teams=teams,
             dependencies=dependencies,
@@ -136,6 +163,8 @@ def _random_cluster(
         )
         if reaches_great_move(section, simulator):
             return teams, dependencies
+        teams, dependencies = _sample_cluster(rng, start_index, size)
+    return teams, dependencies
 
 
 def build_cluster_pool(
