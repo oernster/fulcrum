@@ -1,16 +1,14 @@
-"""Keyboard navigation across the main window: an explicit focus ring.
+"""Keyboard navigation across the main window: one explicit focus ring.
 
-Built in the style of Meridian's QML navigation. Focus starts on an invisible
-start item, so nothing is highlighted and no menu drops on launch; the first Tab
-or Right enters the ring at the first menu. The ring runs the menu bar then the
-body. Tab and Right step forward, Shift+Tab and Left step back, both wrapping.
-Tab and Right ALWAYS move between top-level menus (File to Edit and so on), never
-into a menu's vertical items, even while that menu is open: opening one and then
-Tab closes it and moves to the next menu. Down and Up open the highlighted menu
-and walk its items (left to the toolkit). The map and each list are a single
-stop: the map consumes its own arrows, and Up and Down move within a focused
-list. Installed as an application event filter, active only while the main window
-is foreground.
+Tab and Right step forward; Shift+Tab and Left step back. They are the same ring
+throughout: the menu titles (File, Edit, View, Help), then the body controls, the
+map and the lists, wrapping at both ends. Right and Left are handled identically
+to Tab and Shift+Tab at the top of the filter, so the menu bar never falls back to
+its native left/right menu cycling. Down opens a highlighted menu; the toolkit
+then walks its items. The map keeps its own arrow keys for node navigation (so
+Right and Left are left to it; Tab still carries focus out), and Up and Down move
+within a focused list. Installed as an application event filter, active only while
+the main window is foreground.
 """
 
 from __future__ import annotations
@@ -45,65 +43,35 @@ class KeyboardNavigator(QObject):
     def eventFilter(self, obj, event) -> bool:
         if event.type() != QEvent.Type.KeyPress or not self._window.isActiveWindow():
             return False
-        key = event.key()
-        if key in (Qt.Key.Key_Tab, Qt.Key.Key_Backtab):
-            return self._handle_tab(key, event)
-        if QApplication.activePopupWidget() is not None:
-            return False  # the toolkit drives an open menu's items
         if QApplication.activeModalWidget() is not None:
             return False
-        if self._menubar.activeAction() is not None:
-            return self._handle_menu(key)
-        focus = QApplication.focusWidget()
-        if focus is None or not self._within(focus):
-            return False
-        if focus is self._map:
-            return False
-        return self._handle_arrows(focus, key)
-
-    def _handle_tab(self, key, event) -> bool:
-        shift = key == Qt.Key.Key_Backtab or bool(
-            event.modifiers() & Qt.KeyboardModifier.ShiftModifier
-        )
-        delta = _BACK if shift else _FORWARD
+        key = event.key()
+        shift = bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
         popup = QApplication.activePopupWidget()
         if popup is not None:
-            # Tab leaves an open menu for the next top-level menu, never its items.
-            if not self._is_our_menu(popup):
-                return False
-            index = self._menu_index()
-            popup.hide()
-            self._step(delta, index)
-            return True
-        if QApplication.activeModalWidget() is not None:
+            # The toolkit walks an open menu's items; Tab still steps the ring to
+            # the next or previous top-level menu.
+            if key in (Qt.Key.Key_Tab, Qt.Key.Key_Backtab) and self._is_our_menu(popup):
+                index = self._menu_index()
+                popup.hide()
+                self._step(
+                    _BACK if key == Qt.Key.Key_Backtab or shift else _FORWARD, index
+                )
+                return True
             return False
-        if self._menubar.activeAction() is not None:
-            self._step(delta)
-            return True
         focus = QApplication.focusWidget()
+        on_menu = self._menubar.activeAction() is not None
+        on_map = (not on_menu) and focus is self._map
+        if self._is_forward(key, shift, on_map):
+            self._step(_FORWARD)
+            return True
+        if self._is_back(key, shift, on_map):
+            self._step(_BACK)
+            return True
+        if on_menu or on_map:
+            return False  # the toolkit opens the menu; the map walks its nodes
         if focus is None or not self._within(focus):
             return False
-        self._step(delta)
-        return True
-
-    def _handle_menu(self, key) -> bool:
-        # Left and Right move between top-level menus; Down, Up, Enter and Escape
-        # open and walk the menu items, so leave those to the toolkit.
-        if key == Qt.Key.Key_Right:
-            self._step(_FORWARD)
-            return True
-        if key == Qt.Key.Key_Left:
-            self._step(_BACK)
-            return True
-        return False
-
-    def _handle_arrows(self, focus, key) -> bool:
-        if key == Qt.Key.Key_Right:
-            self._step(_FORWARD)
-            return True
-        if key == Qt.Key.Key_Left:
-            self._step(_BACK)
-            return True
         if key == Qt.Key.Key_Down:
             return self._within_group(focus, _FORWARD)
         if key == Qt.Key.Key_Up:
@@ -114,6 +82,20 @@ class KeyboardNavigator(QObject):
             focus.click()
             return True
         return False
+
+    @staticmethod
+    def _is_forward(key, shift, on_map) -> bool:
+        if key == Qt.Key.Key_Tab and not shift:
+            return True
+        return key == Qt.Key.Key_Right and not on_map
+
+    @staticmethod
+    def _is_back(key, shift, on_map) -> bool:
+        if key == Qt.Key.Key_Backtab:
+            return True
+        if key == Qt.Key.Key_Tab and shift:
+            return True
+        return key == Qt.Key.Key_Left and not on_map
 
     def _within(self, widget) -> bool:
         if widget is self._menubar:
