@@ -60,9 +60,17 @@ class Move:
 
 
 def apply_move(org: OrgState, move: Move) -> OrgState:
-    """Return a new org state with the move applied. Pure."""
+    """Return a new org state with the move applied. Pure.
+
+    Target validation builds the team-id set once (O(teams)) and tests each
+    target against it, so an aggregate move that translates to thousands of
+    targets stays linear rather than scanning every team per target. That
+    quadratic was what stalled the UI when playing or previewing a move at a
+    high scope of a very large org.
+    """
+    known_team_ids = {team.id for team in org.teams}
     for team_id in move.targets:
-        if not org.has_team(team_id):
+        if team_id not in known_team_ids:
             raise UnknownTeamError(f"move targets unknown team: {team_id}")
     handler = _HANDLERS[move.kind]
     return handler(org, move)
