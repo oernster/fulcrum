@@ -5,12 +5,16 @@ from random import Random
 
 from fulcrum.application.intake import build_org_state
 from fulcrum.application.level_generator import (
+    _BIG_TEAM_MAX,
+    _BIG_TEAM_MIN,
     _DEPTH,
     _MIN_FANOUT,
-    _MIN_PEOPLE,
     _ROOT_DIVISIONS,
+    _TEAM_MAX,
+    _TEAM_MIN,
     _build_hierarchy,
     _reaches_great_move,
+    _team_headcount,
     generate_level,
     has_great_move,
 )
@@ -76,7 +80,15 @@ def test_generated_org_nests_to_depth_and_branches():
 def test_generated_headcount_rolls_up():
     org = generate_level(Random(0))
     assert total_headcount(org) == sum(team.headcount for team in org.teams)
-    assert total_headcount(org) >= len(org.teams) * _MIN_PEOPLE
+    assert total_headcount(org) >= len(org.teams) * _TEAM_MIN
+
+
+def test_team_headcount_stays_team_sized():
+    rng = Random(0)
+    sizes = {_team_headcount(rng) for _ in range(500)}
+    assert min(sizes) >= _TEAM_MIN
+    assert max(sizes) <= _BIG_TEAM_MAX
+    assert all(size <= _TEAM_MAX or size >= _BIG_TEAM_MIN for size in sizes)
 
 
 def test_build_hierarchy_branches_and_reaches_the_depth():

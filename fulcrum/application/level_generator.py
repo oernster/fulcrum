@@ -56,11 +56,14 @@ _MAX_FANOUT: int = 3
 _DEPTH: int = 3
 _TEAMS_PER_LEAF_CHOICES: tuple[int, ...] = (4, 5)
 
-# Per-team headcounts are realistic team sizes (a handful to a few dozen people)
-# that roll up through the domains into a believable company total. Headcount is
-# descriptive and never changes the structural score.
-_MIN_PEOPLE: int = 5
-_MAX_PEOPLE: int = 50
+# A team is four to six people, occasionally eight to twelve, never more. The
+# larger groups above just sum their teams, so a division reads larger than any
+# single team. Headcount is descriptive and never changes the structural score.
+_TEAM_MIN: int = 4
+_TEAM_MAX: int = 6
+_BIG_TEAM_MIN: int = 8
+_BIG_TEAM_MAX: int = 12
+_BIG_TEAM_CHANCE: float = 0.15
 
 # Cosmetic name pools for generated domains and their leads, the structural
 # equivalent of the "Team N" team names: drawn at random, never load-bearing.
@@ -104,6 +107,13 @@ _LEAD_NAMES: tuple[str, ...] = (
 
 def _tier_category(tier: int) -> str:
     return GROUP_CATEGORIES[min(tier, len(GROUP_CATEGORIES) - 1)]
+
+
+def _team_headcount(rng: Random) -> int:
+    """A team is four to six people, occasionally eight to twelve."""
+    if rng.random() < _BIG_TEAM_CHANCE:
+        return rng.randint(_BIG_TEAM_MIN, _BIG_TEAM_MAX)
+    return rng.randint(_TEAM_MIN, _TEAM_MAX)
 
 
 def _build_hierarchy(
@@ -163,7 +173,7 @@ def _random_cluster(
                 name=f"Team {start_index + i + 1}",
                 has_local_authority=(i == 0),
                 incentive_skew=round(rng.uniform(_MIN_SKEW, _MAX_SKEW), _SKEW_DECIMALS),
-                headcount=rng.randint(_MIN_PEOPLE, _MAX_PEOPLE),
+                headcount=_team_headcount(rng),
             )
             for i in range(size)
         )
