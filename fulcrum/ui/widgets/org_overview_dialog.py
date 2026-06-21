@@ -25,7 +25,7 @@ from fulcrum.ui.widgets.org_map_view import OrgMapView
 _TITLE = "Organisation overview"
 _COMPLETE = "Complete picture"
 _DRILL = "Drill down"
-_COMPLETE_HINT = "The whole organisation at once. Drag to pan, scroll to zoom."
+_COMPLETE_HINT = "The whole organisation at full size. Drag to pan, scroll to zoom."
 _DRILL_HINT = "Drag to pan, scroll to zoom, click a domain to drill in."
 _WIDTH = 980
 _HEIGHT = 680
@@ -78,4 +78,8 @@ class OrgOverviewDialog(QDialog):
         QTimer.singleShot(0, self._fit_current)
 
     def _fit_current(self) -> None:
-        self._stack.currentWidget().fit_to_contents()
+        current = self._stack.currentWidget()
+        if current is self._complete:
+            self._complete.show_full_size()
+        else:
+            current.fit_to_contents()

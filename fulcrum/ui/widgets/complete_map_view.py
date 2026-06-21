@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import math
 
-from PySide6.QtCore import QPointF, QRectF, Qt
+from PySide6.QtCore import QPointF, QRectF
 from PySide6.QtGui import (
     QBrush,
     QColor,
@@ -64,6 +64,9 @@ _MIN_SCALE = 0.15
 _MAX_SCALE = 3.0
 _ZOOM_STEP = 1.15
 _FULL = 1.0
+# Padding around the scene so edge nodes are not flush against the viewport edge
+# when the full-size map is dragged to its limits.
+_VIEW_MARGIN = 40.0
 
 
 def _font(bold: bool = False) -> QFont:
@@ -126,12 +129,27 @@ class CompleteMapView(QGraphicsView):
     def set_org(self, org: OrgState) -> None:
         self._org = org
         self._render()
-        self.fit_to_contents()
+        self.show_full_size()
 
-    def fit_to_contents(self) -> None:
+    def show_full_size(self) -> None:
+        """Show the whole picture at natural size, scrolled to the top-left.
+
+        The complete map is read at full scale and dragged around with the hand
+        cursor rather than shrunk to fit, so the tree stays legible however large
+        it grows; panning and the wheel reach the rest.
+        """
+        self.resetTransform()
         bounds = self._scene.itemsBoundingRect()
         if not bounds.isEmpty():
-            self.fitInView(bounds, Qt.AspectRatioMode.KeepAspectRatio)
+            self.setSceneRect(
+                bounds.adjusted(
+                    -_VIEW_MARGIN, -_VIEW_MARGIN, _VIEW_MARGIN, _VIEW_MARGIN
+                )
+            )
+        hbar = self.horizontalScrollBar()
+        vbar = self.verticalScrollBar()
+        hbar.setValue(hbar.minimum())
+        vbar.setValue(vbar.minimum())
 
     def wheelEvent(self, event) -> None:
         delta = event.angleDelta().y()
