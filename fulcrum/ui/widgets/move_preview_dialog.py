@@ -9,6 +9,7 @@ the same linear apply_move the board uses, quick enough to run on open.
 
 from __future__ import annotations
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialogButtonBox,
     QHBoxLayout,
@@ -166,6 +167,11 @@ class MovePreviewDialog(NeutralDialog):
             caption.setObjectName("Muted")
             column.addWidget(caption)
             view = OrgMapView()
+            # Display-only here, so keep the view and its viewport out of the
+            # tab chain: a focusable QGraphicsView (or its viewport) shows no
+            # focus ring and reads as an invisible tab stop.
+            view.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            view.viewport().setFocusPolicy(Qt.FocusPolicy.NoFocus)
             view.set_org(section)
             view.set_highlight(ringed)
             column.addWidget(view, 1)
