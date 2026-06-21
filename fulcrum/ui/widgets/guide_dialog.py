@@ -59,6 +59,7 @@ class GuideDialog(NeutralDialog):
         guide: Guide,
         growth_guide: Guide | None = None,
         simulator: Simulator | None = None,
+        on_play=None,
         parent=None,
     ) -> None:
         super().__init__(parent)
@@ -67,6 +68,7 @@ class GuideDialog(NeutralDialog):
         self._guide = guide
         self._growth_guide = growth_guide
         self._simulator = simulator
+        self._on_play = on_play
         self._toggle: QCheckBox | None = None
         layout = QVBoxLayout(self)
 
@@ -138,9 +140,11 @@ class GuideDialog(NeutralDialog):
         valuation = MoveValuation(
             step.move, step.score_before, step.score_after, step.classification
         )
-        MovePreviewDialog(
+        dialog = MovePreviewDialog(
             step.org_before, None, valuation, self._simulator, step.org_before, self
-        ).exec()
+        )
+        if dialog.exec() and self._on_play is not None and self._on_play(step.move):
+            self.accept()
 
     def _on_growth_toggled(self, allow_growth: bool) -> None:
         self._render(self._growth_guide if allow_growth else self._guide)

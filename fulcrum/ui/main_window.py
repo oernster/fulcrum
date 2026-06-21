@@ -233,7 +233,19 @@ class MainWindow(QMainWindow):
         grown = ImprovementPlanner(self._simulator, allow_growth=True).plan(
             section, kinds
         )
-        GuideDialog(fixed, grown, self._simulator, self).exec()
+        GuideDialog(fixed, grown, self._simulator, self._play_from_guide, self).exec()
+
+    def _play_from_guide(self, move) -> bool:
+        if self._session is None:
+            return False
+        if not self._session.try_play(move):
+            self._inform(
+                "Cannot play this move yet",
+                "This move builds on earlier moves in the path; play those first.",
+            )
+            return False
+        self._board.refresh()
+        return True
 
     def _model_org(self) -> None:
         editor = OrgEditorDialog(self)

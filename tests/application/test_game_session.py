@@ -249,3 +249,19 @@ def test_take_back_with_no_history_is_a_no_op():
     session.take_back()
     assert session.history == ()
     assert session.org == session.initial_org
+
+
+def test_try_play_applies_a_valid_move():
+    session = GameSession(_org(), _FakeSimulator())
+    assert session.try_play(Move(MoveKind.DELEGATE_AUTHORITY, ("b",))) is True
+    assert session.org.team("b").has_local_authority is True
+    assert session.history[0].kind == MoveKind.DELEGATE_AUTHORITY
+    assert session.can_take_back is True
+
+
+def test_try_play_rejects_a_move_with_an_unknown_target():
+    session = GameSession(_org(), _FakeSimulator())
+    assert session.try_play(Move(MoveKind.DELEGATE_AUTHORITY, ("ghost",))) is False
+    assert session.history == ()
+    assert session.can_take_back is False
+    assert session.org == session.initial_org

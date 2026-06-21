@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from fulcrum.application.dto import MoveValuation, SavedGame
 from fulcrum.application.interfaces import Clock, SaveGameRepository, Simulator
+from fulcrum.domain.errors import FulcrumError
 from fulcrum.domain.hierarchy import (
     AGGREGATE_MOVE_KINDS,
     child_domains,
@@ -164,6 +165,24 @@ class GameSession:
             return
         self._org = self._past.pop()
         self._history.pop()
+
+    def try_play(self, move: Move) -> bool:
+        """Play a move if it applies to the current org; report whether it did.
+
+        The guide offers moves from projected future positions, so a later move
+        can target a team an earlier move would create. Applying it now would
+        fail, so this attempts the pure transform first and commits only when it
+        succeeds, leaving the session unchanged otherwise.
+        """
+        real = translate_focused_move(self._org, self._focus_id, move)
+        try:
+            new_org = apply_move(self._org, real)
+        except FulcrumError:
+            return False
+        self._past.append(self._org)
+        self._org = new_org
+        self._history.append(move)
+        return True
 
     def preview(self, move: Move) -> OrgState:
         real = translate_focused_move(self._org, self._focus_id, move)
