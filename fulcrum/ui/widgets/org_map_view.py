@@ -1,11 +1,12 @@
 """A navigable map of an organisation, drawn on a graphics scene.
 
 At the top level it shows the root domains (each a box aggregating its subtree)
-plus any unassigned teams; double-clicking a domain drills into it, and the back
-chip climbs out. A node's border runs from amber (no local authority) to teal
-(fully authoritative); inter-node dependencies are drawn as arrows. The view
-pans by dragging and zooms with the wheel, so a large org stays navigable. The
-set_org / set_preview contract matches the board's expectations.
+plus any unassigned teams; clicking a domain drills into it and the back chip
+climbs out. A node's border runs from amber (no local authority) to teal (fully
+authoritative); inter-node dependencies are drawn as arrows. Hovering a
+drillable domain or the back chip rings it in blue to show you can click it;
+each level is fit to the panel and navigation is by drilling in rather than
+zooming. The set_org / set_preview contract matches the board's expectations.
 """
 
 from __future__ import annotations
@@ -29,6 +30,7 @@ _TEXT = QColor("#e6e9ee")
 _TEXT_MUTED = QColor("#9aa3af")
 _EDGE = QColor("#5b6470")
 _PREVIEW = QColor("#fbbf24")
+_HOVER_RING = QColor("#60a5fa")
 _BG = QColor("#0d0f12")
 
 _MIN_HEIGHT = 340
@@ -41,12 +43,10 @@ _PAD = 12.0
 _SUB_DROP = 24.0
 _SUB_LINE2 = 42.0
 _CORNER = 10.0
-_DRILL_INSET = 4.0
-_DRILL_PEN = 1.5
+_DRILL_INSET = 5.0
+_DRILL_PEN = 3.0
+_FIT_MARGIN = _DRILL_INSET + _DRILL_PEN
 _ARROW = 11.0
-_ZOOM_STEP = 1.15
-_MIN_SCALE = 0.2
-_MAX_SCALE = 4.0
 _CLICK_SLOP = 4
 _FULL = 1.0
 _HALF = 2.0
@@ -105,7 +105,10 @@ class OrgMapView(QGraphicsView):
         self._hot: list[tuple[QRectF, str, str]] = []
         self._up_rect: QRectF | None = None
         self._press_pos = None
-        self._user_zoomed = False
+        self._hover_id: str | None = None
+        self._hover_back = False
+        self.setMouseTracking(True)
+        self.viewport().setMouseTracking(True)
 
     def set_org(self, org: OrgState) -> None:
         self._org = org
@@ -122,7 +125,7 @@ class OrgMapView(QGraphicsView):
     def reset_view(self) -> None:
         """Return to the top level, for when a fresh org is loaded."""
         self._parent_id = None
-        self._user_zoomed = False
+        self._reset_hover()
 
     def fit_to_contents(self) -> None:
         """Fit the whole scene into the viewport, after a resize or a show."""
@@ -147,18 +150,19 @@ class OrgMapView(QGraphicsView):
         signature = (self._parent_id, len(nodes))
         if signature != self._signature:
             self._signature = signature
-            self._user_zoomed = False
             self._fit()
 
     def _fit(self) -> None:
         bounds = self._scene.itemsBoundingRect()
         if not bounds.isEmpty():
-            self.fitInView(bounds, Qt.AspectRatioMode.KeepAspectRatio)
+            padded = bounds.adjusted(
+                -_FIT_MARGIN, -_FIT_MARGIN, _FIT_MARGIN, _FIT_MARGIN
+            )
+            self.fitInView(padded, Qt.AspectRatioMode.KeepAspectRatio)
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
-        if not self._user_zoomed:
-            self._fit()
+        self._fit()
 
     def _positions(self, nodes) -> dict:
         columns = max(1, math.ceil(math.sqrt(max(1, len(nodes)))))
@@ -178,8 +182,6 @@ class OrgMapView(QGraphicsView):
         fill = _DOMAIN_FILL if node.kind == _KIND_DOMAIN else _TEAM_FILL
         border = _blend(_NO_AUTHORITY, _AUTHORITY, node.authority_ratio)
         self._scene.addPath(path, QPen(border, 2), QBrush(fill))
-        if node.kind == _KIND_DOMAIN:
-            self._draw_drill_ring(rect)
         self._draw_person(rect, border, node)
         name = self._scene.addSimpleText(node.label, _font(bold=True))
         name.setBrush(_TEXT)
@@ -193,13 +195,6 @@ class OrgMapView(QGraphicsView):
             line2.setBrush(_TEXT_MUTED)
             line2.setPos(rect.x() + _PAD, rect.y() + _SUB_LINE2 + _PAD)
         self._hot.append((rect, node.kind, node.id))
-
-    def _draw_drill_ring(self, rect: QRectF) -> None:
-        ring = rect.adjusted(-_DRILL_INSET, -_DRILL_INSET, _DRILL_INSET, _DRILL_INSET)
-        path = QPainterPath()
-        path.addRoundedRect(ring, _CORNER + _DRILL_INSET, _CORNER + _DRILL_INSET)
-        pen = QPen(_PREVIEW, _DRILL_PEN)
-        self._scene.addPath(path, pen, QBrush(Qt.BrushStyle.NoBrush))
 
     def _draw_person(self, rect: QRectF, color: QColor, node) -> None:
         pen = QPen(color, 2)
@@ -309,31 +304,57 @@ class OrgMapView(QGraphicsView):
         if moved <= _CLICK_SLOP:
             self._drill_at(self.mapToScene(event.position().toPoint()))
 
+    def mouseMoveEvent(self, event) -> None:
+        super().mouseMoveEvent(event)
+        pos = self.mapToScene(event.position().toPoint())
+        domain = self._domain_at(pos)
+        back = self._up_rect is not None and self._up_rect.contains(pos)
+        if domain != self._hover_id or back != self._hover_back:
+            self._hover_id = domain
+            self._hover_back = back
+            self.viewport().update()
+
+    def leaveEvent(self, event) -> None:
+        super().leaveEvent(event)
+        if self._hover_id is not None or self._hover_back:
+            self._reset_hover()
+            self.viewport().update()
+
     def _drill_at(self, scene_pos: QPointF) -> None:
         if self._up_rect is not None and self._up_rect.contains(scene_pos):
+            self._reset_hover()
             self._parent_id = self._domain_parent(self._parent_id)
             self._render()
             self.drilled.emit(self._parent_id)
             return
+        node_id = self._domain_at(scene_pos)
+        if node_id is not None:
+            self._reset_hover()
+            self._parent_id = node_id
+            self._render()
+            self.drilled.emit(self._parent_id)
+
+    def _domain_at(self, scene_pos: QPointF) -> str | None:
         for rect, kind, node_id in self._hot:
             if kind == _KIND_DOMAIN and rect.contains(scene_pos):
-                self._parent_id = node_id
-                self._render()
-                self.drilled.emit(self._parent_id)
-                return
+                return node_id
+        return None
 
-    def wheelEvent(self, event) -> None:
-        delta = event.angleDelta().y()
-        if delta == 0:
-            return
-        factor = _ZOOM_STEP if delta > 0 else _FULL / _ZOOM_STEP
-        target = self.transform().m11() * factor
-        if _MIN_SCALE <= target <= _MAX_SCALE:
-            self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
-            self.scale(factor, factor)
-            self._user_zoomed = True
+    def _reset_hover(self) -> None:
+        self._hover_id = None
+        self._hover_back = False
+
+    def _hover_rect(self) -> QRectF | None:
+        if self._hover_back and self._up_rect is not None:
+            return self._up_rect
+        if self._hover_id is not None:
+            for rect, _kind, node_id in self._hot:
+                if node_id == self._hover_id:
+                    return rect
+        return None
 
     def drawForeground(self, painter: QPainter, rect: QRectF) -> None:
+        self._paint_hover_ring(painter)
         if not self._preview:
             return
         painter.save()
@@ -351,4 +372,17 @@ class OrgMapView(QGraphicsView):
             + QPointF(0, _SUB_DROP).toPoint(),
             "Preview",
         )
+        painter.restore()
+
+    def _paint_hover_ring(self, painter: QPainter) -> None:
+        target = self._hover_rect()
+        if target is None:
+            return
+        outer = target.adjusted(
+            -_DRILL_INSET, -_DRILL_INSET, _DRILL_INSET, _DRILL_INSET
+        )
+        painter.save()
+        painter.setPen(QPen(_HOVER_RING, _DRILL_PEN))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawRoundedRect(outer, _CORNER + _DRILL_INSET, _CORNER + _DRILL_INSET)
         painter.restore()
