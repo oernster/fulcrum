@@ -32,6 +32,7 @@ from fulcrum.application.plan import build_plan_report
 from fulcrum.application.plan_edit import first_invalid_index
 from fulcrum.application.planner import ImprovementPlanner
 from fulcrum.domain.errors import FulcrumError
+from fulcrum.domain.hierarchy import child_domains, focused_suborg
 from fulcrum.domain.models import Origin
 from fulcrum.shared.resources import find_model_licence, find_ui_licence
 from fulcrum.ui.widgets.about_dialog import AboutDialog, LicenceDialog
@@ -155,8 +156,17 @@ class MainWindow(QMainWindow):
         if self._session is None:
             return
         org = self._session.org
-        fixed = ImprovementPlanner(self._simulator).plan(org)
-        grown = ImprovementPlanner(self._simulator, allow_growth=True).plan(org)
+        focused = self._session.focused_on
+        if focused is None or child_domains(org, focused):
+            self._inform(
+                "Guide",
+                "Drill into a section on the map first. The guide plans the "
+                "section you are in, where the strong moves are.",
+            )
+            return
+        section = focused_suborg(org, focused)
+        fixed = ImprovementPlanner(self._simulator).plan(section)
+        grown = ImprovementPlanner(self._simulator, allow_growth=True).plan(section)
         GuideDialog(fixed, grown, self).exec()
 
     def _model_org(self) -> None:
