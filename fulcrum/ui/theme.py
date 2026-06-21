@@ -102,6 +102,16 @@ QPushButton#IconLink:enabled:hover {{
     border-color: {_ACCENT};
     color: {_ACCENT_BRIGHT};
 }}
+QPushButton#PreviewButton {{
+    background: transparent;
+    border: 2px solid transparent;
+    padding: 4px 8px;
+    font-size: {glyph_pt}pt;
+}}
+QPushButton#PreviewButton:enabled:hover {{
+    border-color: {_ACCENT};
+    color: {_ACCENT_BRIGHT};
+}}
 
 QFrame#Card, QFrame#Popover {{
     background-color: {_SURFACE};

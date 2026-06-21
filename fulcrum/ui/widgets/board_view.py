@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
+    QHBoxLayout,
     QLabel,
     QLayout,
     QPushButton,
@@ -17,12 +18,15 @@ from fulcrum.application.dto import MoveValuation
 from fulcrum.application.game_session import GameSession
 from fulcrum.application.move_text import describe_move, move_note
 from fulcrum.domain.hierarchy import child_domains, total_headcount
+from fulcrum.domain.models import OrgState
 from fulcrum.domain.moves import MoveKind
 from fulcrum.domain.signals import SignalReading
 from fulcrum.domain.simulation import MoveClassification
 from fulcrum.ui import ui_scale
 from fulcrum.ui.analysis_thread import AnalysisThread
 from fulcrum.ui.widgets.definition_popover import HoverPopover
+from fulcrum.ui.widgets.hover_button import HoverButton
+from fulcrum.ui.widgets.move_preview import MovePreview
 from fulcrum.ui.widgets.org_map_view import OrgMapView
 
 _SCORE_DECIMALS = 1
@@ -53,6 +57,8 @@ _RIGHT_PANE_W = 480
 _RIGHT_PANE_MIN = 360
 _MOVES_RIGHT_PAD = 12
 _PREVIEW_COLOR = "#fbbf24"
+_PREVIEW_ICON = "🔍"
+_PREVIEW_TIP = "Preview this move on the map"
 # The per-move note reserves the height of the tallest note at the current
 # width (recomputed on resize), so changing its text on hover never reflows the
 # layout: that reflow read as a jiggle as the mouse swept across the moves.
@@ -67,21 +73,6 @@ def _clear(layout: QLayout) -> None:
         widget = item.widget()
         if widget is not None:
             widget.deleteLater()
-
-
-class _HoverButton(QPushButton):
-    """A button that announces hover enter and leave (previews and popovers)."""
-
-    entered = Signal()
-    left = Signal()
-
-    def enterEvent(self, event) -> None:
-        self.entered.emit()
-        super().enterEvent(event)
-
-    def leaveEvent(self, event) -> None:
-        self.left.emit()
-        super().leaveEvent(event)
 
 
 class BoardView(QWidget):
@@ -121,6 +112,7 @@ class BoardView(QWidget):
         self._computing_timer = QTimer(self)
         self._computing_timer.setSingleShot(True)
         self._computing_timer.timeout.connect(self._show_computing)
+        self._preview = MovePreview(self, self._show_preview, self._restore_preview)
         self._build()
 
     def _build(self) -> None:
@@ -222,6 +214,7 @@ class BoardView(QWidget):
         self._set_focus_note()
         self._map_caption.setText(self._map_caption_text())
         self._map_caption.setStyleSheet("")
+        self._preview.reset()
         self._map.set_preview(False)
         self._map.set_org(self._session.org)
         self._set_last_move_note()
@@ -310,7 +303,7 @@ class BoardView(QWidget):
     def _render_signals(self, readings: tuple[SignalReading, ...]) -> None:
         _clear(self._signals_row)
         for reading in readings:
-            chip = _HoverButton(
+            chip = HoverButton(
                 f"{reading.definition.label}: "
                 f"{reading.value:.{_VALUE_DECIMALS}f} {reading.definition.unit}"
             )
@@ -323,20 +316,30 @@ class BoardView(QWidget):
     def _render_moves(self, valuations: tuple[MoveValuation, ...]) -> None:
         _clear(self._moves_box)
         for valuation in valuations:
-            description = describe_move(self._scope_active, valuation.move)
-            button = _HoverButton(
-                f"{description}   "
-                f"[{valuation.classification.value}]   "
-                f"{valuation.delta:+.{_VALUE_DECIMALS}f}"
-            )
-            button.setObjectName("MoveButton")
-            button.clicked.connect(lambda _=False, v=valuation: self._play(v))
-            button.entered.connect(lambda v=valuation: self._preview_move(v))
-            button.entered.connect(lambda v=valuation, c=button: self._move_hover(v, c))
-            button.left.connect(self._unpreview_move)
-            button.left.connect(self._popovers.hide)
-            self._moves_box.addWidget(button)
+            self._moves_box.addWidget(self._move_row(valuation))
         self._moves_box.addStretch()
+
+    def _move_row(self, valuation: MoveValuation) -> QWidget:
+        button = HoverButton(
+            f"{describe_move(self._scope_active, valuation.move)}   "
+            f"[{valuation.classification.value}]   "
+            f"{valuation.delta:+.{_VALUE_DECIMALS}f}"
+        )
+        button.setObjectName("MoveButton")
+        button.clicked.connect(lambda _=False, v=valuation: self._play(v))
+        button.entered.connect(lambda v=valuation, c=button: self._move_hover(v, c))
+        button.left.connect(self._popovers.hide)
+        magnifier = QPushButton(_PREVIEW_ICON)
+        magnifier.setObjectName("PreviewButton")
+        magnifier.setToolTip(_PREVIEW_TIP)
+        magnifier.clicked.connect(lambda _=False, v=valuation: self._toggle_preview(v))
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.addWidget(button, 1)
+        row.addWidget(magnifier)
+        holder = QWidget()
+        holder.setLayout(row)
+        return holder
 
     def _play(self, valuation: MoveValuation) -> None:
         if self._session is None:
@@ -344,17 +347,19 @@ class BoardView(QWidget):
         self._session.play(valuation.move)
         self.refresh()
 
-    def _preview_move(self, valuation: MoveValuation) -> None:
-        if self._session is None:
-            return
-        self._map.set_org(self._session.preview(valuation.move))
+    def _show_preview(self, preview: OrgState, valuation: MoveValuation) -> None:
+        self._map.set_org(preview)
         self._map.set_preview(True)
         description = describe_move(self._scope_active, valuation.move)
         self._map_caption.setText(f"{_MAP_CAPTION} · after: {description}")
         self._map_caption.setStyleSheet(f"color: {_PREVIEW_COLOR};")
         self._move_note.setText(move_note(valuation.move.kind))
 
-    def _unpreview_move(self) -> None:
+    def _toggle_preview(self, valuation: MoveValuation) -> None:
+        if self._session is not None:
+            self._preview.toggle(self._session.org, self._session.focused_on, valuation)
+
+    def _restore_preview(self) -> None:
         if self._session is not None:
             self._map.set_org(self._session.org)
             self._map.set_preview(False)
