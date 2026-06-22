@@ -5,7 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from random import Random
 
-from PySide6.QtCore import Qt, QStandardPaths, QTimer
+from PySide6.QtCore import Qt, QStandardPaths, QTimer, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QDialog,
     QFileDialog,
@@ -52,6 +53,7 @@ _HTML_FILTER = "Presentation (*.html);;All files (*)"
 _PLAN_FILTER = "Plan JSON (*.json);;All files (*)"
 _DEFAULT_HTML_EXPORT = "fulcrum-presentation.html"
 _DEFAULT_JSON_EXPORT = "fulcrum-plan.json"
+_RELEASES_URL = "https://github.com/oernster/fulcrum/releases"
 _GLOSSARY_GLYPH = "\N{SCROLL}"
 _GLOSSARY_TOOLTIP = "Decision glossary"
 _OVERVIEW_GLYPH = "\N{WORLD MAP}\N{VARIATION SELECTOR-16}"
@@ -206,6 +208,7 @@ class MainWindow(QMainWindow):
         help_menu = self.menuBar().addMenu("Help")
         help_menu.addAction("Decision glossary...", self._glossary)
         help_menu.addAction("Book background...", self._book_background)
+        help_menu.addAction("Check for updates...", self._check_for_updates)
         help_menu.addSeparator()
         help_menu.addAction("About", self._about)
         help_menu.addAction("Model licence (GPL-3.0)", self._model_licence)
@@ -359,6 +362,9 @@ class MainWindow(QMainWindow):
 
     def _book_background(self) -> None:
         BookBackgroundDialog(self).exec()
+
+    def _check_for_updates(self) -> None:
+        QDesktopServices.openUrl(QUrl(_RELEASES_URL))
 
     def _about(self) -> None:
         AboutDialog(self).exec()
