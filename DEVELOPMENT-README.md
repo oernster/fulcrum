@@ -117,8 +117,15 @@ runtime, installs it for the current user and writes a distributable
 installed offline inside the sandbox, so the build needs no network. Needs
 `flatpak` and `flatpak-builder` with the freedesktop 25.08 runtime and SDK. Pass
 `--no-bundle` to build and install without the distributable bundle.
-`./clean_flatpak.sh` uninstalls the app and removes the Flatpak build artefacts,
-leaving the Nuitka and macOS outputs untouched.
+
+```
+./clean_flatpak.sh
+```
+
+Uninstalls the Flatpak for the current user and removes the Flatpak build
+artefacts (`fulcrum.flatpak`, the build and repo directories and the generated
+manifest). It leaves the Nuitka and macOS outputs untouched, so the build paths
+stay independent.
 
 ### macOS disk image
 
