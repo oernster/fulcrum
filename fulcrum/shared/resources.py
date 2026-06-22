@@ -1,8 +1,8 @@
 """Runtime discovery of bundled assets (icon, licence). No Qt dependency.
 
-Looks beside the executable (frozen builds), in the PyInstaller temp dir, in the
-repo root (dev mode) and finally the working directory, so the same code finds
-assets whether running from source or from an installed build.
+Looks beside the executable (Nuitka frozen builds), in the macOS .app Resources
+directory, in the repo root (dev mode) and finally the working directory, so the
+same code finds assets whether running from source or from an installed build.
 """
 
 from __future__ import annotations
@@ -28,11 +28,12 @@ _BOOK_COVER_SUBDIR = ("assets", "books")
 
 def _candidate_roots() -> list[Path]:
     roots: list[Path] = []
-    meipass = getattr(sys, "_MEIPASS", None)
-    if meipass:
-        roots.append(Path(meipass))
     try:
-        roots.append(Path(sys.executable).resolve().parent)
+        exe_dir = Path(sys.executable).resolve().parent
+        roots.append(exe_dir)
+        # A Nuitka macOS .app keeps the binary in Contents/MacOS while bundled
+        # data files land in the sibling Contents/Resources, so look there too.
+        roots.append(exe_dir.parent / "Resources")
     except OSError:
         pass
     roots.append(Path(__file__).resolve().parents[2])

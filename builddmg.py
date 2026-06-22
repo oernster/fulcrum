@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """macOS DMG builder for Fulcrum.
 
-Requires macOS with Xcode command-line tools and Homebrew. PyInstaller is a
-build-time dependency installed in the venv (pip install pyinstaller). Run from
-the repository root with the venv active:
+Requires macOS with Xcode command-line tools and Homebrew. Nuitka is the
+build-time compiler (from requirements-dev.txt); it produces a standalone .app
+bundle, mirroring the Windows Nuitka build. Run from the repository root with
+the venv active:
 
     python builddmg.py
 
@@ -42,6 +43,7 @@ BUNDLE_ID = "uk.codecrafter.Fulcrum"
 FINAL_DMG = "fulcrum.dmg"
 RW_DMG = "_fulcrum_rw.dmg"
 VOLUME_NAME = f"Install {APP_NAME}"
+DIST_DIR = Path("dist")
 
 # Source icon (the same master PNG generate_icons.py downscales) and the runtime
 # PNG bundled beside the binary.
@@ -105,7 +107,7 @@ BYTES_PER_MB = 1024 * 1024
 # Minimal hardened-runtime entitlements. Fulcrum is a local-first app with no
 # network use and no JIT, so none of the relaxed memory/network entitlements are
 # required. disable-library-validation lets the hardened runtime load the
-# PyInstaller-bundled Qt frameworks signed with our identity.
+# Nuitka-bundled Qt frameworks signed with our identity.
 ENTITLEMENTS = """\
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
@@ -131,9 +133,9 @@ def check_platform() -> None:
     )
     print(f"  macOS {result.stdout.strip()}")
     try:
-        import PyInstaller  # noqa: F401
+        import nuitka  # noqa: F401
     except ImportError:
-        sys.exit("ERROR: PyInstaller not installed. Run: pip install pyinstaller")
+        sys.exit("ERROR: Nuitka not installed. Run: pip install nuitka")
     require("create-dmg", "create-dmg")
     require("codesign")
     print("  All tools present.")
@@ -142,10 +144,8 @@ def check_platform() -> None:
 def clean() -> None:
     section("Clean previous build")
     for path in [
-        "build",
         "dist",
         FINAL_DMG,
-        f"{APP_NAME}.spec",
         "_dmg_staging",
         RW_DMG,
     ]:
@@ -157,52 +157,53 @@ def clean() -> None:
             print(f"  Removed: {path}")
 
 
-def build_app_bundle(entitlements_path: Path, icns_path: Path | None = None) -> Path:
-    section("PyInstaller: build .app bundle")
+def build_app_bundle(icns_path: Path | None = None) -> Path:
+    section("Nuitka: build .app bundle")
 
     root = Path(__file__).parent
-    icon_args = ["--icon", str(icns_path)] if icns_path else []
-
-    add_data = [f"{root / name}:." for name in BUNDLED_DATA]
-    for name in BUNDLED_ICONS:
-        asset = root / name
-        if asset.exists():
-            add_data.append(f"{asset}:.")
-    books = root / "assets" / "books"
-    if books.is_dir():
-        add_data.append(f"{books}:{BOOK_COVER_DIR}")
+    jobs = str(os.cpu_count() or 1)
 
     cmd = [
         sys.executable,
         "-m",
-        "PyInstaller",
-        "--noconfirm",
-        "--clean",
-        "--windowed",
-        "--name",
-        APP_NAME,
-        "--osx-bundle-identifier",
-        BUNDLE_ID,
-        "--codesign-identity",
-        DEVELOPER_ID,
-        "--osx-entitlements-file",
-        str(entitlements_path),
-        *icon_args,
-        # Pull in every fulcrum submodule, including any reached only via
-        # function-level deferred imports in the composition root.
-        "--collect-submodules=fulcrum",
+        "nuitka",
+        "--standalone",
+        "--assume-yes-for-downloads",
+        "--enable-plugin=pyside6",
+        "--macos-create-app-bundle",
+        "--macos-app-mode=gui",
+        f"--macos-app-name={APP_NAME}",
+        f"--macos-app-version={APP_VERSION}",
+        f"--macos-signed-app-name={BUNDLE_ID}",
+        f"--jobs={jobs}",
+        f"--output-dir={DIST_DIR}",
     ]
+    if icns_path:
+        cmd.append(f"--macos-app-icon={icns_path}")
 
-    for spec in add_data:
-        cmd.extend(["--add-data", spec])
+    # Bundle the loose data files and per-size icons beside the binary, plus the
+    # book covers under assets/books. The resource resolver finds them beside
+    # the executable (Contents/MacOS) or in Contents/Resources.
+    for name in (*BUNDLED_DATA, *BUNDLED_ICONS):
+        asset = root / name
+        if asset.exists():
+            cmd.append(f"--include-data-file={asset}={name}")
+    books = root / "assets" / "books"
+    if books.is_dir():
+        for cover in sorted(books.glob("*.png")):
+            cmd.append(f"--include-data-file={cover}={BOOK_COVER_DIR}/{cover.name}")
 
     cmd.append(str(root / "main.py"))
 
     run(cmd)
 
-    app_path = Path("dist") / f"{APP_NAME}.app"
+    app_path = DIST_DIR / f"{APP_NAME}.app"
     if not app_path.exists():
-        sys.exit(f"ERROR: Expected app bundle not found: {app_path}")
+        # Nuitka may name the bundle after the entry script; normalise it.
+        produced = sorted(DIST_DIR.rglob("*.app"))
+        if not produced:
+            sys.exit(f"ERROR: no .app produced under {DIST_DIR}")
+        shutil.move(str(produced[0]), str(app_path))
     print(f"  Built: {app_path}")
     return app_path
 
@@ -365,7 +366,7 @@ def main() -> int:
             print(f"  WARNING: {png_path} not found, building without custom icon.")
 
         try:
-            app_path = build_app_bundle(entitlements_path, icns_path)
+            app_path = build_app_bundle(icns_path)
             strip_build_artifacts(app_path)
             sign_bundle(app_path, entitlements_path)
             create_dmg(app_path)

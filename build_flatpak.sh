@@ -107,11 +107,11 @@ section "Pre-downloading wheels (Python ${WHEEL_PYTHON} / ${WHEEL_PLATFORM})"
 rm -rf .flatpak-wheels
 mkdir -p .flatpak-wheels
 
-run_with_spinner "Downloading wheels for $(grep -cE '^[^#[:space:]]' requirements.txt) requirements" -- \
+run_with_spinner "Downloading wheels (PySide6 plus the Nuitka build chain)" -- \
     pip download --only-binary :all: \
         --python-version "${WHEEL_PYTHON}" --implementation cp \
         --platform "${WHEEL_PLATFORM}" \
-        -q -d .flatpak-wheels -r requirements.txt
+        -q -d .flatpak-wheels -r requirements.txt Nuitka
 
 echo "  $(ls .flatpak-wheels/ | wc -l) distributions ready"
 
@@ -125,11 +125,8 @@ mkdir -p packaging
 # env var is needed.
 cat > packaging/fulcrum-launcher.sh <<LAUNCHER
 #!/bin/sh
-export LD_LIBRARY_PATH="/app/lib\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}"
-export PYTHONPATH="/app/share/${SHARE_DIR}:/app/lib/python${PYTHON_MM}/site-packages\${PYTHONPATH:+:\$PYTHONPATH}"
-export QT_PLUGIN_PATH="/app/lib/python${PYTHON_MM}/site-packages/PySide6/Qt/plugins"
-export QT_QPA_PLATFORM_PLUGIN_PATH="/app/lib/python${PYTHON_MM}/site-packages/PySide6/Qt/plugins/platforms"
-export QML2_IMPORT_PATH="/app/lib/python${PYTHON_MM}/site-packages/PySide6/Qt/qml"
+# The Nuitka standalone bundle is self-contained (it ships its own Python and
+# Qt), so no PYTHONPATH or Qt plugin paths are needed here.
 if [ -n "\${WAYLAND_DISPLAY:-}" ] && [ -z "\${FORCE_X11:-}" ]; then
     export QT_QPA_PLATFORM=wayland
 elif [ -n "\${DISPLAY:-}" ]; then
@@ -137,7 +134,7 @@ elif [ -n "\${DISPLAY:-}" ]; then
 else
     export QT_QPA_PLATFORM=xcb
 fi
-exec python3 /app/share/${SHARE_DIR}/main.py "\$@"
+exec /app/share/${SHARE_DIR}/fulcrum "\$@"
 LAUNCHER
 chmod +x packaging/fulcrum-launcher.sh
 
@@ -208,32 +205,30 @@ finish-args:
 
 modules:
 
-  # Python dependencies (local wheels only, fully offline)
-  - name: python-deps
-    buildsystem: simple
-    build-commands:
-      - python3 -m ensurepip --upgrade --default-pip
-      - pip3 install --no-cache-dir --no-index --find-links wheels --prefix=/app
-          -r requirements.txt
-    sources:
-      - type: dir
-        path: .flatpak-wheels
-        dest: wheels
-      - type: file
-        path: requirements.txt
-
-  # Fulcrum application source plus its runtime assets
+  # Compile Fulcrum with Nuitka inside the SDK (offline, from local wheels) and
+  # install the self-contained standalone bundle. No Python or Qt is installed
+  # into /app: the Nuitka bundle ships its own, mirroring the Windows build.
   - name: fulcrum
     buildsystem: simple
     build-commands:
+      - python3 -m ensurepip --upgrade --default-pip
+      - pip3 install --no-cache-dir --no-index --find-links wheels Nuitka PySide6
+      - python3 -m nuitka --standalone --assume-yes-for-downloads
+          --enable-plugin=pyside6 --output-dir=nuitka-build
+          --output-filename=fulcrum
+          --include-data-file=fulcrum.ico=fulcrum.ico
+          --include-data-file=fulcrum.png=fulcrum.png
+          --include-data-file=fulcrum_256.png=fulcrum_256.png
+          --include-data-file=spin_up.png=spin_up.png
+          --include-data-file=spin_down.png=spin_down.png
+          --include-data-file=VERSION=VERSION
+          --include-data-file=LICENSE=LICENSE
+          --include-data-file=LICENSE-GPL-3.0.txt=LICENSE-GPL-3.0.txt
+          --include-data-file=LICENSE-LGPL-3.0.txt=LICENSE-LGPL-3.0.txt
+          --include-data-dir=assets/books=assets/books
+          main.py
       - mkdir -p /app/share/${SHARE_DIR}
-      - cp main.py VERSION LICENSE LICENSE-GPL-3.0.txt LICENSE-LGPL-3.0.txt /app/share/${SHARE_DIR}/
-      - cp -r fulcrum /app/share/${SHARE_DIR}/
-      # Book covers shown by Help > Book background, resolved at assets/books.
-      - cp -r assets /app/share/${SHARE_DIR}/
-      # Loose assets the resource resolver looks for beside main.py: the window
-      # and About icon, plus the amber spinbox arrows used by the theme.
-      - cp fulcrum.ico fulcrum.png fulcrum_256.png spin_up.png spin_down.png /app/share/${SHARE_DIR}/
+      - cp -r nuitka-build/main.dist/. /app/share/${SHARE_DIR}/
       - install -Dm644 fulcrum_16.png  /app/share/icons/hicolor/16x16/apps/${APP_ID}.png
       - install -Dm644 fulcrum_32.png  /app/share/icons/hicolor/32x32/apps/${APP_ID}.png
       - install -Dm644 fulcrum_48.png  /app/share/icons/hicolor/48x48/apps/${APP_ID}.png
@@ -249,6 +244,11 @@ modules:
       - install -Dm644 LICENSE-GPL-3.0.txt /app/share/licenses/${APP_ID}/LICENSE-GPL-3.0.txt
       - install -Dm644 LICENSE-LGPL-3.0.txt /app/share/licenses/${APP_ID}/LICENSE-LGPL-3.0.txt
     sources:
+      - type: dir
+        path: .flatpak-wheels
+        dest: wheels
+      - type: file
+        path: requirements.txt
       - type: file
         path: main.py
       - type: file
