@@ -10,6 +10,7 @@ the same linear apply_move the board uses, quick enough to run on open.
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
     QDialogButtonBox,
     QHBoxLayout,
@@ -32,8 +33,12 @@ from fulcrum.ui.widgets.org_map_view import OrgMapView
 _SCORE_DECIMALS = 1
 _SKEW_DECIMALS = 2
 _AFFECTED_CAP = 8
-_DIALOG_W = 840
-_DIALOG_H = 560
+# Fill most of the screen (the 13in laptop is the floor) so the before/after
+# maps are large, but cap it on big monitors so the dialog stays sensible.
+_SCREEN_FRACTION = 0.9
+_MAX_DIALOG_W = 1400
+_MAX_DIALOG_H = 1000
+_MAP_MIN_H = 380
 _CHANGE_COLOR = "#22d3ee"
 _DECIDES = "decides locally"
 _ESCALATES = "escalates"
@@ -54,10 +59,14 @@ class MovePreviewDialog(NeutralDialog):
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle("Preview move")
-        if parent is not None:
-            self.resize(parent.window().size())
-        else:
-            self.resize(ui_scale.px(_DIALOG_W), ui_scale.px(_DIALOG_H))
+        screen = (parent.screen() if parent is not None else None) or (
+            QGuiApplication.primaryScreen()
+        )
+        avail = screen.availableGeometry()
+        self.resize(
+            min(int(avail.width() * _SCREEN_FRACTION), ui_scale.px(_MAX_DIALOG_W)),
+            min(int(avail.height() * _SCREEN_FRACTION), ui_scale.px(_MAX_DIALOG_H)),
+        )
         real = translate_focused_move(org, focus_id, valuation.move)
         after_org = apply_move(org, real)
         before_score = simulator.score(active_before).value
@@ -172,6 +181,9 @@ class MovePreviewDialog(NeutralDialog):
             # focus ring and reads as an invisible tab stop.
             view.setFocusPolicy(Qt.FocusPolicy.NoFocus)
             view.viewport().setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            # Give the before/after maps a tall floor so they read clearly even
+            # on a 13in screen, where the default map height is cramped.
+            view.setMinimumHeight(ui_scale.px(_MAP_MIN_H))
             view.set_org(section)
             view.set_highlight(ringed)
             column.addWidget(view, 1)
