@@ -10,7 +10,15 @@ from __future__ import annotations
 import math
 
 from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QBrush, QColor, QFont, QPainterPath, QPen, QPolygonF
+from PySide6.QtGui import (
+    QBrush,
+    QColor,
+    QFont,
+    QFontMetricsF,
+    QPainterPath,
+    QPen,
+    QPolygonF,
+)
 from PySide6.QtWidgets import QGraphicsScene
 
 KIND_DOMAIN = "domain"
@@ -44,6 +52,16 @@ _ARM = 8.0
 _LEG = 6.0
 _LEG_DROP = 9.0
 _ESCALATE = "↑"
+
+# Text is elided to the inner width so a long label never spills the node; the
+# label row also leaves room for the person glyph on the right.
+_LABEL_WIDTH = NODE_W - _PAD - _PERSON_X
+_CRUMB_WIDTH = NODE_W - _PAD - _PAD
+
+
+def _fit(text: str, font: QFont, width: float) -> str:
+    """Elide text with an ellipsis so it never exceeds the given pixel width."""
+    return QFontMetricsF(font).elidedText(text, Qt.TextElideMode.ElideRight, width)
 
 
 def node_font(bold: bool = False) -> QFont:
@@ -104,15 +122,17 @@ def draw_node(scene: QGraphicsScene, node, top_left: QPointF) -> QRectF:
     border = _blend(_NO_AUTHORITY, _AUTHORITY, node.authority_ratio)
     scene.addPath(path, QPen(border, 2), QBrush(fill))
     _draw_person(scene, rect, border, node)
-    name = scene.addSimpleText(node.label, node_font(bold=True))
+    name_font = node_font(bold=True)
+    name = scene.addSimpleText(_fit(node.label, name_font, _LABEL_WIDTH), name_font)
     name.setBrush(_TEXT)
     name.setPos(rect.x() + _PAD, rect.y() + _PAD)
-    sub = scene.addSimpleText(_sublabel(node), node_font())
+    sub_font = node_font()
+    sub = scene.addSimpleText(_fit(_sublabel(node), sub_font, _LABEL_WIDTH), sub_font)
     sub.setBrush(_TEXT_MUTED)
     sub.setPos(rect.x() + _PAD, rect.y() + _SUB_DROP + _PAD)
     secondary = _secondary(node)
     if secondary:
-        line2 = scene.addSimpleText(secondary, node_font())
+        line2 = scene.addSimpleText(_fit(secondary, sub_font, _LABEL_WIDTH), sub_font)
         line2.setBrush(_TEXT_MUTED)
         line2.setPos(rect.x() + _PAD, rect.y() + _SUB_LINE2 + _PAD)
     return rect
@@ -154,7 +174,9 @@ def draw_breadcrumb(scene: QGraphicsScene, parent_name: str) -> QRectF:
     """Draw the back chip above the level; return its rect for hit-testing."""
     rect = QRectF(0, -(NODE_H + _GAP_Y), NODE_W, NODE_H / _HALF)
     scene.addRect(rect, QPen(PREVIEW, 2), QBrush(_DOMAIN_FILL))
-    text = scene.addSimpleText(f"↑ Back · {parent_name}", node_font(bold=True))
+    crumb_font = node_font(bold=True)
+    crumb = _fit(f"↑ Back · {parent_name}", crumb_font, _CRUMB_WIDTH)
+    text = scene.addSimpleText(crumb, crumb_font)
     text.setBrush(PREVIEW)
     text.setPos(rect.x() + _PAD, rect.y() + _PAD)
     return rect

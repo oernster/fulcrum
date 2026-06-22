@@ -38,7 +38,10 @@ def magnifier_button(on_click: Callable[[], None]) -> QPushButton:
     button = QPushButton(_PREVIEW_ICON)
     button.setObjectName("PreviewButton")
     button.setToolTip(_PREVIEW_TIP)
-    button.setFixedWidth(ui_scale.px(_PREVIEW_BTN_W))
+    # A minimum (not fixed) width so the button grows to fit the emoji glyph,
+    # whose metrics are wider on Linux and macOS and were clipped at a fixed
+    # width; the minimum keeps it aligned with the move rows.
+    button.setMinimumWidth(ui_scale.px(_PREVIEW_BTN_W))
     button.setCursor(Qt.CursorShape.PointingHandCursor)
     button.clicked.connect(lambda _=False: on_click())
     return button

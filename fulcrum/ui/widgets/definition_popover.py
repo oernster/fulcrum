@@ -11,13 +11,22 @@ from __future__ import annotations
 
 from PySide6.QtCore import QPoint, QSize, Qt
 from PySide6.QtGui import QGuiApplication
-from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QFrame, QLabel, QScrollArea, QVBoxLayout, QWidget
 
 from fulcrum.ui import ui_scale
 
 _POPOVER_WIDTH = 320
 _ANCHOR_GAP = 6
 _SCREEN_MARGIN = 8
+_MAX_HEIGHT_FRACTION = 0.7
+_FALLBACK_SCREEN_H = 600
+
+
+def _max_popover_height() -> int:
+    """Cap the popover to a fraction of the screen so tall content scrolls."""
+    screen = QGuiApplication.primaryScreen()
+    height = screen.availableGeometry().height() if screen else _FALLBACK_SCREEN_H
+    return int(height * _MAX_HEIGHT_FRACTION)
 
 
 class Popover(QFrame):
@@ -33,21 +42,39 @@ class Popover(QFrame):
         super().__init__(parent, Qt.WindowType.ToolTip)
         self.setObjectName("Popover")
         self.setMaximumWidth(ui_scale.px(_POPOVER_WIDTH))
-        layout = QVBoxLayout(self)
+
+        content = QWidget()
+        content.setStyleSheet("background: transparent;")
+        inner = QVBoxLayout(content)
 
         heading = QLabel(title)
         heading.setObjectName("Heading")
-        layout.addWidget(heading)
+        inner.addWidget(heading)
 
         if gloss:
             body = QLabel(gloss)
             body.setWordWrap(True)
-            layout.addWidget(body)
+            inner.addWidget(body)
 
         for caption, value in rows:
             row = QLabel(f"<b>{caption}:</b> {value}")
             row.setWordWrap(True)
-            layout.addWidget(row)
+            inner.addWidget(row)
+
+        # On a short screen the rows can be taller than the space available, so
+        # hold them in a scroll area capped to a fraction of the screen height;
+        # the popover then scrolls instead of being clipped off the bottom.
+        scroll = QScrollArea()
+        scroll.setWidget(content)
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setStyleSheet("background: transparent;")
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setMaximumHeight(_max_popover_height())
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(scroll)
 
 
 def _on_screen_position(anchor: QWidget, size: QSize) -> QPoint:
