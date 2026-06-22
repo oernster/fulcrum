@@ -22,8 +22,8 @@ from fulcrum.domain.signals import SignalReading
 from fulcrum.domain.simulation import MoveClassification
 from fulcrum.ui import ui_scale
 from fulcrum.ui.analysis_thread import AnalysisThread
-from fulcrum.ui.widgets.board_renderers import clear_layout, move_row, signal_chip
-from fulcrum.ui.widgets.definition_popover import HoverPopover
+from fulcrum.ui.widgets.board_renderers import clear_layout, move_row, signal_row
+from fulcrum.ui.widgets.definition_popover import SignalDetailDialog
 from fulcrum.ui.widgets.move_preview_dialog import MovePreviewDialog
 from fulcrum.ui.widgets.org_map_view import OrgMapView
 
@@ -75,7 +75,6 @@ class BoardView(QWidget):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._session: GameSession | None = None
-        self._popovers = HoverPopover(self)
 
         self._score_label = QLabel("-")
         self._score_label.setObjectName("ScoreValue")
@@ -339,8 +338,7 @@ class BoardView(QWidget):
     def _render_signals(self, readings: tuple[SignalReading, ...]) -> None:
         clear_layout(self._signals_row)
         for reading in readings:
-            chip = signal_chip(reading, self._signal_hover, self._popovers.hide)
-            self._signals_row.addWidget(chip)
+            self._signals_row.addWidget(signal_row(reading, self._open_signal_detail))
         self._signals_row.addStretch()
 
     def _render_moves(self, valuations: tuple[MoveValuation, ...]) -> None:
@@ -378,12 +376,5 @@ class BoardView(QWidget):
         else:
             self._move_note.setText("")
 
-    def _signal_hover(self, reading: SignalReading, anchor: QWidget) -> None:
-        definition = reading.definition
-        rows = (
-            ("Measures", definition.measures),
-            ("Unit", definition.unit),
-            ("Reads high when", definition.reads_high_when),
-            ("Maps to", definition.maps_to),
-        )
-        self._popovers.show(definition.label, definition.gloss, rows, anchor)
+    def _open_signal_detail(self, reading: SignalReading) -> None:
+        SignalDetailDialog(reading, self).exec()

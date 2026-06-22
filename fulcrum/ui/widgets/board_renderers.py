@@ -16,7 +16,6 @@ from fulcrum.application.move_text import describe_move
 from fulcrum.domain.models import OrgState
 from fulcrum.domain.signals import SignalReading
 from fulcrum.ui import ui_scale
-from fulcrum.ui.widgets.hover_button import HoverButton
 
 _VALUE_DECIMALS = 1
 _PREVIEW_ICON = "🔍"
@@ -71,17 +70,23 @@ def move_row(
     return holder
 
 
-def signal_chip(
+def signal_row(
     reading: SignalReading,
-    on_enter: Callable[[SignalReading, QWidget], None],
-    on_leave: Callable[[], None],
-) -> HoverButton:
-    """A hover-aware chip for one signal reading, wired to the given callbacks."""
-    chip = HoverButton(
+    on_show: Callable[[SignalReading], None],
+) -> QWidget:
+    """A signal chip plus a magnifier that opens its definition, like a move row."""
+    chip = QPushButton(
         f"{reading.definition.label}: "
         f"{reading.value:.{_VALUE_DECIMALS}f} {reading.definition.unit}"
     )
     chip.setObjectName("SignalChip")
-    chip.entered.connect(lambda r=reading, c=chip: on_enter(r, c))
-    chip.left.connect(on_leave)
-    return chip
+    chip.setCursor(Qt.CursorShape.PointingHandCursor)
+    chip.clicked.connect(lambda _=False, r=reading: on_show(r))
+    magnifier = magnifier_button(lambda r=reading: on_show(r))
+    row = QHBoxLayout()
+    row.setContentsMargins(0, 0, 0, 0)
+    row.addWidget(chip, 1)
+    row.addWidget(magnifier)
+    holder = QWidget()
+    holder.setLayout(row)
+    return holder
