@@ -196,7 +196,7 @@ def _structured_data(description: str) -> str:
         "@type": "SoftwareApplication",
         "name": APP_NAME,
         "applicationCategory": "DeveloperApplication",
-        "operatingSystem": "Windows",
+        "operatingSystem": "Windows, macOS, Linux",
         "description": description,
         "url": SITE_URL,
         "image": f"{SITE_URL}{BOARD_SHOT}",
