@@ -143,9 +143,12 @@ class OrgMapView(QGraphicsView):
         self.fitInView(padded, Qt.AspectRatioMode.KeepAspectRatio)
         if self._min_scale > 0.0 and self.transform().m11() < self._min_scale:
             # A many-node map would fit-to-shrink into something unreadable; hold
-            # a readable floor and let the view scroll instead.
+            # a readable floor and start at the top-left so the scrollbars open at
+            # the far edges rather than centred.
             self.resetTransform()
             self.scale(self._min_scale, self._min_scale)
+            self.horizontalScrollBar().setValue(self.horizontalScrollBar().minimum())
+            self.verticalScrollBar().setValue(self.verticalScrollBar().minimum())
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
