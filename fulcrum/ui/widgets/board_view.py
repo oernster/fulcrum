@@ -30,7 +30,7 @@ from fulcrum.ui.widgets.signal_detail_dialog import SignalDetailDialog
 
 _SCORE_DECIMALS = 1
 _MAP_CAPTION = "Organisation map"
-_MAP_HINT = "click a domain to open"
+_MAP_HINT = "click a section to drill in"
 _MOVES_TOOLTIP = (
     "At a high-level scope the moves are mostly neutral with very small score "
     "gains. To really gain, drill into a domain on the map and play that "
@@ -341,7 +341,7 @@ class BoardView(QWidget):
         name = self._focus_domain_name(focused)
         self._focus_label.setText(
             f"Focused on {name}: this score and these moves are the section's. "
-            "Use Back on the map to zoom out."
+            "Click a section to drill in; use Back on the map to climb out."
         )
         self._focus_label.setStyleSheet(f"color: {_PREVIEW_COLOR};")
         self._focus_label.setVisible(True)
