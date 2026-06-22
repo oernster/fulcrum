@@ -119,10 +119,9 @@ echo "  $(ls .flatpak-wheels/ | wc -l) distributions ready"
 section "Writing packaging helpers"
 mkdir -p packaging
 
-# site-packages path matches the runtime's Python version. Fulcrum keeps saved
-# games under ~/Fulcrum/saves (see main.py _save_directory), which the
-# --filesystem=home permission below makes writable, so no user-dirs override
-# env var is needed.
+# site-packages path matches the runtime's Python version. Fulcrum reads and
+# writes plan JSON and HTML files the user chooses, which the --filesystem=home
+# permission below makes reachable, so no user-dirs override env var is needed.
 cat > packaging/fulcrum-launcher.sh <<LAUNCHER
 #!/bin/sh
 export LD_LIBRARY_PATH="/app/lib\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}"

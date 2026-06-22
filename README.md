@@ -4,7 +4,7 @@ Fulcrum turns the Decision Architecture model into a playable engine. You fix a
 failing organisation by choosing structural moves (delegate authority, stabilise
 interfaces, realign incentives or collapse a boundary) and a deterministic model
 scores the result from 0 to 100. You can play generated levels, model your own
-organisation, import one from JSON or ask for a guide to a stronger structure.
+organisation or ask for a guide to a stronger structure.
 
 It is a local-first desktop app: everything runs on your machine and nothing
 leaves it.
@@ -33,9 +33,8 @@ A short tour and the books behind it are at <https://oernster.github.io/fulcrum/
 - Per-team headcount that rolls up through the domain hierarchy to a whole-org
   total, so a 100k-person structure is as workable as a handful of teams. It is
   descriptive context and never changes the structural score.
-- JSON import, with two example sets under `examples/`: a debt ladder that
-  worsens with scale and a well-designed reference set that stays healthy.
-- Save and load games as local JSON.
+- Two example org sets under `examples/`: a debt ladder that worsens with scale
+  and a well-designed reference set that stays healthy.
 - Signals to watch (handoff queue age, escalations, rework and influence without
   authority), each carrying its own definition: hover for a gloss, click for the
   full meaning.
@@ -44,7 +43,8 @@ A short tour and the books behind it are at <https://oernster.github.io/fulcrum/
   and you can play a move straight from the guide.
 - Take a move back: an undo stack steps the organisation back through the moves
   you have played, from the board or with Ctrl+Z.
-- Plan export (a self-contained HTML report plus JSON) and plan editing.
+- Plan export as a self-contained HTML report or as JSON you can re-import to
+  resume the organisation and the moves played on it.
 - Full keyboard navigation: the whole interface sits on one explicit focus ring,
   so every control is reachable without a mouse.
 - Help built in: a decision glossary and a background page on the Decision

@@ -1,14 +1,13 @@
 """The game session: current position, move history and scoring.
 
 A session is a mutable coordinator. It owns no rules of its own; it composes the
-pure domain (apply_move, signals) with an injected simulator and persists
-through injected Protocols.
+pure domain (apply_move, signals) with an injected simulator.
 """
 
 from __future__ import annotations
 
-from fulcrum.application.dto import MoveValuation, SavedGame
-from fulcrum.application.interfaces import Clock, SaveGameRepository, Simulator
+from fulcrum.application.dto import MoveValuation
+from fulcrum.application.interfaces import Simulator
 from fulcrum.domain.errors import FulcrumError
 from fulcrum.domain.hierarchy import (
     AGGREGATE_MOVE_KINDS,
@@ -187,17 +186,3 @@ class GameSession:
     def preview(self, move: Move) -> OrgState:
         real = translate_focused_move(self._org, self._focus_id, move)
         return apply_move(self._org, real)
-
-    def to_saved_game(self, clock: Clock) -> SavedGame:
-        return SavedGame(
-            org=self._org, history=self.history, created_at=clock.timestamp()
-        )
-
-    def save(self, repository: SaveGameRepository, slot: str, clock: Clock) -> None:
-        repository.save(slot, self.to_saved_game(clock))
-
-    @classmethod
-    def from_saved_game(cls, game: SavedGame, simulator: Simulator) -> "GameSession":
-        session = cls(game.org, simulator)
-        session._history = list(game.history)
-        return session

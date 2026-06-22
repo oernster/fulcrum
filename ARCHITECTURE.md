@@ -20,14 +20,14 @@ UI to Application to Domain, with Infrastructure pointing in to the same Domain.
 A small Shared module holds framework-free helpers.
 
 - **Domain** (`fulcrum/domain`): value objects (`OrgState`, `Team`, `Dependency`, `Domain`), the recursive domain hierarchy and its headcount roll-ups, structural `Move`s, the deterministic scoring model (`evaluate`), the lagging-indicator signals and the reference data for the books. Frozen dataclasses, tuples over lists, validation in `__post_init__`. Pure.
-- **Application** (`fulcrum/application`): the `Simulator` Protocol seam and a `DeterministicSimulator`, the `GameSession`, the blueprint intake compiler, the solvable level generator, the improvement planner (the Guide), the drill-down map model, the plan report builder and editor, the glossary and the book showcase. DTOs cross the boundary.
-- **Infrastructure** (`fulcrum/infrastructure`): the JSON save repository (atomic writes), the JSON org importer, the plan repository and exporter, the HTML and SVG renderers and the system clock. Implements the application Protocols and owns all I/O.
+- **Application** (`fulcrum/application`): the `Simulator` Protocol seam and a `DeterministicSimulator`, the `GameSession`, the blueprint intake compiler, the solvable level generator, the improvement planner (the Guide), the drill-down map model, the plan report builder, the glossary and the book showcase. DTOs cross the boundary.
+- **Infrastructure** (`fulcrum/infrastructure`): the shared JSON serialization for org states and moves, the plan repository and exporter (atomic writes), the HTML and SVG renderers and the system clock. Implements the application Protocols and owns all I/O.
 - **UI** (`fulcrum/ui`): PySide6 widgets and dialogs (the board, the navigable org map, the organisation editor, the guide, the glossary, the book background and the about/licence dialogs), a client of the application only. A `ui_scale` factor set once at startup keeps the whole interface sized to the screen. This is the only LGPL-3.0 component; the model and the rest of the project are GPL-3.0 (see LICENSE).
 - **Shared** (`fulcrum/shared`): runtime asset discovery (icon, licence, book covers and stepper arrows), with no Qt dependency.
 
 ## Execution flow
 
-`main.py` builds the services (simulator, save repository, importer, plan exporter, clock), injects them into `MainWindow` and starts the Qt loop. A `GameSession` holds the current `OrgState` and a snapshot stack, so a played move can be taken back; playing a move calls the pure `apply_move`; the board reads score, signals and move valuations from the injected simulator.
+`main.py` builds the services (simulator, plan exporter, clock), injects them into `MainWindow` and starts the Qt loop. A `GameSession` holds the current `OrgState` and a snapshot stack, so a played move can be taken back; playing a move calls the pure `apply_move`; the board reads score, signals and move valuations from the injected simulator.
 
 ## The model
 
@@ -40,7 +40,7 @@ Each team has a resolution capacity that falls when it lacks local authority, wh
 | Python + PySide6, not Go + React | A visualisation-heavy desktop tool is PySide6 home turf and the compute is bounded. The simulator sits behind a Protocol so a faster kernel stays a reversible, deferred choice. |
 | Total-system latency, not accumulated queue | Bounded and stable, so adding a saturated approval gate is robustly harmful rather than a mean-dilution artifact. |
 | New effects as gentle multiplicative terms | The cognitive-load and influence-without-authority terms are zero in the benign case, so they never disturb an existing position and only bite where the gap is real. |
-| JSON import, not CSV | Matches the nested shape of an org and the save format. |
+| JSON plans, not CSV | Matches the nested shape of an org and the move sequence played on it. |
 | Greedy planner | The move set is small, so a greedy best line is explainable and fast, like a chess engine's principal variation. |
 | Generated levels resampled until solvable | Every level provably has a great move, the way a puzzle generator verifies a solution before shipping. |
 

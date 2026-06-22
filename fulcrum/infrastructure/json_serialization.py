@@ -1,12 +1,12 @@
-"""JSON-backed save-game repository: local-first with atomic writes."""
+"""Shared JSON serialization for org states and moves.
+
+These helpers translate the domain's org and move objects to and from plain
+dictionaries. They are the single conversion layer used when a plan is written
+to or read from a JSON file, so the on-disk shape stays defined in one place.
+"""
 
 from __future__ import annotations
 
-import json
-import os
-from pathlib import Path
-
-from fulcrum.application.dto import SavedGame
 from fulcrum.domain.models import (
     DEFAULT_CATEGORY,
     DEFAULT_HEADCOUNT,
@@ -18,9 +18,6 @@ from fulcrum.domain.models import (
 )
 from fulcrum.domain.moves import Move, MoveKind
 
-_SUFFIX = ".json"
-_TMP_SUFFIX = ".tmp"
-_JSON_INDENT = 2
 _DEFAULT_SIZE = 1
 _DEFAULT_OWNER = ""
 
@@ -75,14 +72,6 @@ def move_to_dict(move: Move) -> dict:
     }
 
 
-def _saved_game_to_dict(game: SavedGame) -> dict:
-    return {
-        "org": org_to_dict(game.org),
-        "history": [move_to_dict(m) for m in game.history],
-        "created_at": game.created_at,
-    }
-
-
 def org_from_dict(data: dict) -> OrgState:
     teams = tuple(
         Team(
@@ -123,40 +112,3 @@ def org_from_dict(data: dict) -> OrgState:
 
 def move_from_dict(data: dict) -> Move:
     return Move(MoveKind(data["kind"]), tuple(data["targets"]), data["label"])
-
-
-def _saved_game_from_dict(data: dict) -> SavedGame:
-    return SavedGame(
-        org=org_from_dict(data["org"]),
-        history=tuple(move_from_dict(m) for m in data["history"]),
-        created_at=data["created_at"],
-    )
-
-
-class JsonSaveGameRepository:
-    """Stores saved games as one JSON file per slot under a directory."""
-
-    def __init__(self, directory: Path) -> None:
-        self._directory = directory
-
-    def save(self, slot: str, game: SavedGame) -> None:
-        self._directory.mkdir(parents=True, exist_ok=True)
-        path = self._path(slot)
-        tmp = path.with_name(path.name + _TMP_SUFFIX)
-        tmp.write_text(
-            json.dumps(_saved_game_to_dict(game), indent=_JSON_INDENT),
-            encoding="utf-8",
-        )
-        os.replace(tmp, path)
-
-    def load(self, slot: str) -> SavedGame:
-        data = json.loads(self._path(slot).read_text(encoding="utf-8"))
-        return _saved_game_from_dict(data)
-
-    def slots(self) -> tuple[str, ...]:
-        if not self._directory.exists():
-            return ()
-        return tuple(sorted(p.stem for p in self._directory.glob(f"*{_SUFFIX}")))
-
-    def _path(self, slot: str) -> Path:
-        return self._directory / f"{slot}{_SUFFIX}"

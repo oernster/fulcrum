@@ -49,4 +49,9 @@ def test_export_json_writes_reimportable_source_only(tmp_path):
 
     reloaded = FilePlanExporter().read(str(json_path))
     assert reloaded.moves == moves
+    # Round-trip the whole org (teams, dependencies and domains) so the shared
+    # serialization is fully exercised end to end.
     assert reloaded.initial_org == org
+    assert reloaded.initial_org.teams == org.teams
+    assert reloaded.initial_org.dependencies == org.dependencies
+    assert reloaded.initial_org.domains == org.domains

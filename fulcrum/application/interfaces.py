@@ -8,13 +8,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from fulcrum.application.dto import (
-    MoveValuation,
-    OrgBlueprint,
-    Plan,
-    PlanReport,
-    SavedGame,
-)
+from fulcrum.application.dto import MoveValuation, Plan, PlanReport
 from fulcrum.domain.models import OrgState
 from fulcrum.domain.moves import Move
 from fulcrum.domain.simulation import StructuralScore
@@ -34,22 +28,6 @@ class Clock(Protocol):
     """A wall-clock source, injected so the rest of the app stays testable."""
 
     def timestamp(self) -> str: ...
-
-
-class SaveGameRepository(Protocol):
-    """Persists and restores saved games by slot name."""
-
-    def save(self, slot: str, game: SavedGame) -> None: ...
-
-    def load(self, slot: str) -> SavedGame: ...
-
-    def slots(self) -> tuple[str, ...]: ...
-
-
-class OrgImporter(Protocol):
-    """Builds an org blueprint from an external source path."""
-
-    def import_org(self, path: str) -> OrgBlueprint: ...
 
 
 class PlanExporter(Protocol):

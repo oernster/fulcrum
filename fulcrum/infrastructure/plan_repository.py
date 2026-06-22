@@ -1,9 +1,8 @@
 """File-based export and import of a plan: the JSON source and the HTML report.
 
 The JSON captures the starting org and the move sequence, so a plan can be
-re-imported and edited later; writes are atomic (temp file then replace). The
-HTML report is written verbatim. Both are plain files the user chooses, distinct
-from the slot-based save-game store.
+re-imported and resumed later; writes are atomic (temp file then replace). The
+HTML report is written verbatim. Both are plain files the user chooses.
 """
 
 from __future__ import annotations
@@ -13,7 +12,7 @@ import os
 from pathlib import Path
 
 from fulcrum.application.dto import Plan
-from fulcrum.infrastructure.json_save_repository import (
+from fulcrum.infrastructure.json_serialization import (
     move_from_dict,
     move_to_dict,
     org_from_dict,

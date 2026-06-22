@@ -1,5 +1,6 @@
 """Tests for the solvable cluster pool and its cloning across leaves."""
 
+import json
 from pathlib import Path
 from random import Random
 
@@ -20,12 +21,24 @@ from fulcrum.application.cluster_pool import (
     pick_workload,
     reaches_great_move,
 )
-from fulcrum.application.dto import MoveValuation
+from fulcrum.application.dto import (
+    DependencySpec,
+    DomainSpec,
+    MoveValuation,
+    OrgBlueprint,
+    TeamSpec,
+)
 from fulcrum.application.intake import build_org_state
 from fulcrum.application.simulator import DeterministicSimulator
-from fulcrum.domain.models import Domain, Origin, OrgState, Team
+from fulcrum.domain.models import (
+    DEFAULT_CATEGORY,
+    DEFAULT_HEADCOUNT,
+    Domain,
+    Origin,
+    OrgState,
+    Team,
+)
 from fulcrum.domain.simulation import MoveClassification
-from fulcrum.infrastructure.json_org_importer import JsonOrgImporter
 
 _MIN_WORKLOAD = 6
 _MAX_WORKLOAD = 9
@@ -33,9 +46,40 @@ _ENTERPRISE = Path(__file__).resolve().parents[2] / "examples" / "org-3-enterpri
 
 
 def _enterprise():
-    return build_org_state(
-        JsonOrgImporter().import_org(str(_ENTERPRISE)), Origin.IMPORTED
+    data = json.loads(_ENTERPRISE.read_text(encoding="utf-8"))
+    blueprint = OrgBlueprint(
+        teams=tuple(
+            TeamSpec(
+                id=str(t["id"]),
+                name=str(t["name"]),
+                has_local_authority=bool(t["has_local_authority"]),
+                incentive_skew=float(t.get("incentive_skew", 0.0)),
+                domain_id=t.get("domain_id"),
+                size=int(t.get("size", 1)),
+                owner=str(t.get("owner", "")),
+                headcount=int(t.get("headcount", DEFAULT_HEADCOUNT)),
+            )
+            for t in data.get("teams", ())
+        ),
+        dependencies=tuple(
+            DependencySpec(
+                d["upstream"], d["downstream"], int(d.get("propagation_delay", 0))
+            )
+            for d in data.get("dependencies", ())
+        ),
+        workload=int(data.get("workload", 1)),
+        domains=tuple(
+            DomainSpec(
+                id=str(d["id"]),
+                name=str(d["name"]),
+                parent_id=d.get("parent_id"),
+                lead=str(d.get("lead", "")),
+                category=str(d.get("category", DEFAULT_CATEGORY)),
+            )
+            for d in data.get("domains", ())
+        ),
     )
+    return build_org_state(blueprint, Origin.IMPORTED)
 
 
 def _healthy():

@@ -9,7 +9,6 @@ from PySide6.QtWidgets import (
     QDialog,
     QFileDialog,
     QHBoxLayout,
-    QInputDialog,
     QMainWindow,
     QMessageBox,
     QPushButton,
@@ -20,16 +19,9 @@ from PySide6.QtWidgets import (
 from fulcrum.application.dto import OrgBlueprint, Plan
 from fulcrum.application.game_session import GameSession
 from fulcrum.application.intake import build_org_state
-from fulcrum.application.interfaces import (
-    Clock,
-    OrgImporter,
-    PlanExporter,
-    SaveGameRepository,
-    Simulator,
-)
+from fulcrum.application.interfaces import Clock, PlanExporter, Simulator
 from fulcrum.application.level_generator import generate_level
 from fulcrum.application.plan import build_plan_report
-from fulcrum.application.plan_edit import first_invalid_index
 from fulcrum.application.planner import ImprovementPlanner
 from fulcrum.domain.errors import FulcrumError
 from fulcrum.domain.hierarchy import (
@@ -52,11 +44,8 @@ from fulcrum.ui.widgets.org_editor import OrgEditorDialog
 from fulcrum.ui.widgets.org_overview_dialog import OrgOverviewDialog
 from fulcrum.ui.widgets.org_size_picker import OrgSizePicker
 from fulcrum.ui.widgets.org_wizard import OrgWizard
-from fulcrum.ui.widgets.plan_editor import PlanEditorDialog
 from fulcrum.version import APP_NAME, APP_TAGLINE
 
-_DEFAULT_SLOT = "slot1"
-_IMPORT_FILTER = "Org JSON (*.json);;All files (*)"
 _HTML_FILTER = "HTML report (*.html);;All files (*)"
 _PLAN_FILTER = "Plan JSON (*.json);;All files (*)"
 _DEFAULT_HTML_EXPORT = "fulcrum-plan.html"
@@ -76,8 +65,6 @@ class MainWindow(QMainWindow):
     def __init__(
         self,
         simulator: Simulator,
-        save_repository: SaveGameRepository,
-        importer: OrgImporter,
         plan_exporter: PlanExporter,
         clock: Clock,
         rng: Random,
@@ -85,8 +72,6 @@ class MainWindow(QMainWindow):
     ) -> None:
         super().__init__(parent)
         self._simulator = simulator
-        self._save_repository = save_repository
-        self._importer = importer
         self._plan_exporter = plan_exporter
         self._clock = clock
         self._rng = rng
@@ -155,14 +140,10 @@ class MainWindow(QMainWindow):
         file_menu.addAction("New random organisation...", self._new_random_org)
         file_menu.addAction("Model my organisation...", self._model_org)
         file_menu.addAction("Quick org (wizard)...", self._quick_org)
-        file_menu.addAction("Import organisational state...", self._import_org)
         file_menu.addSeparator()
-        file_menu.addAction("Save...", self._save_game)
-        file_menu.addAction("Load...", self._load_game)
-        file_menu.addSeparator()
-        file_menu.addAction("Export plan as HTML...", self._export_plan_html)
-        file_menu.addAction("Export plan as JSON...", self._export_plan_json)
-        file_menu.addAction("Edit a plan...", self._edit_plan)
+        file_menu.addAction("Import...", self._import_plan)
+        file_menu.addAction("Export as JSON...", self._export_plan_json)
+        file_menu.addAction("Export as HTML...", self._export_plan_html)
         file_menu.addSeparator()
         file_menu.addAction("Exit", self.close)
 
@@ -264,18 +245,19 @@ class MainWindow(QMainWindow):
             return
         self._load_blueprint(wizard.to_blueprint(), Origin.WIZARD)
 
-    def _import_org(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(
-            self, "Import organisational state", "", _IMPORT_FILTER
-        )
+    def _import_plan(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(self, "Import", "", _PLAN_FILTER)
         if not path:
             return
         try:
-            blueprint = self._importer.import_org(path)
-        except FulcrumError as error:
-            self._warn("Import failed", str(error))
+            plan = self._plan_exporter.read(path)
+        except (OSError, ValueError, KeyError, FulcrumError) as error:
+            self._warn("Could not open plan", str(error))
             return
-        self._load_blueprint(blueprint, Origin.IMPORTED)
+        session = GameSession(plan.initial_org, self._simulator)
+        for move in plan.moves:
+            session.play(move)
+        self._set_session(session)
 
     def _load_blueprint(self, blueprint: OrgBlueprint, origin: Origin) -> None:
         try:
@@ -284,23 +266,6 @@ class MainWindow(QMainWindow):
             self._warn("Could not build organisation", str(error))
             return
         self._set_session(GameSession(org, self._simulator))
-
-    def _save_game(self) -> None:
-        if self._session is None:
-            return
-        slot, ok = QInputDialog.getText(self, "Save", "Name:", text=_DEFAULT_SLOT)
-        if ok and slot:
-            self._session.save(self._save_repository, slot, self._clock)
-
-    def _load_game(self) -> None:
-        slots = self._save_repository.slots()
-        if not slots:
-            self._warn("Load", "There are no saved organisational states yet.")
-            return
-        slot, ok = QInputDialog.getItem(self, "Load", "Name:", list(slots), 0, False)
-        if ok and slot:
-            saved = self._save_repository.load(slot)
-            self._set_session(GameSession.from_saved_game(saved, self._simulator))
 
     def _export_plan_html(self) -> None:
         if self._session is None:
@@ -330,29 +295,7 @@ class MainWindow(QMainWindow):
         created = self._clock.timestamp()
         plan = Plan(self._session.initial_org, self._session.history, created)
         self._plan_exporter.export_json(path, plan)
-        self._inform("Plan exported", "Wrote the JSON plan you can re-import to edit.")
-
-    def _edit_plan(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(self, "Edit a plan", "", _PLAN_FILTER)
-        if not path:
-            return
-        try:
-            plan = self._plan_exporter.read(path)
-        except (OSError, ValueError, KeyError, FulcrumError) as error:
-            self._warn("Could not open plan", str(error))
-            return
-        dialog = PlanEditorDialog(plan, self._simulator, self)
-        if dialog.exec() != QDialog.DialogCode.Accepted:
-            return
-        moves = dialog.edited_moves()
-        cut = first_invalid_index(plan.initial_org, moves)
-        if cut is not None:
-            moves = moves[:cut]
-            self._inform("Plan trimmed", "Moves that no longer applied were dropped.")
-        session = GameSession(plan.initial_org, self._simulator)
-        for move in moves:
-            session.play(move)
-        self._set_session(session)
+        self._inform("Plan exported", "Wrote the JSON plan you can re-import.")
 
     def _glossary(self) -> None:
         GlossaryDialog(self).exec()

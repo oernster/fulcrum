@@ -68,15 +68,6 @@ class MoveValuation:
 
 
 @dataclass(frozen=True, slots=True)
-class SavedGame:
-    """A serialisable snapshot of a game in progress."""
-
-    org: OrgState
-    history: tuple[Move, ...]
-    created_at: str
-
-
-@dataclass(frozen=True, slots=True)
 class Plan:
     """A replayable plan: the starting org and the ordered moves played on it."""
 

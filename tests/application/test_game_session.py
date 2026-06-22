@@ -1,6 +1,6 @@
 """Tests for the game session coordinator, using Protocol fakes."""
 
-from fulcrum.application.dto import MoveValuation, SavedGame
+from fulcrum.application.dto import MoveValuation
 from fulcrum.application.game_session import (
     MAX_PLAYABLE_TEAMS,
     GameSession,
@@ -19,25 +19,6 @@ class _FakeSimulator:
         return tuple(
             MoveValuation(m, 50.0, 55.0, MoveClassification.GOOD) for m in moves
         )
-
-
-class _FakeClock:
-    def timestamp(self):
-        return "2026-06-17T12:00:00"
-
-
-class _FakeRepository:
-    def __init__(self):
-        self.saved = {}
-
-    def save(self, slot, game):
-        self.saved[slot] = game
-
-    def load(self, slot):
-        return self.saved[slot]
-
-    def slots(self):
-        return tuple(self.saved)
 
 
 def _org():
@@ -96,19 +77,6 @@ def test_game_session_flow():
     assert session.org.team("b").has_local_authority is True
     assert session.initial_org.team("b").has_local_authority is False
     assert session.history[0].kind == MoveKind.DELEGATE_AUTHORITY
-
-
-def test_game_session_save_and_restore():
-    session = GameSession(_org(), _FakeSimulator())
-    session.play(Move(MoveKind.STABILISE_INTERFACES))
-    repository = _FakeRepository()
-    session.save(repository, "slot1", _FakeClock())
-    saved = repository.load("slot1")
-    assert isinstance(saved, SavedGame)
-    assert saved.created_at == "2026-06-17T12:00:00"
-    restored = GameSession.from_saved_game(saved, _FakeSimulator())
-    assert restored.history == session.history
-    assert restored.org == session.org
 
 
 def test_preview_does_not_mutate_the_session():
