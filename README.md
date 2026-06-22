@@ -13,8 +13,8 @@ A short tour and the books behind it are at <https://oernster.github.io/fulcrum/
 
 ## Who it is for
 
-- Engineering leaders and CTOs who want to reason about org structure as a
-  system of decisions rather than a headcount chart.
+- Software architects, senior engineers and CTOs who want to reason about org
+  structure as a system of decisions rather than a headcount chart.
 - Readers of the Decision Architecture series who want the model in their hands.
 - Anyone curious about why organisations slow down as they scale.
 
@@ -40,8 +40,13 @@ A short tour and the books behind it are at <https://oernster.github.io/fulcrum/
   authority), each carrying its own definition: hover for a gloss, click for the
   full meaning.
 - Structural moves scored from blunder to great. A Guide plans a move-by-move
-  path from the current org to a stronger one (optionally letting the org grow).
+  path from the current org to a stronger one (optionally letting the org grow),
+  and you can play a move straight from the guide.
+- Take a move back: an undo stack steps the organisation back through the moves
+  you have played, from the board or with Ctrl+Z.
 - Plan export (a self-contained HTML report plus JSON) and plan editing.
+- Full keyboard navigation: the whole interface sits on one explicit focus ring,
+  so every control is reachable without a mouse.
 - Help built in: a decision glossary and a background page on the Decision
   Architecture books.
 

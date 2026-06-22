@@ -27,7 +27,7 @@ A small Shared module holds framework-free helpers.
 
 ## Execution flow
 
-`main.py` builds the services (simulator, save repository, importer, plan exporter, clock), injects them into `MainWindow` and starts the Qt loop. A `GameSession` holds the current `OrgState`; playing a move calls the pure `apply_move`; the board reads score, signals and move valuations from the injected simulator.
+`main.py` builds the services (simulator, save repository, importer, plan exporter, clock), injects them into `MainWindow` and starts the Qt loop. A `GameSession` holds the current `OrgState` and a snapshot stack, so a played move can be taken back; playing a move calls the pure `apply_move`; the board reads score, signals and move valuations from the injected simulator.
 
 ## The model
 

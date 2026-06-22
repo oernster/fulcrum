@@ -15,6 +15,7 @@ Run from the repo root:
 
 from __future__ import annotations
 
+import json
 from html import escape
 from pathlib import Path
 
@@ -43,6 +44,16 @@ GUIDE_SHOT = "assets/screenshots/play-guide.png"
 BOOK_COVER_REL = "assets/books"
 LINK_TEXT = "View on Amazon UK"
 SITE_TAGLINE = "Organisational Decision Architecture Sandbox"
+PAGE_TITLE = f"{APP_NAME}: Decision Architecture Sandbox for Architects and CTOs"
+THEME_COLOR = "#0d0f12"
+SEO_KEYWORDS = (
+    "Decision Architecture, organisational design, software architecture, "
+    "engineering leadership, CTO, org structure, decision latency, "
+    "authority design, technical leadership, principal engineer"
+)
+AUDIENCE_TYPE = (
+    "Software architects, senior and principal engineers, " "CTOs and technical leaders"
+)
 
 # Covers and the icon ship downscaled: they are shown at most ~190px wide, so a
 # web-sized copy keeps the page light instead of serving multi-megabyte art.
@@ -78,6 +89,29 @@ _FEATURES = (
     ),
 )
 
+_AUDIENCE = (
+    (
+        "Software architects",
+        "Reason about authority boundaries, coupling and dependency structure "
+        "as a system you can score, not a diagram you argue over.",
+    ),
+    (
+        "Senior and principal engineers",
+        "See why an organisation slows as it scales and which structural move "
+        "removes the bottleneck instead of working around it.",
+    ),
+    (
+        "CTOs and engineering leaders",
+        "Test a reorg, a delegation or a boundary change against the model "
+        "before you test it on people, then read the trade-off as one number.",
+    ),
+    (
+        "Founders and the C-suite",
+        "Make the shape of the organisation legible: where decisions stall, "
+        "where authority is missing and where growth will bite.",
+    ),
+)
+
 
 def _feature_html() -> str:
     cards = []
@@ -90,6 +124,32 @@ def _feature_html() -> str:
             "</div>"
         )
     return "".join(cards)
+
+
+def _who_html() -> str:
+    cards = []
+    for title, body in _AUDIENCE:
+        cards.append(
+            '<div class="feature">'
+            f"<h3>{escape(title)}</h3>"
+            f"<p>{escape(body)}</p>"
+            "</div>"
+        )
+    return "".join(cards)
+
+
+def _who() -> str:
+    return f"""<section id="who" class="alt">
+    <div class="container">
+      <div class="eyebrow">Who it is for</div>
+      <h2 class="section-title">Built for the people who own structure</h2>
+      <p class="section-sub">{APP_NAME} is a thinking tool for the roles that
+        answer for how an organisation is shaped and how it decides: software
+        architects, senior and principal engineers, CTOs and the wider
+        C-suite.</p>
+      <div class="features">{_who_html()}</div>
+    </div>
+  </section>"""
 
 
 def _cover(book: BookEntry) -> str:
@@ -130,21 +190,57 @@ def _series_html(books: tuple[BookEntry, ...]) -> str:
     return f'<div class="series">{"".join(cards)}</div>'
 
 
+def _structured_data(description: str) -> str:
+    data = {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": APP_NAME,
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Windows",
+        "description": description,
+        "url": SITE_URL,
+        "image": f"{SITE_URL}{BOARD_SHOT}",
+        "isAccessibleForFree": True,
+        "offers": {"@type": "Offer", "price": "0", "priceCurrency": "GBP"},
+        "author": {"@type": "Person", "name": "Oliver Ernster", "url": AUTHOR_URL},
+        "audience": {"@type": "Audience", "audienceType": AUDIENCE_TYPE},
+        "keywords": SEO_KEYWORDS,
+        "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+    }
+    return (
+        '<script type="application/ld+json">'
+        + json.dumps(data, ensure_ascii=True)
+        + "</script>"
+    )
+
+
 def _head(description: str) -> str:
+    image = f"{SITE_URL}{BOARD_SHOT}"
+    image_alt = f"The {APP_NAME} board scoring an organisation's structure"
     return f"""<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{APP_NAME}: Decision Architecture Sandbox</title>
+<title>{escape(PAGE_TITLE)}</title>
 <meta name="description" content="{escape(description)}">
+<meta name="keywords" content="{escape(SEO_KEYWORDS)}">
+<meta name="author" content="Oliver Ernster">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="{THEME_COLOR}">
 <link rel="canonical" href="{SITE_URL}">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="{APP_NAME}">
 <meta property="og:title" content="{APP_NAME}: {SITE_TAGLINE}">
 <meta property="og:description" content="{escape(description)}">
 <meta property="og:url" content="{SITE_URL}">
-<meta property="og:image" content="{SITE_URL}{BOARD_SHOT}">
+<meta property="og:image" content="{image}">
+<meta property="og:image:alt" content="{escape(image_alt)}">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{APP_NAME}: {SITE_TAGLINE}">
+<meta name="twitter:description" content="{escape(description)}">
+<meta name="twitter:image" content="{image}">
 <link rel="icon" type="image/png" href="{ICON_REL}">
 <link rel="stylesheet" href="styles.css">
+{_structured_data(description)}
 </head>"""
 
 
@@ -154,6 +250,7 @@ def _nav() -> str:
     <a class="brand" href="#top">
       <img src="{ICON_REL}" alt="{APP_NAME} icon">{APP_NAME}</a>
     <nav class="nav-links">
+      <a href="#who">Who it's for</a>
       <a href="#overview">Overview</a>
       <a href="#play">Play by play</a>
       <a href="#books">The books</a>
@@ -250,11 +347,12 @@ def _books(showcase: BookShowcase) -> str:
 
 
 def _footer() -> str:
+    version = f"v<!--VERSION-->{__version__}<!--/VERSION-->"
     return f"""<footer>
   <div class="container footer-inner">
     <div>
       <strong>{APP_NAME}</strong>: {SITE_TAGLINE}<br>
-      {escape(APP_COPYRIGHT)} · Local-first · GPL-3.0 + LGPL-3.0 · v{__version__}
+      {escape(APP_COPYRIGHT)} · Local-first · GPL-3.0 + LGPL-3.0 · {version}
     </div>
     <div class="footer-links">
       <a href="{RELEASES_URL}">Releases</a>
@@ -268,9 +366,9 @@ def _footer() -> str:
 
 def _page_html(showcase: BookShowcase) -> str:
     description = (
-        f"{APP_NAME} turns the Decision Architecture series into a playable "
-        "model: read any organisation's structural health from 0 to 100 and "
-        "find the moves that make it stronger."
+        f"{APP_NAME} is a Decision Architecture sandbox for architects, senior "
+        "engineers and CTOs. Model any organisation, score its structural "
+        "health from 0 to 100 and find the moves that make it stronger."
     )
     return (
         '<!DOCTYPE html>\n<html lang="en">\n'
@@ -279,6 +377,8 @@ def _page_html(showcase: BookShowcase) -> str:
         + _nav()
         + '\n<main id="top">\n  '
         + _hero()
+        + "\n  "
+        + _who()
         + "\n  "
         + _overview()
         + "\n  "
