@@ -164,22 +164,24 @@ class BoardView(QWidget):
         self._scope_hint.setStyleSheet(f"color: {_PREVIEW_COLOR};")
         self._scope_hint.setVisible(False)
         column.addWidget(self._scope_hint)
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._moves_scroll = QScrollArea()
+        self._moves_scroll.setWidgetResizable(True)
+        self._moves_scroll.setFrameShape(QFrame.Shape.NoFrame)
         self._moves_box.setContentsMargins(0, 0, ui_scale.px(_MOVES_RIGHT_PAD), 0)
         self._moves_holder.setLayout(self._moves_box)
-        scroll.setWidget(self._moves_holder)
-        column.addWidget(scroll, 1)
+        self._moves_scroll.setWidget(self._moves_holder)
+        column.addWidget(self._moves_scroll, 1)
         signals_caption = QLabel("Signals to watch")
         signals_caption.setObjectName("Muted")
         column.addWidget(signals_caption)
-        # Mirror the moves' content margins so the signals share the move
-        # buttons' left edge; the default layout margin was nudging the column
-        # right. The matching right pad lines the magnifiers up.
-        self._signals_row.setContentsMargins(0, 0, ui_scale.px(_MOVES_RIGHT_PAD), 0)
         self._signals_holder.setLayout(self._signals_row)
         column.addWidget(self._signals_holder)
+        # The moves scrollbar steals right-edge width when the list overflows;
+        # the signals have none. Match their gutter to it on every range change.
+        self._moves_scroll.verticalScrollBar().rangeChanged.connect(
+            self._sync_signals_gutter
+        )
+        self._sync_signals_gutter()
         return pane
 
     def resizeEvent(self, event) -> None:
@@ -196,6 +198,13 @@ class BoardView(QWidget):
             for k in MoveKind
         )
         self._move_note.setFixedHeight(tallest + ui_scale.px(_MOVE_NOTE_PAD))
+
+    def _sync_signals_gutter(self, *_) -> None:
+        """Match the signals' right gutter to the width the moves scrollbar takes."""
+        gutter = self._moves_scroll.width() - self._moves_scroll.viewport().width()
+        self._signals_row.setContentsMargins(
+            0, 0, ui_scale.px(_MOVES_RIGHT_PAD) + max(gutter, 0), 0
+        )
 
     def set_session(self, session: GameSession) -> None:
         self._session = session
