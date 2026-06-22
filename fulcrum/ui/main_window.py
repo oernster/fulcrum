@@ -157,8 +157,8 @@ class MainWindow(QMainWindow):
         file_menu.addAction("Quick org (wizard)...", self._quick_org)
         file_menu.addAction("Import organisational state...", self._import_org)
         file_menu.addSeparator()
-        file_menu.addAction("Save game...", self._save_game)
-        file_menu.addAction("Load game...", self._load_game)
+        file_menu.addAction("Save...", self._save_game)
+        file_menu.addAction("Load...", self._load_game)
         file_menu.addSeparator()
         file_menu.addAction("Export plan as HTML...", self._export_plan_html)
         file_menu.addAction("Export plan as JSON...", self._export_plan_json)
@@ -288,20 +288,16 @@ class MainWindow(QMainWindow):
     def _save_game(self) -> None:
         if self._session is None:
             return
-        slot, ok = QInputDialog.getText(
-            self, "Save game", "Slot name:", text=_DEFAULT_SLOT
-        )
+        slot, ok = QInputDialog.getText(self, "Save", "Name:", text=_DEFAULT_SLOT)
         if ok and slot:
             self._session.save(self._save_repository, slot, self._clock)
 
     def _load_game(self) -> None:
         slots = self._save_repository.slots()
         if not slots:
-            self._warn("Load game", "There are no saved games yet.")
+            self._warn("Load", "There are no saved organisational states yet.")
             return
-        slot, ok = QInputDialog.getItem(
-            self, "Load game", "Slot:", list(slots), 0, False
-        )
+        slot, ok = QInputDialog.getItem(self, "Load", "Name:", list(slots), 0, False)
         if ok and slot:
             saved = self._save_repository.load(slot)
             self._set_session(GameSession.from_saved_game(saved, self._simulator))
