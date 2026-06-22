@@ -6,6 +6,5 @@ Pillow>=10.0
 black>=24.0
 flake8>=7.0
 # Nuitka compiles the packaged Windows and macOS builds (buildexe.py,
-# buildinstaller.py, builddmg.py). The Linux Flatpak pulls Nuitka into its own
-# build sandbox, so it does not depend on this entry.
+# buildinstaller.py, builddmg.py). The Linux Flatpak runs from source.
 Nuitka>=2.0

@@ -32,8 +32,7 @@ _CREDITS = (
     "<li><b>pytest, pytest-cov, pytest-qt, black, flake8</b> - MIT Licence "
     "(development).</li>",
     "<li><b>Pillow</b> - HPND Licence (icon build).</li>",
-    "<li><b>Nuitka</b> - Apache-2.0 Licence (Windows, macOS and Linux "
-    "packaging).</li>",
+    "<li><b>Nuitka</b> - Apache-2.0 Licence (Windows and macOS packaging).</li>",
     "<li><b>create-dmg</b> - MIT Licence (macOS disk image).</li>",
 )
 
