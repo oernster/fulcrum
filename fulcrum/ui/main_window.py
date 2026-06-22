@@ -128,6 +128,8 @@ class MainWindow(QMainWindow):
         presentation_link.setToolTip(_PRESENTATION_TOOLTIP)
         presentation_link.setCursor(Qt.CursorShape.PointingHandCursor)
         presentation_link.clicked.connect(self._export_plan_html)
+        presentation_link.setEnabled(False)
+        self._board.historyChanged.connect(presentation_link.setEnabled)
         top.addWidget(presentation_link)
         overview_link = QPushButton(_OVERVIEW_GLYPH)
         overview_link.setObjectName("IconLink")
@@ -171,6 +173,12 @@ class MainWindow(QMainWindow):
         file_menu.addAction("New random organisation...", self._new_random_org)
         file_menu.addAction("Model my organisation...", self._model_org)
         file_menu.addAction("Quick org (wizard)...", self._quick_org)
+        file_menu.addSeparator()
+        self._presentation_action = file_menu.addAction(
+            "Create presentation...", self._export_plan_html
+        )
+        self._presentation_action.setEnabled(False)
+        self._board.historyChanged.connect(self._presentation_action.setEnabled)
         file_menu.addSeparator()
         file_menu.addAction("Import...", self._import_plan)
         file_menu.addAction("Export...", self._export_plan_json)
