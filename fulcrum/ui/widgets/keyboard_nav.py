@@ -49,15 +49,19 @@ class KeyboardNavigator(QObject):
         shift = bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
         popup = QApplication.activePopupWidget()
         if popup is not None:
-            # The toolkit walks an open menu's items; Tab still steps the ring to
-            # the next or previous top-level menu.
-            if key in (Qt.Key.Key_Tab, Qt.Key.Key_Backtab) and self._is_our_menu(popup):
-                index = self._menu_index()
-                popup.hide()
-                self._step(
-                    _BACK if key == Qt.Key.Key_Backtab or shift else _FORWARD, index
-                )
-                return True
+            # The toolkit walks an open menu's items (Up, Down, Return, Escape).
+            # Tab and the arrow keys step the ring to the next or previous
+            # top-level menu, so Right leaves the menus into the body exactly as
+            # Tab does and Left mirrors Shift+Tab. Without handling the arrows
+            # here, the menu bar's native Left/Right cycling traps focus among
+            # the titles and never releases it into the body.
+            if self._is_our_menu(popup):
+                if self._is_forward(key, shift, on_map=False):
+                    self._step_from_menu(_FORWARD, popup)
+                    return True
+                if self._is_back(key, shift, on_map=False):
+                    self._step_from_menu(_BACK, popup)
+                    return True
             return False
         focus = QApplication.focusWidget()
         on_menu = self._menubar.activeAction() is not None
@@ -125,6 +129,13 @@ class KeyboardNavigator(QObject):
             index = (index + delta) % len(self._stops)
             if self._focus_stop(self._stops[index]):
                 return
+
+    def _step_from_menu(self, delta, popup) -> None:
+        # Read the active title before hiding the popup (hiding can clear the
+        # menu bar's active action), then continue the ring from that title.
+        index = self._menu_index()
+        popup.hide()
+        self._step(delta, index)
 
     def _current_index(self) -> int:
         active = self._menubar.activeAction()
