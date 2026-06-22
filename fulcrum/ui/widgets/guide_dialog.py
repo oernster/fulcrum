@@ -50,8 +50,9 @@ class GuideDialog(NeutralDialog):
 
     A checkbox switches between the fixed-size plan and the plan allowed to grow
     the org. Each step is a move button with a magnifier that previews it, as the
-    board's move rows are. Tab cycles the checkbox, the moves group then Close
-    (and wraps); Up and Down move between the move and magnifier buttons.
+    board's move rows are. Tab and Right cycle forward through the checkbox, the
+    moves group then Close (wrapping); Shift+Tab and Left step back; Up and Down
+    move between the move and magnifier buttons.
     """
 
     def __init__(
@@ -158,19 +159,25 @@ class GuideDialog(NeutralDialog):
         showing_growth = self._toggle is not None and self._toggle.isChecked()
         self._render(self._growth_guide if showing_growth else self._guide)
 
-    # Focus ring: checkbox -> moves group -> Close -> wrap; Up and Down move
-    # within the moves group (move and magnifier buttons), which is one Tab stop.
+    # Focus ring: checkbox -> moves group -> Close -> wrap. Tab and Right step
+    # forward; Shift+Tab and Left step back; Up and Down move within the moves
+    # group (move and magnifier buttons), which is one ring stop.
     def eventFilter(self, obj, event) -> bool:
         if event.type() != QEvent.Type.KeyPress:
             return False
         if QApplication.activeModalWidget() is not self:
             return False
         key = event.key()
-        if key in (Qt.Key.Key_Tab, Qt.Key.Key_Backtab):
-            shift = key == Qt.Key.Key_Backtab or bool(
-                event.modifiers() & Qt.KeyboardModifier.ShiftModifier
-            )
-            self._step(_BACK if shift else _FORWARD)
+        shift = bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
+        # Right mirrors Tab and Left mirrors Shift+Tab, as they do in the main
+        # window ring, so the guide navigates the same way by arrow or by Tab.
+        if key == Qt.Key.Key_Right or (key == Qt.Key.Key_Tab and not shift):
+            self._step(_FORWARD)
+            return True
+        if key in (Qt.Key.Key_Backtab, Qt.Key.Key_Left) or (
+            key == Qt.Key.Key_Tab and shift
+        ):
+            self._step(_BACK)
             return True
         focus = QApplication.focusWidget()
         if key == Qt.Key.Key_Down:
