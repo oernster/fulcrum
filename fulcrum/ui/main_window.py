@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from random import Random
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QStandardPaths, QTimer
 from PySide6.QtWidgets import (
     QDialog,
     QFileDialog,
@@ -46,17 +47,34 @@ from fulcrum.ui.widgets.org_size_picker import OrgSizePicker
 from fulcrum.ui.widgets.org_wizard import OrgWizard
 from fulcrum.version import APP_NAME, APP_TAGLINE
 
-_HTML_FILTER = "HTML report (*.html);;All files (*)"
+_HTML_FILTER = "Presentation (*.html);;All files (*)"
 _PLAN_FILTER = "Plan JSON (*.json);;All files (*)"
-_DEFAULT_HTML_EXPORT = "fulcrum-plan.html"
+_DEFAULT_HTML_EXPORT = "fulcrum-presentation.html"
 _DEFAULT_JSON_EXPORT = "fulcrum-plan.json"
 _GLOSSARY_GLYPH = "\N{SCROLL}"
 _GLOSSARY_TOOLTIP = "Decision glossary"
 _OVERVIEW_GLYPH = "\N{WORLD MAP}\N{VARIATION SELECTOR-16}"
 _OVERVIEW_TOOLTIP = "Organisation overview"
+_PRESENTATION_GLYPH = "\N{CHART WITH UPWARDS TREND}"
+_PRESENTATION_TOOLTIP = "Create presentation"
 # Show the busy dialog only if generation outlasts this, so small bands that
 # build in a few milliseconds never flash it.
 _BUSY_DELAY_MS = 200
+
+
+def _downloads_dir() -> str:
+    """The user's Downloads folder on any OS, falling back to home."""
+    downloads = QStandardPaths.writableLocation(
+        QStandardPaths.StandardLocation.DownloadLocation
+    )
+    return downloads or QStandardPaths.writableLocation(
+        QStandardPaths.StandardLocation.HomeLocation
+    )
+
+
+def _download_path(filename: str) -> str:
+    """A default save path for filename inside the Downloads folder."""
+    return str(Path(_downloads_dir()) / filename)
 
 
 class MainWindow(QMainWindow):
@@ -105,6 +123,12 @@ class MainWindow(QMainWindow):
         top.addWidget(new_button)
         top.addWidget(guide_button)
         top.addStretch()
+        presentation_link = QPushButton(_PRESENTATION_GLYPH)
+        presentation_link.setObjectName("IconLink")
+        presentation_link.setToolTip(_PRESENTATION_TOOLTIP)
+        presentation_link.setCursor(Qt.CursorShape.PointingHandCursor)
+        presentation_link.clicked.connect(self._export_plan_html)
+        top.addWidget(presentation_link)
         overview_link = QPushButton(_OVERVIEW_GLYPH)
         overview_link.setObjectName("IconLink")
         overview_link.setToolTip(_OVERVIEW_TOOLTIP)
@@ -121,7 +145,14 @@ class MainWindow(QMainWindow):
         layout.addWidget(self._board, 1)
         self.setCentralWidget(central)
         self._install_keyboard_nav(
-            (model_button, new_button, guide_button, overview_link, glossary_link)
+            (
+                model_button,
+                new_button,
+                guide_button,
+                presentation_link,
+                overview_link,
+                glossary_link,
+            )
         )
 
     def _install_keyboard_nav(self, buttons) -> None:
@@ -142,8 +173,7 @@ class MainWindow(QMainWindow):
         file_menu.addAction("Quick org (wizard)...", self._quick_org)
         file_menu.addSeparator()
         file_menu.addAction("Import...", self._import_plan)
-        file_menu.addAction("Export as JSON...", self._export_plan_json)
-        file_menu.addAction("Export as HTML...", self._export_plan_html)
+        file_menu.addAction("Export...", self._export_plan_json)
         file_menu.addSeparator()
         file_menu.addAction("Exit", self.close)
 
@@ -246,7 +276,9 @@ class MainWindow(QMainWindow):
         self._load_blueprint(wizard.to_blueprint(), Origin.WIZARD)
 
     def _import_plan(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(self, "Import", "", _PLAN_FILTER)
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Import", _downloads_dir(), _PLAN_FILTER
+        )
         if not path:
             return
         try:
@@ -271,7 +303,10 @@ class MainWindow(QMainWindow):
         if self._session is None:
             return
         path, _ = QFileDialog.getSaveFileName(
-            self, "Export plan as HTML", _DEFAULT_HTML_EXPORT, _HTML_FILTER
+            self,
+            "Create presentation",
+            _download_path(_DEFAULT_HTML_EXPORT),
+            _HTML_FILTER,
         )
         if not path:
             return
@@ -282,13 +317,15 @@ class MainWindow(QMainWindow):
         self._plan_exporter.export_html(
             path, report, self._session.initial_org, self._session.org, created
         )
-        self._inform("Plan exported", "Wrote the HTML report.")
+        self._inform(
+            "Presentation created", "Wrote the HTML presentation you can share."
+        )
 
     def _export_plan_json(self) -> None:
         if self._session is None:
             return
         path, _ = QFileDialog.getSaveFileName(
-            self, "Export plan as JSON", _DEFAULT_JSON_EXPORT, _PLAN_FILTER
+            self, "Export", _download_path(_DEFAULT_JSON_EXPORT), _PLAN_FILTER
         )
         if not path:
             return
