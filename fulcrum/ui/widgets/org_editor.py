@@ -72,6 +72,10 @@ _ADD_GLYPH = "+"
 _REMOVE_GLYPH = "-"
 _ACTION_SPACING = 2
 _LEAD_COLUMN_WIDTH = 168
+_AUTHORITY_COLUMN_WIDTH = 172
+_SKEW_COLUMN_WIDTH = 140
+_PEOPLE_COLUMN_WIDTH = 130
+_ACTIONS_COLUMN_WIDTH = 48
 _CATEGORY_WIDTH = 124
 _CATEGORY_SPACING = 6
 _AUTHORITY_TIP = "Tick if the team can decide and ship on its own, without escalating."
@@ -86,7 +90,7 @@ _MAX_HEADCOUNT = 1_000_000
 _MIN_WORKLOAD = 1
 _MAX_WORKLOAD = 50
 _DEFAULT_WORKLOAD = 6
-_MIN_WIDTH = 840
+_MIN_WIDTH = 1000
 _MIN_HEIGHT = 640
 _HINT = (
     "Build your organisation: start a group and pick its category (Division, "
@@ -122,22 +126,20 @@ class OrgEditorDialog(NeutralDialog):
         self._tree.setHeaderLabels(list(_HEADERS))
         header = self._tree.header()
         header.setSectionResizeMode(_COL_NAME, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(
-            _COL_AUTHORITY, QHeaderView.ResizeMode.ResizeToContents
-        )
-        header.setSectionResizeMode(_COL_SKEW, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(
-            _COL_PEOPLE, QHeaderView.ResizeMode.ResizeToContents
-        )
-        header.setSectionResizeMode(_COL_LEAD, QHeaderView.ResizeMode.Interactive)
-        header.setSectionResizeMode(
-            _COL_ACTIONS, QHeaderView.ResizeMode.ResizeToContents
-        )
-        # The actions column is fixed to its buttons; without this the last
-        # section stretches and steals the leftover width, starving the Name
-        # column so the name editors clip. Let Name absorb the remaining width.
+        for column in (_COL_AUTHORITY, _COL_SKEW, _COL_PEOPLE, _COL_LEAD, _COL_ACTIONS):
+            header.setSectionResizeMode(column, QHeaderView.ResizeMode.Interactive)
+        # Name stretches to absorb the remaining width; the other columns hold
+        # explicit widths so Name can never collapse below the category combo
+        # and the name field, which was clipping the name to a sliver.
         header.setStretchLastSection(False)
-        self._tree.setColumnWidth(_COL_LEAD, ui_scale.px(_LEAD_COLUMN_WIDTH))
+        for column, width in (
+            (_COL_AUTHORITY, _AUTHORITY_COLUMN_WIDTH),
+            (_COL_SKEW, _SKEW_COLUMN_WIDTH),
+            (_COL_PEOPLE, _PEOPLE_COLUMN_WIDTH),
+            (_COL_LEAD, _LEAD_COLUMN_WIDTH),
+            (_COL_ACTIONS, _ACTIONS_COLUMN_WIDTH),
+        ):
+            self._tree.setColumnWidth(column, ui_scale.px(width))
         header_item = self._tree.headerItem()
         header_item.setToolTip(_COL_AUTHORITY, _AUTHORITY_TIP)
         header_item.setToolTip(_COL_SKEW, _SKEW_TIP)
