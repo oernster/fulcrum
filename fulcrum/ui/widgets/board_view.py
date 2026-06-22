@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
+    QFrame,
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -165,6 +166,7 @@ class BoardView(QWidget):
         column.addWidget(self._scope_hint)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
         self._moves_box.setContentsMargins(0, 0, ui_scale.px(_MOVES_RIGHT_PAD), 0)
         self._moves_holder.setLayout(self._moves_box)
         scroll.setWidget(self._moves_holder)
@@ -172,6 +174,10 @@ class BoardView(QWidget):
         signals_caption = QLabel("Signals to watch")
         signals_caption.setObjectName("Muted")
         column.addWidget(signals_caption)
+        # Mirror the moves' content margins so the signals share the move
+        # buttons' left edge; the default layout margin was nudging the column
+        # right. The matching right pad lines the magnifiers up.
+        self._signals_row.setContentsMargins(0, 0, ui_scale.px(_MOVES_RIGHT_PAD), 0)
         self._signals_holder.setLayout(self._signals_row)
         column.addWidget(self._signals_holder)
         return pane
