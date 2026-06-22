@@ -8,9 +8,21 @@ quality gate and the build scripts. For the design see
 
 Fulcrum targets Python 3.11 or newer and is developed on 3.13.
 
+Windows:
+
 ```
 python -m venv venv
 venv\Scripts\activate
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+python main.py
+```
+
+Linux and macOS:
+
+```
+python3 -m venv venv
+source ./venv/bin/activate
 pip install -r requirements.txt
 pip install -r requirements-dev.txt
 python main.py
@@ -42,8 +54,8 @@ Run all three before pushing:
 
 ```
 pytest
-black --check fulcrum tests
-flake8 fulcrum tests
+black --check fulcrum tests main.py
+flake8 fulcrum tests main.py
 ```
 
 `pytest` enforces 100% coverage on the gated layers (domain, application and
@@ -56,8 +68,10 @@ detail is in [TESTING.md](TESTING.md).
 ## Build scripts
 
 Each build step is a plain script, run with the venv active from the repo root.
-The executable and installer steps need Nuitka, which `requirements-dev.txt`
-includes.
+The Windows and macOS builds compile with Nuitka (in `requirements-dev.txt`); the
+Linux build is a source-based Flatpak. Build for the platform you are on: the
+executable and installer on Windows, the Flatpak on Linux and the disk image on
+macOS.
 
 ### Icons
 
@@ -68,7 +82,7 @@ python generate_icons.py
 Renders the multi-size PNG set and the multi-resolution `fulcrum.ico` from
 `fulcrum.png`, used for the window, the taskbar and the packaged executable.
 
-### Standalone executable
+### Windows executable
 
 ```
 python buildexe.py
@@ -90,6 +104,32 @@ Packages the standalone payload into a single-file installer
 (`dist-installer/FulcrumSetup.exe`) that extracts to
 `%LOCALAPPDATA%\Programs\Fulcrum`, writes the uninstall entry and creates the
 desktop and Start Menu shortcuts. Run `buildexe.py` first.
+
+### Linux Flatpak
+
+```
+./build_flatpak.sh
+```
+
+Builds Fulcrum as a Flatpak against the `org.freedesktop.Platform//25.08`
+runtime, installs it for the current user and writes a distributable
+`fulcrum.flatpak` bundle. The PySide6 wheels are pre-downloaded on the host then
+installed offline inside the sandbox, so the build needs no network. Needs
+`flatpak` and `flatpak-builder` with the freedesktop 25.08 runtime and SDK. Pass
+`--no-bundle` to build and install without the distributable bundle.
+`./clean_flatpak.sh` uninstalls the app and removes the Flatpak build artefacts,
+leaving the Nuitka and macOS outputs untouched.
+
+### macOS disk image
+
+```
+python builddmg.py
+```
+
+Compiles a standalone `Fulcrum.app` with Nuitka and packages it into
+`fulcrum.dmg`. Needs macOS with the Xcode command-line tools, Homebrew and
+`create-dmg`. Code signing and notarization run when `DEVELOPER_ID_APPLICATION`,
+`APPLE_ID` and `APPLE_APP_PASSWORD` are set; otherwise they are skipped.
 
 ### GitHub Pages site
 

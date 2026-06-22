@@ -60,15 +60,26 @@ A short tour and the books behind it are at <https://oernster.github.io/fulcrum/
 | Tests | pytest, 100% gate on domain, application and infrastructure |
 | Format and lint | black (line length 88), flake8 |
 | Icons and images | Pillow (build time) |
-| Packaging | Nuitka (standalone build and installer) |
+| Packaging | Nuitka (Windows and macOS), Flatpak (Linux) |
 | Site | static HTML from `build_docs.py`, served on GitHub Pages |
 | Licence | model GPL-3.0, UI LGPL-3.0 |
 
 ## Install and run
 
+Windows:
+
 ```
 python -m venv venv
 venv\Scripts\activate
+pip install -r requirements.txt
+python main.py
+```
+
+Linux and macOS:
+
+```
+python3 -m venv venv
+source ./venv/bin/activate
 pip install -r requirements.txt
 python main.py
 ```
@@ -78,7 +89,8 @@ python main.py
 - [Architecture](ARCHITECTURE.md): the layers, the invariants and the model,
   with each invariant linked to the test that enforces it.
 - [Development](DEVELOPMENT-README.md): running from source, the quality gate
-  and the build scripts (icons, executable, installer, site).
+  and the build scripts (icons, the Windows executable and installer, the Linux
+  Flatpak, the macOS disk image and the site).
 - [Testing](TESTING.md): how the suite is structured, how to run it and how to
   read its result.
 
@@ -92,9 +104,9 @@ The suite fails below 100% coverage on the gated layers. See [TESTING.md](TESTIN
 
 ## Build
 
-The development builds (the icon set, the standalone executable, the Windows
-installer and the GitHub Pages site) are described in
-[DEVELOPMENT-README.md](DEVELOPMENT-README.md).
+The development builds for Windows, Linux and macOS (the icon set, the Windows
+executable and installer, the Linux Flatpak, the macOS disk image and the GitHub
+Pages site) are described in [DEVELOPMENT-README.md](DEVELOPMENT-README.md).
 
 ## Licence
 
