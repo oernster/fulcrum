@@ -56,20 +56,20 @@ class KeyboardNavigator(QObject):
             # here, the menu bar's native Left/Right cycling traps focus among
             # the titles and never releases it into the body.
             if self._is_our_menu(popup):
-                if self._is_forward(key, shift, on_map=False):
+                if self._is_forward(key, shift):
                     self._step_from_menu(_FORWARD, popup)
                     return True
-                if self._is_back(key, shift, on_map=False):
+                if self._is_back(key, shift):
                     self._step_from_menu(_BACK, popup)
                     return True
             return False
         focus = QApplication.focusWidget()
         on_menu = self._menubar.activeAction() is not None
         on_map = (not on_menu) and focus is self._map
-        if self._is_forward(key, shift, on_map):
+        if self._is_forward(key, shift):
             self._step(_FORWARD)
             return True
-        if self._is_back(key, shift, on_map):
+        if self._is_back(key, shift):
             self._step(_BACK)
             return True
         if on_menu or on_map:
@@ -88,18 +88,21 @@ class KeyboardNavigator(QObject):
         return False
 
     @staticmethod
-    def _is_forward(key, shift, on_map) -> bool:
+    def _is_forward(key, shift) -> bool:
+        # Right steps the ring forward everywhere, including the map, so it
+        # leaves the visual just as Tab does; the map keeps Up and Down for its
+        # own cursor.
         if key == Qt.Key.Key_Tab and not shift:
             return True
-        return key == Qt.Key.Key_Right and not on_map
+        return key == Qt.Key.Key_Right
 
     @staticmethod
-    def _is_back(key, shift, on_map) -> bool:
+    def _is_back(key, shift) -> bool:
         if key == Qt.Key.Key_Backtab:
             return True
         if key == Qt.Key.Key_Tab and shift:
             return True
-        return key == Qt.Key.Key_Left and not on_map
+        return key == Qt.Key.Key_Left
 
     def _within(self, widget) -> bool:
         if widget is self._menubar:
