@@ -25,7 +25,11 @@ from fulcrum.ui.widgets import org_map_painter as painter
 
 _HOVER_RING = QColor("#60a5fa")
 _CHANGE_RING = QColor("#22d3ee")
-_CURSOR_RING = QColor("#f59e0b")
+# The keyboard cursor shares the hover ring's light blue so a drillable section's
+# outer ring reads as clickable, set off from the amber-to-teal authority border
+# inside it; an amber cursor ring blended into a no-authority border and hid the
+# affordance.
+_CURSOR_RING = _HOVER_RING
 _BG = QColor("#0d0f12")
 
 _MIN_HEIGHT = 340
