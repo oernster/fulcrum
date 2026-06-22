@@ -99,6 +99,7 @@ class BoardView(QWidget):
         )
         self._move_note.setFixedHeight(ui_scale.px(_MOVE_NOTE_MIN_HEIGHT))
         self._undo_button = QPushButton(_UNDO_LABEL)
+        self._undo_button.setObjectName("UndoButton")
         self._undo_button.setToolTip(_UNDO_TIP)
         self._undo_button.setEnabled(False)
         self._undo_button.clicked.connect(self.take_back)

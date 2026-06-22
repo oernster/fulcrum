@@ -24,6 +24,8 @@ _ACCENT = "#f59e0b"
 _ACCENT_BRIGHT = "#fbbf24"
 _PRIMARY_BG = "#7fb0ff"
 _DISABLED_TEXT = "#5b6470"
+# Red border that flags a control disabled until the first move is played.
+_GATE_BORDER = "#ef4444"
 
 _BASE_FONT_PT = 14
 _HEADING_SCALE = 1.5
@@ -108,6 +110,9 @@ QPushButton#IconLink:enabled:focus {{
     border-color: {_ACCENT};
     color: {_ACCENT_BRIGHT};
 }}
+/* Move-gated controls reverse the usual no-border-when-disabled rule. */
+QPushButton#IconLink:disabled {{ border-color: {_GATE_BORDER}; }}
+QPushButton#UndoButton:disabled {{ border-color: {_GATE_BORDER}; }}
 QPushButton#PreviewButton {{
     background: transparent;
     border: 2px solid transparent;

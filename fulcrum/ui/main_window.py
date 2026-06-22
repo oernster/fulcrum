@@ -38,6 +38,7 @@ from fulcrum.ui.widgets.about_dialog import AboutDialog, LicenceDialog
 from fulcrum.ui.widgets.board_view import BoardView
 from fulcrum.ui.widgets.book_background_dialog import BookBackgroundDialog
 from fulcrum.ui.widgets.busy_dialog import BusyDialog
+from fulcrum.ui.widgets import disabled_cue
 from fulcrum.ui.widgets.glossary_dialog import GlossaryDialog
 from fulcrum.ui.widgets.guide_dialog import GuideDialog
 from fulcrum.ui.widgets.keyboard_nav import KeyboardNavigator
@@ -156,9 +157,15 @@ class MainWindow(QMainWindow):
                 glossary_link,
             )
         )
+        disabled_cue.install(
+            self,
+            (presentation_link, self._undo_button),
+            (self._presentation_action, self._undo_action),
+        )
 
     def _install_keyboard_nav(self, buttons) -> None:
         undo_button, map_view, moves_group, signals_group = self._board.nav_targets()
+        self._undo_button = undo_button
         self._nav = KeyboardNavigator(
             self,
             self.menuBar(),
