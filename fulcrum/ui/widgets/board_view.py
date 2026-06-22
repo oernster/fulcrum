@@ -177,9 +177,10 @@ class BoardView(QWidget):
         self._signals_holder.setLayout(self._signals_row)
         column.addWidget(self._signals_holder)
         # The moves scrollbar steals right-edge width when the list overflows;
-        # the signals have none. Match their gutter to it on every range change.
+        # the signals have none, match their gutter to it. rangeChanged fires
+        # before the viewport fits the bar; defer the read one tick.
         self._moves_scroll.verticalScrollBar().rangeChanged.connect(
-            self._sync_signals_gutter
+            lambda *_: QTimer.singleShot(0, self._sync_signals_gutter)
         )
         self._sync_signals_gutter()
         return pane
