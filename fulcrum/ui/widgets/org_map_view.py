@@ -23,13 +23,12 @@ from fulcrum.domain.models import OrgState
 from fulcrum.ui import ui_scale
 from fulcrum.ui.widgets import org_map_painter as painter
 
-_HOVER_RING = QColor("#60a5fa")
+# A section's outer ring: cyan on hover to show it opens, cyan again to mark a
+# changed node in a preview and amber for the current keyboard selection, which
+# sits as a second amber outline over the node's authority border by default.
+_HOVER_RING = QColor("#22d3ee")
 _CHANGE_RING = QColor("#22d3ee")
-# The keyboard cursor shares the hover ring's light blue so a drillable section's
-# outer ring reads as clickable, set off from the amber-to-teal authority border
-# inside it; an amber cursor ring blended into a no-authority border and hid the
-# affordance.
-_CURSOR_RING = _HOVER_RING
+_CURSOR_RING = QColor("#f59e0b")
 _BG = QColor("#0d0f12")
 
 _MIN_HEIGHT = 340
@@ -301,8 +300,10 @@ class OrgMapView(QGraphicsView):
         return None
 
     def drawForeground(self, scene_painter: QPainter, rect: QRectF) -> None:
-        self._paint_hover_ring(scene_painter)
+        # Amber keyboard-selection ring first, then the cyan hover ring over it,
+        # so hovering the selected section still shows the cyan open cue.
         self._paint_cursor_ring(scene_painter)
+        self._paint_hover_ring(scene_painter)
         for node_rect, _kind, node_id in self._hot:
             if node_id in self._highlight:
                 self._draw_ring(scene_painter, node_rect, _CHANGE_RING)
