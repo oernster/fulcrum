@@ -70,6 +70,7 @@ class OrgMapView(QGraphicsView):
         self._hover_back = False
         self._highlight: frozenset[str] = frozenset()
         self._cursor_id: str | None = None
+        self._min_scale = 0.0
         self.setMouseTracking(True)
         self.viewport().setMouseTracking(True)
 
@@ -89,6 +90,15 @@ class OrgMapView(QGraphicsView):
         """Ring the given node ids to mark them as changed, then repaint."""
         self._highlight = frozenset(node_ids)
         self.viewport().update()
+
+    def set_min_scale(self, scale: float) -> None:
+        """Never fit smaller than this scale; scroll instead of shrinking tiny.
+
+        The preview sets it so a many-node affected domain stays readable rather
+        than being squeezed to fit, which the board level deliberately does.
+        """
+        self._min_scale = scale
+        self._fit()
 
     def reset_view(self) -> None:
         """Return to the top level, for when a fresh org is loaded."""
@@ -127,11 +137,15 @@ class OrgMapView(QGraphicsView):
 
     def _fit(self) -> None:
         bounds = self._scene.itemsBoundingRect()
-        if not bounds.isEmpty():
-            padded = bounds.adjusted(
-                -_FIT_MARGIN, -_FIT_MARGIN, _FIT_MARGIN, _FIT_MARGIN
-            )
-            self.fitInView(padded, Qt.AspectRatioMode.KeepAspectRatio)
+        if bounds.isEmpty():
+            return
+        padded = bounds.adjusted(-_FIT_MARGIN, -_FIT_MARGIN, _FIT_MARGIN, _FIT_MARGIN)
+        self.fitInView(padded, Qt.AspectRatioMode.KeepAspectRatio)
+        if self._min_scale > 0.0 and self.transform().m11() < self._min_scale:
+            # A many-node map would fit-to-shrink into something unreadable; hold
+            # a readable floor and let the view scroll instead.
+            self.resetTransform()
+            self.scale(self._min_scale, self._min_scale)
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)

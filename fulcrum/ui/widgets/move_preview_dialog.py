@@ -39,6 +39,9 @@ _SCREEN_FRACTION = 0.9
 _MAX_DIALOG_W = 1400
 _MAX_DIALOG_H = 1000
 _MAP_MIN_H = 380
+# Never let the before/after maps fit-to-shrink below full node size; scroll
+# instead, so the preview stays readable however many nodes it shows.
+_PREVIEW_MIN_SCALE = 1.0
 _CHANGE_COLOR = "#22d3ee"
 _DECIDES = "decides locally"
 _ESCALATES = "escalates"
@@ -186,6 +189,7 @@ class MovePreviewDialog(NeutralDialog):
             view.setMinimumHeight(ui_scale.px(_MAP_MIN_H))
             view.set_org(section)
             view.set_highlight(ringed)
+            view.set_min_scale(_PREVIEW_MIN_SCALE)
             column.addWidget(view, 1)
             wrapper = QWidget()
             wrapper.setLayout(column)
