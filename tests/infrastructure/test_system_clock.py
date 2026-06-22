@@ -3,7 +3,7 @@
 from fulcrum.infrastructure.system_clock import SystemClock
 
 
-def test_timestamp_is_iso_string():
+def test_timestamp_is_human_readable_utc():
     stamp = SystemClock().timestamp()
     assert isinstance(stamp, str)
-    assert "T" in stamp
+    assert stamp.endswith(" UTC")
