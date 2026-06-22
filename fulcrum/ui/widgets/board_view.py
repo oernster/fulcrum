@@ -23,9 +23,9 @@ from fulcrum.domain.simulation import MoveClassification
 from fulcrum.ui import ui_scale
 from fulcrum.ui.analysis_thread import AnalysisThread
 from fulcrum.ui.widgets.board_renderers import clear_layout, move_row, signal_row
-from fulcrum.ui.widgets.definition_popover import SignalDetailDialog
 from fulcrum.ui.widgets.move_preview_dialog import MovePreviewDialog
 from fulcrum.ui.widgets.org_map_view import OrgMapView
+from fulcrum.ui.widgets.signal_detail_dialog import SignalDetailDialog
 
 _SCORE_DECIMALS = 1
 _MAP_CAPTION = "Organisation map"
