@@ -18,12 +18,12 @@ from fulcrum.application.dto import MoveValuation
 from fulcrum.application.game_session import GameSession
 from fulcrum.application.move_text import move_note
 from fulcrum.domain.hierarchy import child_domains, total_headcount
-from fulcrum.domain.moves import MoveKind
 from fulcrum.domain.signals import SignalReading
 from fulcrum.domain.simulation import MoveClassification
 from fulcrum.ui import ui_scale
 from fulcrum.ui.analysis_thread import AnalysisThread
 from fulcrum.ui.widgets.board_renderers import clear_layout, move_row, signal_row
+from fulcrum.ui.widgets.move_note_view import MoveNoteView
 from fulcrum.ui.widgets.move_preview_dialog import MovePreviewDialog
 from fulcrum.ui.widgets.org_map_view import OrgMapView
 from fulcrum.ui.widgets.signal_detail_dialog import SignalDetailDialog
@@ -60,12 +60,6 @@ _MOVES_RIGHT_PAD = 12
 _PREVIEW_COLOR = "#fbbf24"
 _UNDO_LABEL = "Take a move back"
 _UNDO_TIP = "Undo the last move played"
-# The per-move note reserves the height of the tallest note at the current
-# width (recomputed on resize), so changing its text on hover never reflows the
-# layout: that reflow read as a jiggle as the mouse swept across the moves.
-_MOVE_NOTE_PAD = 10
-_MOVE_NOTE_MIN_HEIGHT = 40
-_WRAP_FLAG = int(Qt.TextFlag.TextWordWrap)
 
 
 class BoardView(QWidget):
@@ -91,13 +85,7 @@ class BoardView(QWidget):
         self._map_caption.setObjectName("Muted")
         self._map = OrgMapView()
         self._map.drilled.connect(self._on_drilled)
-        self._move_note = QLabel("")
-        self._move_note.setObjectName("Muted")
-        self._move_note.setWordWrap(True)
-        self._move_note.setAlignment(
-            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
-        )
-        self._move_note.setFixedHeight(ui_scale.px(_MOVE_NOTE_MIN_HEIGHT))
+        self._move_note = MoveNoteView()
         self._undo_button = QPushButton(_UNDO_LABEL)
         self._undo_button.setObjectName("UndoButton")
         self._undo_button.setToolTip(_UNDO_TIP)
@@ -188,18 +176,7 @@ class BoardView(QWidget):
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
-        self._reserve_move_note_height()
-
-    def _reserve_move_note_height(self) -> None:
-        width = self._move_note.width()
-        if width <= 0:
-            return
-        metrics = self._move_note.fontMetrics()
-        tallest = max(
-            metrics.boundingRect(0, 0, width, 0, _WRAP_FLAG, move_note(k)).height()
-            for k in MoveKind
-        )
-        self._move_note.setFixedHeight(tallest + ui_scale.px(_MOVE_NOTE_PAD))
+        self._move_note.reserve_height()
 
     def _sync_signals_gutter(self, *_) -> None:
         """Match the signals' right gutter to the width the moves scrollbar takes."""
@@ -389,9 +366,9 @@ class BoardView(QWidget):
 
     def _set_last_move_note(self) -> None:
         if self._session is not None and self._session.history:
-            self._move_note.setText(move_note(self._session.history[-1].kind))
+            self._move_note.set_text(move_note(self._session.history[-1].kind))
         else:
-            self._move_note.setText("")
+            self._move_note.set_text("")
 
     def _open_signal_detail(self, reading: SignalReading) -> None:
         SignalDetailDialog(reading, self).exec()
