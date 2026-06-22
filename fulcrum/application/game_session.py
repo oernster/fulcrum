@@ -143,10 +143,15 @@ class GameSession:
         return self._simulator.valuate_moves(active, moves)
 
     def play(self, move: Move) -> None:
+        # Apply before snapshotting so a move that cannot apply leaves the
+        # session untouched (no orphaned undo snapshot). Store the translated
+        # move so the history replays cleanly from the start org; a focused
+        # move's raw target can be a domain rather than a real team.
         real = translate_focused_move(self._org, self._focus_id, move)
+        new_org = apply_move(self._org, real)
         self._past.append(self._org)
-        self._org = apply_move(self._org, real)
-        self._history.append(move)
+        self._org = new_org
+        self._history.append(real)
 
     @property
     def can_take_back(self) -> bool:
@@ -180,7 +185,7 @@ class GameSession:
             return False
         self._past.append(self._org)
         self._org = new_org
-        self._history.append(move)
+        self._history.append(real)
         return True
 
     def preview(self, move: Move) -> OrgState:
