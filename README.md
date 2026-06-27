@@ -1,6 +1,6 @@
 # Fulcrum
 
-Fulcrum turns the Decision Architecture model into a playable engine. You fix a
+Fulcrum turns the Decision Architecture model into an engine you operate. You fix a
 failing organisation by choosing structural moves (delegate authority, stabilise
 interfaces, realign incentives or collapse a boundary) and a deterministic model
 scores the result from 0 to 100. You can play generated levels, model your own

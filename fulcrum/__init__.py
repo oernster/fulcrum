@@ -1,1 +1,1 @@
-"""Fulcrum: a decision-architecture sandbox and strategy game."""
+"""Fulcrum: a decision-architecture simulation tool and strategy game."""

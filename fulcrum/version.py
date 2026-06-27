@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 APP_NAME: str = "Fulcrum"
-APP_TAGLINE: str = "Decision Sandbox"
+APP_TAGLINE: str = "Organisational Simulation Tool"
 APP_AUTHOR: str = "Oliver Ernster"
 APP_COPYRIGHT: str = "(c) 2026 Oliver Ernster"
 

@@ -143,13 +143,13 @@ chmod +x packaging/fulcrum-launcher.sh
 cat > "packaging/${APP_ID}.desktop" <<DESKTOP
 [Desktop Entry]
 Name=Fulcrum
-Comment=Organisational Decision Architecture Sandbox
+Comment=Organisational Decision Architecture Simulation Tool
 Exec=fulcrum
 Icon=${APP_ID}
 Terminal=false
 Type=Application
 Categories=Education;Office;
-Keywords=decision;architecture;organisation;strategy;sandbox;
+Keywords=decision;architecture;organisation;strategy;simulation;
 DESKTOP
 
 cat > "packaging/${APP_ID}.metainfo.xml" <<XML
@@ -157,13 +157,13 @@ cat > "packaging/${APP_ID}.metainfo.xml" <<XML
 <component type="desktop-application">
   <id>${APP_ID}</id>
   <name>Fulcrum</name>
-  <summary>Organisational Decision Architecture Sandbox</summary>
+  <summary>Organisational Decision Architecture Simulation Tool</summary>
   <metadata_license>MIT</metadata_license>
   <project_license>GPL-3.0-only AND LGPL-3.0-only</project_license>
   <developer_name>Oliver Ernster</developer_name>
   <launchable type="desktop-id">${APP_ID}.desktop</launchable>
   <description>
-    <p>Fulcrum turns organisational structure into a scored, playable model. Each
+    <p>Fulcrum turns organisational structure into a scored model you operate. Each
     position is a set of teams, dependencies and authority boundaries that a
     deterministic structural model rates from 0 to 100. Structural moves such as
     delegating authority, stabilising interfaces and collapsing boundaries

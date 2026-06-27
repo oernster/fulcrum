@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "fulcrum-decision-sandbox"
 dynamic = ["version"]
-description = "A decision-architecture sandbox and strategy game"
+description = "A decision-architecture simulation tool and strategy game"
 authors = [{name = "Oliver Ernster", email = "oernster@codecrafter.uk"}]
 license = {file = "LICENSE"}
 requires-python = ">=3.11"

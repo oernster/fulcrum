@@ -37,7 +37,7 @@ import stamp_version
 
 # --- Project identity (single source of truth for build metadata) -----------
 APP_DISPLAY_NAME = "Fulcrum"
-APP_DESCRIPTION = "Decision Sandbox"
+APP_DESCRIPTION = "Organisational Simulation Tool"
 APP_AUTHOR = "Oliver Ernster"
 EXE_NAME = "fulcrum"
 

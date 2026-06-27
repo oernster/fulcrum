@@ -35,7 +35,7 @@ import stamp_version
 
 # --- Project identity (single source of truth for installer metadata) -------
 APP_DISPLAY_NAME = "Fulcrum"
-APP_DESCRIPTION = "Decision Sandbox"
+APP_DESCRIPTION = "Organisational Simulation Tool"
 APP_AUTHOR = "Oliver Ernster"
 INSTALLER_NAME = "FulcrumSetup"
 

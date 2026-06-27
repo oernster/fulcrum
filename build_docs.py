@@ -43,8 +43,8 @@ BOARD_SHOT = "assets/screenshots/play-board.png"
 GUIDE_SHOT = "assets/screenshots/play-guide.png"
 BOOK_COVER_REL = "assets/books"
 LINK_TEXT = "View on Amazon UK"
-SITE_TAGLINE = "Organisational Decision Architecture Sandbox"
-PAGE_TITLE = f"{APP_NAME}: Decision Architecture Sandbox for Architects and CTOs"
+SITE_TAGLINE = "Organisational Decision Architecture Simulation Tool"
+PAGE_TITLE = f"{APP_NAME}: Decision Architecture Simulation Tool for Architects and CTOs"
 THEME_COLOR = "#0d0f12"
 SEO_KEYWORDS = (
     "Decision Architecture, organisational design, software architecture, "
@@ -266,7 +266,7 @@ def _hero() -> str:
       <img class="logo" src="{ICON_REL}" alt="{APP_NAME} icon">
       <h1>{APP_NAME}</h1>
       <div class="tagline">{SITE_TAGLINE}</div>
-      <p class="lede">The Decision Architecture series, made playable. Model
+      <p class="lede">The Decision Architecture series, made operable. Model
         any organisation, read its structural health from 0 to 100 and find
         the moves that make it stronger.</p>
       <div class="cta">
@@ -366,7 +366,7 @@ def _footer() -> str:
 
 def _page_html(showcase: BookShowcase) -> str:
     description = (
-        f"{APP_NAME} is a Decision Architecture sandbox for architects, senior "
+        f"{APP_NAME} is a Decision Architecture simulation tool for architects, senior "
         "engineers and CTOs. Model any organisation, score its structural "
         "health from 0 to 100 and find the moves that make it stronger."
     )
