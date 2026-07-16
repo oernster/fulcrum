@@ -258,6 +258,57 @@ section.alt {
 .book p { color: var(--muted); font-size: 14px; margin: 0 0 16px; flex: 1; }
 .book .buy { font-weight: 700; font-size: 14px; }
 
+.dl-version {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--accent-bright);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 14px;
+}
+.downloads {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 28px;
+}
+.dl-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dl-card .ico { font-size: 30px; }
+.dl-card h3 { margin: 4px 0 0; font-size: 18px; }
+.dl-card .req { color: var(--muted); font-size: 13px; margin: 0; }
+.dl-card .btn { margin: 14px auto 4px; }
+.dl-card .meta {
+  color: var(--muted);
+  font-size: 12.5px;
+  min-height: 1.2em;
+  margin: 0;
+}
+.dl-card .how { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
+.dl-card code {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-size: 12px;
+  color: var(--text);
+}
+.dl-links {
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+  margin: 18px 0 0;
+}
+
 footer {
   border-top: 1px solid var(--border);
   padding: 50px 0;
