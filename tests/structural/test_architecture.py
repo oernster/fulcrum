@@ -57,6 +57,9 @@ def test_application_does_not_import_infrastructure_or_ui():
 
 
 def test_modules_stay_under_the_line_limit():
-    for path in _python_files(_PKG):
-        line_count = len(path.read_text(encoding="utf-8").splitlines())
-        assert line_count <= _MAX_LINES, f"{path.name}: {line_count}"
+    # Test modules are held to the same cap as source: an oversized test
+    # file hides structure exactly the way an oversized source file does.
+    for directory in (_PKG, _ROOT / "tests"):
+        for path in _python_files(directory):
+            line_count = len(path.read_text(encoding="utf-8").splitlines())
+            assert line_count <= _MAX_LINES, f"{path.name}: {line_count}"

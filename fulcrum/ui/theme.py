@@ -89,6 +89,16 @@ QPushButton {{
 QPushButton:enabled:hover {{ border-color: {_RING_GREEN}; }}
 QPushButton:enabled:focus {{ border-color: {_RING_GREEN}; outline: none; }}
 QPushButton:pressed {{ background-color: {_SURFACE}; }}
+/* Any button carrying a dropdown menu shares the spinbox arrow, so every
+   disclosure cue in the app is the same glyph. */
+QPushButton::menu-indicator {{
+    image: {down_arrow};
+    width: 12px;
+    height: 8px;
+    subcontrol-origin: padding;
+    subcontrol-position: center right;
+    right: 6px;
+}}
 QPushButton:disabled {{
     color: {_DISABLED_TEXT};
     background-color: {_SURFACE};

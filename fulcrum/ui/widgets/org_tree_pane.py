@@ -1,12 +1,12 @@
 """The org editor's left pane: the organisation rendered as a live tree.
 
-A new company is the outer cage (button or right-click on empty space); every
-unit takes items with the inline + or the context menu and a new item starts
-as a team, converted to any tier from the inspector's type dropdown. Rows can
-be dragged file-manager style: onto a unit to move inside, between rows to
-reorder, Ctrl held to copy. The pane is a thin view over the OrgDraft: every
-operation calls the draft then rebuilds, so the tree always reflects the
-model.
+A top-level item of any type (Company down to a Team leaf) starts from the
+New dropdown or a right-click on empty space; every unit takes items with the
+inline + or the context menu and a new item starts as a team, converted to
+any tier from the inspector's type dropdown. Rows can be dragged file-manager
+style: onto a unit to move inside, between rows to reorder, Ctrl held to
+copy. The pane is a thin view over the OrgDraft: every operation calls the
+draft then rebuilds, so the tree always reflects the model.
 """
 
 from __future__ import annotations
@@ -26,7 +26,8 @@ from PySide6.QtWidgets import (
 )
 
 from fulcrum.application.org_draft import OrgDraft
-from fulcrum.application.org_draft_nodes import ContainerDraft
+from fulcrum.application.org_draft_nodes import TEAM_TYPE, ContainerDraft
+from fulcrum.domain.models import GROUP_CATEGORIES
 from fulcrum.ui import ui_scale
 from fulcrum.ui.widgets.org_editor_widgets import action_button
 from fulcrum.ui.widgets.org_tree_dnd import DraftTree
@@ -45,7 +46,8 @@ _TOP_LEVEL_LABEL = "(top level)"
 _ADD_GLYPH = "+"
 # A real minus sign: the ASCII hyphen renders as a tiny dash at button size.
 _REMOVE_GLYPH = "\N{MINUS SIGN}"
-_NEW_COMPANY_TEXT = "New company"
+_NEW_BUTTON_TEXT = "New"
+_NEW_MENU_TIP = "Add a top-level item: pick its type, Company down to a team"
 _ADD_ITEM_TEXT = "Add item here"
 _DRAG_HINT = (
     "Drag an item onto a unit to move it inside, between rows to reorder; "
@@ -82,14 +84,16 @@ class OrgTreePane(QWidget):
         layout.addWidget(self._tree, 1)
 
         row = QHBoxLayout()
-        new_company = QPushButton(_NEW_COMPANY_TEXT)
-        new_company.setToolTip("Start a new top-level company")
-        new_company.clicked.connect(self._new_company)
+        new_button = QPushButton(_NEW_BUTTON_TEXT)
+        new_button.setToolTip(_NEW_MENU_TIP)
+        new_menu = QMenu(new_button)
+        self._populate_new_menu(new_menu)
+        new_button.setMenu(new_menu)
         expand = QPushButton("Expand all")
         expand.clicked.connect(self._tree.expandAll)
         collapse = QPushButton("Collapse all")
         collapse.clicked.connect(self._tree.collapseAll)
-        row.addWidget(new_company)
+        row.addWidget(new_button)
         row.addWidget(expand)
         row.addWidget(collapse)
         row.addStretch()
@@ -204,8 +208,21 @@ class OrgTreePane(QWidget):
 
     # ------------------------------------------------------------ operations
 
-    def _new_company(self) -> None:
-        node = self._draft.add_container(None)
+    def _populate_new_menu(self, menu: QMenu) -> None:
+        """One action per type a top-level item can start as, tiers then Team.
+
+        The same vocabulary and order as the inspector's type dropdown, so
+        the two surfaces always agree.
+        """
+        for category in GROUP_CATEGORIES:
+            menu.addAction(category, lambda c=category: self._new_top_level(c))
+        menu.addAction(TEAM_TYPE, lambda: self._new_top_level(TEAM_TYPE))
+
+    def _new_top_level(self, kind: str) -> None:
+        if kind == TEAM_TYPE:
+            node = self._draft.add_team(None)
+        else:
+            node = self._draft.add_container(None, kind)
         self._after_change(node.id)
 
     def _add_item(self, parent_id: str) -> None:
@@ -278,7 +295,8 @@ class OrgTreePane(QWidget):
         item = self._tree.itemAt(position)
         menu = QMenu(self)
         if item is None:
-            menu.addAction(_NEW_COMPANY_TEXT, self._new_company)
+            submenu = menu.addMenu(_NEW_BUTTON_TEXT)
+            self._populate_new_menu(submenu)
             menu.exec(self._tree.viewport().mapToGlobal(position))
             return
         node_id = item.data(_COL_LABEL, _ROLE_ID)

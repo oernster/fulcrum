@@ -48,11 +48,18 @@ class OrgDraft(DraftConversions, DraftSerialisation):
 
     # ------------------------------------------------------------- structure
 
-    def add_container(self, parent_id: str | None) -> ContainerDraft:
-        """Add a grouping under a parent (or at the top level) and return it."""
+    def add_container(
+        self, parent_id: str | None, category: str | None = None
+    ) -> ContainerDraft:
+        """Add a grouping under a parent (or at the top level) and return it.
+
+        The tier defaults to the depth's suggestion; an explicit category
+        (the tree pane's New dropdown) overrides it.
+        """
         siblings, depth = self._insertion_point(parent_id)
         self._container_count += 1
-        category = default_category_for_depth(depth)
+        if category is None:
+            category = default_category_for_depth(depth)
         node = ContainerDraft(
             id=self._new_id(_CONTAINER_PREFIX),
             category=category,
