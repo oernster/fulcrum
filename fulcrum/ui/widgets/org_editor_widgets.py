@@ -13,8 +13,7 @@ from fulcrum.ui import ui_scale
 
 _HEADING = "Heading"
 _TREE_ACTION = "TreeAction"
-_ACTION_BUTTON_W = 32
-_ACTION_BUTTON_H = 26
+_ACTION_BUTTON_W = 36
 _DICE_GLYPH = "\N{GAME DIE}"
 _DICE_TIP = "Roll a different name"
 
@@ -26,11 +25,17 @@ def labelled(label: QLabel) -> QLabel:
 
 
 def action_button(glyph: str, tip: str) -> QPushButton:
-    """A compact +/- row-action button."""
+    """A compact +/- row-action button.
+
+    Only the width is fixed (for column alignment); the height stays the
+    stylesheet-computed natural height. Forcing a height below what the
+    frame needs makes Qt clip it, which sliced the bottom border off the
+    hover ring at some UI scales.
+    """
     button = QPushButton(glyph)
     button.setObjectName(_TREE_ACTION)
     button.setToolTip(tip)
-    button.setFixedSize(ui_scale.px(_ACTION_BUTTON_W), ui_scale.px(_ACTION_BUTTON_H))
+    button.setFixedWidth(ui_scale.px(_ACTION_BUTTON_W))
     return button
 
 

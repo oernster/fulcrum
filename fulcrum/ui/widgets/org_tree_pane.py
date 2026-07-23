@@ -154,15 +154,19 @@ class OrgTreePane(QWidget):
             font = item.font(_COL_LABEL)
             font.setBold(True)
             item.setFont(_COL_LABEL, font)
+        actions = self._actions(node.id, is_container)
+        # The row must never be shorter than the action buttons: an overlaid
+        # item widget is clipped to the row rect, and a too-short row slices
+        # the bottom border off the buttons' ring. The explicit size hint
+        # forces the row to fit the holder at any UI scale.
+        item.setSizeHint(_COL_ACTIONS, actions.sizeHint())
         # Attach before decorating: item widgets and expansion state are view
         # state, which Qt silently drops on rows not yet in the tree.
         if parent_item is None:
             self._tree.addTopLevelItem(item)
         else:
             parent_item.addChild(item)
-        self._tree.setItemWidget(
-            item, _COL_ACTIONS, self._actions(node.id, is_container)
-        )
+        self._tree.setItemWidget(item, _COL_ACTIONS, actions)
         if is_container:
             for child in node.children:
                 self._add_row(child, item, warned)
