@@ -168,7 +168,10 @@ _CONCEPTS: tuple[ConceptEntry, ...] = (
             f"{_THRESHOLDS.good_delta:g} or more, neutral gains less than "
             f"{_THRESHOLDS.good_delta:g} without losing anything, bad loses "
             f"less than {-_THRESHOLDS.blunder_delta:g} and blunder loses "
-            f"{-_THRESHOLDS.blunder_delta:g} or more."
+            f"{-_THRESHOLDS.blunder_delta:g} or more. Deltas are scored "
+            "within the focused section, so the same change reads larger the "
+            "deeper the focus; when nothing at an aggregate level grades "
+            "good, the value lives in the sections beneath it."
         ),
         short_help=(
             "How a move scores before you play it, exactly as a chess engine "

@@ -48,6 +48,7 @@ def test_root_and_child_domains():
     org = _org()
     assert tuple(d.id for d in hierarchy.root_domains(org)) == ("plat",)
     assert tuple(d.id for d in hierarchy.child_domains(org, "plat")) == ("pay",)
+    assert tuple(d.id for d in hierarchy.child_domains(org, None)) == ("plat",)
 
 
 def test_subtree_and_teams_recursive_vs_direct():

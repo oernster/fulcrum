@@ -29,8 +29,8 @@ def root_domains(org: OrgState) -> tuple[Domain, ...]:
     return tuple(d for d in org.domains if d.parent_id is None)
 
 
-def child_domains(org: OrgState, parent_id: str) -> tuple[Domain, ...]:
-    """Domains whose immediate parent is the given domain."""
+def child_domains(org: OrgState, parent_id: str | None) -> tuple[Domain, ...]:
+    """Domains whose immediate parent is the given domain; None = top level."""
     return tuple(d for d in org.domains if d.parent_id == parent_id)
 
 

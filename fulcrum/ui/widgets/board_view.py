@@ -38,8 +38,9 @@ _MOVES_TOOLTIP = (
     "section, where the strong moves appear."
 )
 _SCOPE_HINT = (
-    "Only neutral moves at this scope. Drill into a domain on the map to find "
-    "the strong moves that really gain."
+    "Nothing at this level grades good or better: structural value lives "
+    "deeper. Drill into a domain on the map to find the moves that really "
+    "gain."
 )
 _OVERVIEW_HINT = (
     "This scope is too large to score live. Drill into a section on the map to "
@@ -297,11 +298,18 @@ class BoardView(QWidget):
         self._scope_hint.setVisible(True)
 
     def _update_scope_hint(self, valuations) -> None:
+        """Show the drill-deeper nudge when this frame offers no strong move.
+
+        Classification is absolute within the focused frame, so at an
+        aggregate scope every move can honestly grade below good; the nudge
+        turns that moment into the lesson (structural value lives in the
+        sections) rather than a dead end. Hidden when there is nothing to
+        drill into: at a leaf, weak moves are just weak moves.
+        """
         self._scope_hint.setText(_SCOPE_HINT)
         strong = {MoveClassification.GOOD, MoveClassification.GREAT}
         has_strong = any(v.classification in strong for v in valuations)
-        focused = self._session.focused_on
-        can_drill = focused is None or bool(child_domains(self._session.org, focused))
+        can_drill = bool(child_domains(self._session.org, self._session.focused_on))
         self._scope_hint.setVisible(can_drill and not has_strong)
 
     def _map_caption_text(self) -> str:
