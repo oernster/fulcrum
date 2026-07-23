@@ -105,6 +105,7 @@ QPushButton#TreeAction {{
     min-width: 0;
     font-weight: 700;
     font-size: {glyph_pt}pt;
+    border-radius: 6px;
 }}
 /* The tree's action cells sit over the tree surface; without this they paint
    the window background as opaque blocks in each row. */

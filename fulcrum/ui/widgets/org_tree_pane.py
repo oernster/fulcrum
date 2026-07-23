@@ -34,9 +34,12 @@ from fulcrum.ui.widgets.org_tree_dnd import DraftTree
 _ROLE_ID = int(Qt.ItemDataRole.UserRole)
 _COL_LABEL = 0
 _COL_ACTIONS = 1
-_ACTIONS_COLUMN_WIDTH = 84
+_ACTIONS_COLUMN_WIDTH = 92
 _ACTION_SPACING = 4
-_ACTION_MARGIN = 2
+# Vertical and trailing space around the +/- buttons so their 2px hover ring
+# never clips against the row or viewport edge.
+_ACTION_MARGIN = 4
+_ACTION_RIGHT_PAD = 6
 _WARNING_BADGE = " \N{WARNING SIGN}"
 _TOP_LEVEL_LABEL = "(top level)"
 _ADD_GLYPH = "+"
@@ -63,7 +66,9 @@ class OrgTreePane(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        self._tree = DraftTree(self._draft.can_place, self._handle_drop)
+        self._tree = DraftTree(
+            self._draft.can_place, self._handle_drop, self._is_container
+        )
         self._tree.setColumnCount(2)
         self._tree.setHeaderHidden(True)
         self._tree.setColumnWidth(_COL_ACTIONS, ui_scale.px(_ACTIONS_COLUMN_WIDTH))
@@ -180,7 +185,7 @@ class OrgTreePane(QWidget):
         holder.setObjectName("TreeActionCell")
         row = QHBoxLayout(holder)
         margin = ui_scale.px(_ACTION_MARGIN)
-        row.setContentsMargins(0, margin, 0, margin)
+        row.setContentsMargins(0, margin, ui_scale.px(_ACTION_RIGHT_PAD), margin)
         row.setSpacing(ui_scale.px(_ACTION_SPACING))
         if is_container:
             add = action_button(_ADD_GLYPH, _ADD_ITEM_TEXT)
@@ -224,6 +229,9 @@ class OrgTreePane(QWidget):
             return
         self._draft.remove(node_id)
         self._after_change("")
+
+    def _is_container(self, node_id: str) -> bool:
+        return isinstance(self._draft.find(node_id), ContainerDraft)
 
     def _handle_drop(
         self, node_id: str, parent_id: str | None, index, copy: bool
