@@ -26,8 +26,10 @@ from fulcrum.ui.widgets import org_map_painter as painter
 # A section's outer ring: cyan on hover to show it opens, cyan again to mark a
 # changed node in a preview and amber for the current keyboard selection, which
 # sits as a second amber outline over the node's authority border by default.
-_HOVER_RING = QColor("#22d3ee")
-_CHANGE_RING = QColor("#22d3ee")
+# Green rings match the theme's hover language: green marks the actionable
+# or affected node, muted so the large surround does not shout.
+_HOVER_RING = QColor("#2f9e64")
+_CHANGE_RING = QColor("#2f9e64")
 _CURSOR_RING = QColor("#f59e0b")
 _BG = QColor("#0d0f12")
 

@@ -42,7 +42,7 @@ _MAP_MIN_H = 380
 # Never let the before/after maps fit-to-shrink below full node size; scroll
 # instead, so the preview stays readable however many nodes it shows.
 _PREVIEW_MIN_SCALE = 1.0
-_CHANGE_COLOR = "#22d3ee"
+_CHANGE_COLOR = "#2f9e64"
 _DECIDES = "decides locally"
 _ESCALATES = "escalates"
 _PLAY_LABEL = "Play this move"

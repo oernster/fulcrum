@@ -24,7 +24,9 @@ _TEXT = "#e6e9ee"
 _TEXT_MUTED = "#9aa3af"
 _ACCENT = "#f59e0b"
 _ACCENT_BRIGHT = "#fbbf24"
-_PRIMARY_BG = "#7fb0ff"
+# A muted steel blue: distinct enough to read as the primary action without
+# fighting the amber accent, and dark enough that the ring colours sit on it.
+_PRIMARY_BG = "#5d81ad"
 _DISABLED_TEXT = "#5b6470"
 # Green hover border: an enabled control under the mouse reads as actionable;
 # the amber border stays for keyboard focus and disabled gating stays red.
