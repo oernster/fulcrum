@@ -1164,6 +1164,8 @@ def _set_app_user_model_id() -> None:
 def _run_uninstall_cli(args: argparse.Namespace) -> int:
     """Run the uninstall flow when invoked as the registered uninstaller."""
     app = QApplication(sys.argv)
+    # Pin Fusion: the native windows11 style paints over stylesheet borders.
+    app.setStyle("fusion")
     app.setApplicationName(f"{APP_DISPLAY_NAME} Setup")
     app.setWindowIcon(_app_icon())
     if args.quiet:
@@ -1223,6 +1225,8 @@ def main() -> int:
         return _run_uninstall_cli(args)
 
     app = QApplication(sys.argv)
+    # Pin Fusion: the native windows11 style paints over stylesheet borders.
+    app.setStyle("fusion")
     app.setApplicationName(_WINDOW_TITLE)
     app.setWindowIcon(_app_icon())
     window = InstallerWindow()

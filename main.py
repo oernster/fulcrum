@@ -38,6 +38,12 @@ def _size_window(window: MainWindow, avail) -> None:
 def main() -> int:
     app = QApplication(sys.argv)
 
+    # The app is themed entirely by stylesheet. The native windows11 style
+    # paints its own chrome over stylesheet borders (truncated focus and
+    # hover rings on combos and fields), so pin the style Fusion renders
+    # QSS faithfully on and every platform shares.
+    app.setStyle("fusion")
+
     avail = app.primaryScreen().availableGeometry()
     ui_scale.init(min(avail.height() / _UI_SCALE_REFERENCE_HEIGHT, _MAX_UI_SCALE))
     app.setStyleSheet(get_dark_qss())
