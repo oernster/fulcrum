@@ -88,7 +88,7 @@
   <div class="container footer-inner">
     <div>
       <strong>Fulcrum</strong>: Organisational Decision Architecture Simulation Tool<br>
-      (c) 2026 Oliver Ernster · Local-first · GPL-3.0 + LGPL-3.0 · v<!--VERSION-->1.4.3<!--/VERSION-->
+      (c) Oliver Ernster · Local-first · GPL-3.0 + LGPL-3.0 · v<!--VERSION-->1.4.3<!--/VERSION-->
     </div>
     <div class="footer-links">
       <a href="https://github.com/oernster/fulcrum/releases">Releases</a>
@@ -112,12 +112,7 @@
         }).then(function (rel) {
             var version = (rel.tag_name || '').replace(/^v/, '');
             if (version) {
-                var when = '';
-                if (rel.published_at) {
-                    when = ' · ' + new Date(rel.published_at).toLocaleDateString(undefined,
-                        {day: 'numeric', month: 'long', year: 'numeric'});
-                }
-                document.getElementById('dl-version').textContent = 'Version ' + version + when;
+                document.getElementById('dl-version').textContent = 'Version ' + version;
             }
             if (rel.html_url) {
                 document.getElementById('dl-whats-new').href = rel.html_url;
