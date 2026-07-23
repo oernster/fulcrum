@@ -33,6 +33,7 @@ from fulcrum.application.glossary import (
 from fulcrum.application.org_draft import OrgDraft
 from fulcrum.application.org_draft_nodes import TEAM_TYPE, ContainerDraft, TeamDraft
 from fulcrum.domain.models import GROUP_CATEGORIES
+from fulcrum.ui import ui_scale
 from fulcrum.ui.widgets.org_editor_widgets import (
     ClickOpenComboBox,
     SelectAllLineEdit,
@@ -41,6 +42,10 @@ from fulcrum.ui.widgets.org_editor_widgets import (
 
 _MAX_SKEW_PERCENT = 100
 _MAX_HEADCOUNT = 1_000_000
+# Breathing room around the fields so a focused control's 2px green ring
+# draws fully instead of clipping against the pane edges.
+_PANE_MARGIN_H = 8
+_PANE_MARGIN_V = 6
 _PAGE_EMPTY = 0
 _PAGE_CONTAINER = 1
 _PAGE_TEAM = 2
@@ -90,7 +95,9 @@ class OrgInspectorPane(QWidget):
         self._node = None
         self._loading = False
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        margin_h = ui_scale.px(_PANE_MARGIN_H)
+        margin_v = ui_scale.px(_PANE_MARGIN_V)
+        layout.setContentsMargins(margin_h, margin_v, margin_h, margin_v)
         self._stack = QStackedWidget()
         self._stack.addWidget(self._build_empty_page())
         self._stack.addWidget(self._build_container_page())
