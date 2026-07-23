@@ -75,3 +75,17 @@ def test_headcount_sums_on_domain_nodes_and_shows_on_team_nodes():
     assert nodes["plat"].headcount == 10
     assert nodes["pay"].headcount == 25
     assert nodes["u"].headcount == 7
+
+
+def test_unit_level_dependencies_draw_between_matching_nodes():
+    org = OrgState(
+        teams=(
+            Team("a", "A", True, 0.0, domain_id="plat"),
+            Team("b", "B", True, 0.0, domain_id="pay"),
+        ),
+        dependencies=(Dependency("plat", "pay", 4),),
+        workload=1,
+        domains=(Domain("plat", "Platform"), Domain("pay", "Payments")),
+    )
+    _, edges = build_level(org, None)
+    assert [(e.source, e.target, e.weight) for e in edges] == [("plat", "pay", 1)]

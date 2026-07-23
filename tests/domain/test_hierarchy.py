@@ -23,6 +23,27 @@ def _nested_org():
     )
 
 
+def _unit_dep_org():
+    """Root holding two departments; one authored unit edge, one team edge."""
+    return OrgState(
+        teams=(
+            Team("a1", "A1", True, 0.0, domain_id="d1"),
+            Team("a2", "A2", True, 0.0, domain_id="d1"),
+            Team("b1", "B1", True, 0.0, domain_id="d2"),
+        ),
+        dependencies=(
+            Dependency("d1", "d2", 6),
+            Dependency("a1", "b1", 2),
+        ),
+        workload=3,
+        domains=(
+            Domain("root", "Org"),
+            Domain("d1", "Dept One", parent_id="root"),
+            Domain("d2", "Dept Two", parent_id="root"),
+        ),
+    )
+
+
 def _org():
     return OrgState(
         teams=(
@@ -42,6 +63,51 @@ def _org():
             Domain("pay", "Payments", parent_id="plat"),
         ),
     )
+
+
+def test_aggregate_frame_projects_authored_unit_dependencies():
+    org = _unit_dep_org()
+    section = hierarchy.focused_suborg(org, "root")
+    assert tuple(t.id for t in section.teams) == ("d1", "d2")
+    assert section.dependencies == (Dependency("d1", "d2", 4),)
+
+
+def test_aggregate_frame_projects_cross_level_dependencies():
+    org = _unit_dep_org()
+    crossed = OrgState(
+        teams=org.teams,
+        dependencies=(Dependency("a1", "d2", 4),),
+        workload=org.workload,
+        domains=org.domains,
+    )
+    section = hierarchy.focused_suborg(crossed, "root")
+    assert section.dependencies == (Dependency("d1", "d2", 4),)
+
+
+def test_aggregate_frame_drops_edges_touching_the_frame_container():
+    org = _unit_dep_org()
+    outer = OrgState(
+        teams=org.teams,
+        dependencies=(Dependency("root", "d2", 5),),
+        workload=org.workload,
+        domains=org.domains,
+    )
+    section = hierarchy.focused_suborg(outer, "root")
+    assert section.dependencies == ()
+
+
+def test_leaf_frame_ignores_unit_level_dependencies():
+    org = _unit_dep_org()
+    leaf = hierarchy.focused_suborg(org, "d1")
+    assert tuple(t.id for t in leaf.teams) == ("a1", "a2")
+    assert leaf.dependencies == ()
+
+
+def test_boundary_dependencies_include_unit_endpoints():
+    org = _unit_dep_org()
+    crossing = hierarchy.boundary_dependencies(org, "d1")
+    assert Dependency("d1", "d2", 6) in crossing
+    assert Dependency("a1", "b1", 2) in crossing
 
 
 def test_root_and_child_domains():

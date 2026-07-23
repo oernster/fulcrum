@@ -98,6 +98,24 @@ def test_org_state_invalid(factory):
         factory()
 
 
+def test_dependency_endpoints_may_be_units_and_internal_filters_them():
+    org = OrgState(
+        teams=(_team("a"), _team("b")),
+        dependencies=(Dependency("d1", "a", 2), Dependency("a", "b", 1)),
+        domains=(Domain("d1", "Platform"),),
+    )
+    assert org.internal_dependencies() == (Dependency("a", "b", 1),)
+
+
+def test_dependency_to_an_unknown_node_still_raises():
+    with pytest.raises(InvalidOrgStateError):
+        OrgState(
+            teams=(_team("a"),),
+            dependencies=(Dependency("a", "ghost"),),
+            domains=(Domain("d1", "Platform"),),
+        )
+
+
 def test_domain_valid_and_defaults():
     domain = Domain("d1", "Platform")
     assert domain.parent_id is None

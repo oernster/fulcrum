@@ -8,6 +8,7 @@ import pytest
 
 from org_draft_support import make_draft, make_imported_draft
 
+from fulcrum.application.dto import DependencySpec
 from fulcrum.application.org_draft_nodes import (
     GREEK_SEQUENCE,
     can_nest,
@@ -257,3 +258,40 @@ def test_copy_into_copies_a_subtree_with_fresh_ids():
     assert copy.name == "Payments"
     assert copy.children[0].id != "team_1"
     assert draft.copy_into("d1", "d2") is None
+
+
+def test_can_depend_blocks_self_and_related_nodes_only():
+    draft = make_draft()
+    company = draft.add_container(None)
+    division = draft.add_container(company.id)
+    team = draft.add_team(division.id)
+    other = draft.add_container(None)
+    other_team = draft.add_team(other.id)
+    assert draft.can_depend(division.id, other.id)
+    assert draft.can_depend(other_team.id, division.id)
+    assert draft.can_depend(team.id, other.id)
+    assert not draft.can_depend(team.id, team.id)
+    assert not draft.can_depend(team.id, division.id)
+    assert not draft.can_depend(company.id, team.id)
+    assert not draft.can_depend(team.id, "ghost")
+    assert not draft.can_depend("ghost", team.id)
+
+
+def test_dependency_options_list_teams_then_unit_paths():
+    draft = make_draft()
+    company = draft.add_container(None)
+    team = draft.add_team(company.id)
+    options = draft.dependency_options()
+    assert options[0] == (team.id, team.name)
+    assert options[-1][0] == company.id
+    assert company.name in options[-1][1]
+
+
+def test_removing_a_unit_prunes_dependencies_it_carried():
+    draft = make_draft()
+    first = draft.add_container(None)
+    second = draft.add_container(None)
+    second_team = draft.add_team(second.id)
+    draft.dependencies = (DependencySpec(first.id, second_team.id, 2),)
+    draft.remove(first.id)
+    assert draft.dependencies == ()

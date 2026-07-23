@@ -82,10 +82,14 @@ class OrgDraft(DraftConversions, DraftSerialisation):
         return node
 
     def remove(self, node_id: str) -> None:
-        """Remove a node and its subtree, pruning dependencies it carried."""
+        """Remove a node and its subtree, pruning dependencies it carried.
+
+        Dependencies may reference units as well as teams, so every id in
+        the removed subtree prunes, not just the team leaves.
+        """
         node, siblings = self._locate(node_id)
         siblings.remove(node)
-        removed = {team.id for team in teams_beneath(node)}
+        removed = {n.id for n in subtree(node)}
         self.dependencies = tuple(
             dep
             for dep in self.dependencies
@@ -216,6 +220,30 @@ class OrgDraft(DraftConversions, DraftSerialisation):
         for root in self.roots:
             visit(root, "")
         return tuple(paths)
+
+    def dependency_options(self) -> tuple[tuple[str, str], ...]:
+        """(id, label) for every node a dependency may reference: teams
+        first (the common case), then units by their path."""
+        return self.teams() + self.container_paths()
+
+    def can_depend(self, upstream_id: str, downstream_id: str) -> bool:
+        """Whether a dependency between two nodes (team or unit) is legal.
+
+        Blocked: a node paired with itself and any ancestor/descendant
+        pairing, where the waiting is internal to one subtree by
+        definition. Rank is deliberately NOT checked: a division blocked on
+        a single team is the bottleneck the score should expose, not an
+        input error.
+        """
+        if upstream_id == downstream_id:
+            return False
+        upstream = self.find(upstream_id)
+        downstream = self.find(downstream_id)
+        if upstream is None or downstream is None:
+            return False
+        if downstream_id in {n.id for n in subtree(upstream)}:
+            return False
+        return upstream_id not in {n.id for n in subtree(downstream)}
 
     def move_targets(self, node_id: str) -> tuple[tuple[str, str], ...]:
         """The containers a node may legally move into."""

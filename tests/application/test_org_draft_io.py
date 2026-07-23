@@ -4,7 +4,12 @@ from random import Random
 
 from org_draft_support import make_blueprint, make_draft, make_imported_draft
 
-from fulcrum.application.dto import DomainSpec, OrgBlueprint, TeamSpec
+from fulcrum.application.dto import (
+    DependencySpec,
+    DomainSpec,
+    OrgBlueprint,
+    TeamSpec,
+)
 from fulcrum.application.intake import build_org_state, org_to_blueprint
 from fulcrum.application.name_pool import NamePicker
 from fulcrum.application.org_draft import OrgDraft
@@ -74,3 +79,17 @@ def test_to_blueprint_falls_back_to_ids_for_blank_names():
     blueprint = draft.to_blueprint()
     assert blueprint.domains[0].name == container.id
     assert blueprint.teams[0].name == team.id
+
+
+def test_to_blueprint_keeps_unit_level_dependencies():
+    draft = make_draft()
+    unit = draft.add_container(None)
+    draft.add_team(unit.id)
+    other = draft.add_container(None)
+    other_team = draft.add_team(other.id)
+    draft.dependencies = (
+        DependencySpec(unit.id, other.id, 3),
+        DependencySpec("ghost", other_team.id, 1),
+    )
+    blueprint = draft.to_blueprint()
+    assert blueprint.dependencies == (DependencySpec(unit.id, other.id, 3),)

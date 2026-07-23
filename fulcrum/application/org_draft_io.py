@@ -90,11 +90,11 @@ class DraftSerialisation:
 
         for root in self.roots:
             visit(root, None)
-        team_ids = {team.id for team in teams}
+        node_ids = {team.id for team in teams} | {domain.id for domain in domains}
         dependencies = tuple(
             dep
             for dep in self.dependencies
-            if dep.upstream in team_ids and dep.downstream in team_ids
+            if dep.upstream in node_ids and dep.downstream in node_ids
         )
         return OrgBlueprint(
             teams=tuple(teams),

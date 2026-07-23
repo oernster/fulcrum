@@ -208,10 +208,14 @@ class OrgState:
         ids = [t.id for t in self.teams]
         if len(ids) != len(set(ids)):
             raise InvalidOrgStateError("team ids must be unique")
-        known = set(ids)
+        # A dependency endpoint may be a team or a whole domain: an edge
+        # between units (or across levels) is a fact about the level where
+        # those units are the actors, projected into whichever scored frame
+        # shows both endpoints as nodes.
+        known = set(ids) | {d.id for d in self.domains}
         for dep in self.dependencies:
             if dep.upstream not in known or dep.downstream not in known:
-                raise InvalidOrgStateError("dependency references an unknown team")
+                raise InvalidOrgStateError("dependency references an unknown node")
         if self.workload <= 0:
             raise InvalidOrgStateError("workload must be a positive integer")
         self._validate_domains()
@@ -247,6 +251,20 @@ class OrgState:
     @property
     def team_ids(self) -> tuple[str, ...]:
         return tuple(t.id for t in self.teams)
+
+    def internal_dependencies(self) -> tuple[Dependency, ...]:
+        """The edges that bind this frame: both endpoints among its teams.
+
+        An edge touching a unit (or anything outside the frame) carries no
+        queue between this frame's actors, so scoring ignores it here; it
+        prices itself in the frames where both its endpoints are nodes.
+        """
+        inside = set(self.team_ids)
+        return tuple(
+            d
+            for d in self.dependencies
+            if d.upstream in inside and d.downstream in inside
+        )
 
     def team(self, team_id: str) -> Team:
         for t in self.teams:

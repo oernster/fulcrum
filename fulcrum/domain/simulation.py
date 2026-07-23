@@ -120,7 +120,7 @@ def dependency_index(org: OrgState) -> CouplingIndex:
     delay_sum = {team.id: 0 for team in org.teams}
     delay_count = {team.id: 0 for team in org.teams}
     depended = {team.id: 0 for team in org.teams}
-    for dep in org.dependencies:
+    for dep in org.internal_dependencies():
         coupling[dep.upstream] += 1
         coupling[dep.downstream] += 1
         delay_sum[dep.downstream] += dep.propagation_delay
@@ -136,7 +136,7 @@ def coupling_of(org: OrgState, team_id: str, index: CouplingIndex | None = None)
     """Number of dependencies that touch a team in either direction."""
     if index is not None:
         return index.coupling[team_id]
-    return sum(1 for dep in org.dependencies if dep.touches(team_id))
+    return sum(1 for dep in org.internal_dependencies() if dep.touches(team_id))
 
 
 def incoming_delay(
@@ -145,7 +145,11 @@ def incoming_delay(
     """Mean propagation delay on the dependencies this team waits on."""
     if index is not None:
         return index.incoming_delay[team_id]
-    delays = [d.propagation_delay for d in org.dependencies if d.downstream == team_id]
+    delays = [
+        d.propagation_delay
+        for d in org.internal_dependencies()
+        if d.downstream == team_id
+    ]
     if not delays:
         return _ZERO
     return sum(delays) / len(delays)
@@ -196,7 +200,7 @@ def depended_upon(
     """Number of teams that wait on this team (it is their upstream)."""
     if index is not None:
         return index.depended_upon[team_id]
-    return sum(1 for dep in org.dependencies if dep.upstream == team_id)
+    return sum(1 for dep in org.internal_dependencies() if dep.upstream == team_id)
 
 
 def influence_without_authority(

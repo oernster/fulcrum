@@ -48,9 +48,12 @@ def enumerate_moves(org: OrgState, allow_growth: bool = False) -> tuple[Move, ..
             moves.append(Move(MoveKind.DELEGATE_AUTHORITY, (team.id,)))
         if team.incentive_skew > 0:
             moves.append(Move(MoveKind.REALIGN_INCENTIVES, (team.id,)))
-    if org.dependencies:
+    # Only the frame's own edges yield moves here: a unit-level dependency
+    # is enumerated in the aggregate frame where its endpoints are nodes.
+    internal = org.internal_dependencies()
+    if internal:
         moves.append(Move(MoveKind.STABILISE_INTERFACES))
-    for dep in org.dependencies:
+    for dep in internal:
         moves.append(Move(MoveKind.COLLAPSE_BOUNDARY, (dep.upstream, dep.downstream)))
     moves.append(Move(MoveKind.ADD_APPROVAL_LAYER))
     if allow_growth:

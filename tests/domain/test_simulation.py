@@ -3,7 +3,7 @@
 import pytest
 
 from fulcrum.domain.errors import InvalidOrgStateError
-from fulcrum.domain.models import Dependency, OrgState, Team
+from fulcrum.domain.models import Dependency, Domain, OrgState, Team
 from fulcrum.domain.moves import Move, MoveKind, apply_move
 from fulcrum.domain.simulation import (
     DEFAULT_PARAMETERS,
@@ -13,6 +13,7 @@ from fulcrum.domain.simulation import (
     classify_delta,
     coupling_of,
     depended_upon,
+    dependency_index,
     evaluate,
     incoming_delay,
     influence_load,
@@ -190,3 +191,24 @@ def test_move_orderings_are_sane():
         MoveClassification.BAD,
         MoveClassification.BLUNDER,
     )
+
+
+def test_unit_level_dependencies_never_bind_a_team_frame():
+    org = OrgState(
+        teams=(_t("a"), _t("b")),
+        dependencies=(
+            Dependency("a", "b", 3),
+            Dependency("d1", "a", 9),
+            Dependency("b", "d1", 9),
+        ),
+        workload=2,
+        domains=(Domain("d1", "Platform"),),
+    )
+    index = dependency_index(org)
+    assert index.coupling == {"a": 1, "b": 1}
+    assert index.depended_upon == {"a": 1, "b": 0}
+    assert index.incoming_delay["b"] == 3.0
+    for team_id in ("a", "b"):
+        assert coupling_of(org, team_id) == index.coupling[team_id]
+        assert depended_upon(org, team_id) == index.depended_upon[team_id]
+        assert incoming_delay(org, team_id) == index.incoming_delay[team_id]

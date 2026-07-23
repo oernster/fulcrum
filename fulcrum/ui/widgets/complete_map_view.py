@@ -220,9 +220,11 @@ class CompleteMapView(QGraphicsView):
                 self._draw_edge(centers[dep.upstream], centers[dep.downstream])
 
     def _collect(self, box, x, y, centers, domains, teams) -> None:
+        # Domains register a centre too, so an authored unit-level
+        # dependency draws between the unit rectangles themselves.
+        centers[box.ident] = QPointF(x + box.w / _HALF, y + box.h / _HALF)
         if box.kind == _KIND_TEAM:
             teams.append((x, y, box))
-            centers[box.ident] = QPointF(x + box.w / _HALF, y + box.h / _HALF)
             return
         domains.append((x, y, box))
         for rx, ry, child in box.children:

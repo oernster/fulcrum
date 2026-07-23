@@ -35,13 +35,15 @@ def build_level(
         domains = child_domains(org, parent_id)
         direct_teams = teams_in_domain(org, parent_id, recursive=False)
 
-    node_of_team: dict[str, str] = {}
+    node_of: dict[str, str] = {}
     nodes: list[MapNode] = []
     for domain in domains:
         ids = domain_subtree_ids(org, domain.id)
         members = [t for t in org.teams if t.domain_id in ids]
         for team in members:
-            node_of_team[team.id] = domain.id
+            node_of[team.id] = domain.id
+        for sub_id in ids:
+            node_of[sub_id] = domain.id
         nodes.append(
             MapNode(
                 kind=_KIND_DOMAIN,
@@ -55,7 +57,7 @@ def build_level(
             )
         )
     for team in direct_teams:
-        node_of_team[team.id] = team.id
+        node_of[team.id] = team.id
         nodes.append(
             MapNode(
                 kind=_KIND_TEAM,
@@ -67,14 +69,16 @@ def build_level(
                 headcount=team.headcount,
             )
         )
-    return tuple(nodes), _edges(org, node_of_team)
+    return tuple(nodes), _edges(org, node_of)
 
 
-def _edges(org: OrgState, node_of_team: dict[str, str]) -> tuple[MapEdge, ...]:
+def _edges(org: OrgState, node_of: dict[str, str]) -> tuple[MapEdge, ...]:
+    """Aggregate edges between the level's nodes; endpoints may be teams or
+    domains, each represented by the node holding it at this level."""
     weights: dict[tuple[str, str], int] = {}
     for dep in org.dependencies:
-        source = node_of_team.get(dep.upstream)
-        target = node_of_team.get(dep.downstream)
+        source = node_of.get(dep.upstream)
+        target = node_of.get(dep.downstream)
         if source is not None and target is not None and source != target:
             key = (source, target)
             weights[key] = weights.get(key, 0) + 1

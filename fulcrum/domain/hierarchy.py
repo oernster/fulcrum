@@ -70,15 +70,19 @@ def _has_majority_authority(teams: tuple[Team, ...]) -> bool:
     return held * 2 >= len(teams)
 
 
-def _aggregate_deps(
-    org: OrgState, node_of_team: dict[str, str]
-) -> tuple[Dependency, ...]:
-    """Roll real dependencies up to mean-delay edges between the child nodes."""
+def _aggregate_deps(org: OrgState, node_of: dict[str, str]) -> tuple[Dependency, ...]:
+    """Roll dependencies up to mean-delay edges between the child nodes.
+
+    An endpoint may be a team or a domain; each maps to the child node
+    representing it in this frame. Edges internal to one node vanish and
+    edges with an endpoint outside the frame are dropped, so an authored
+    unit-level dependency projects exactly as derived team edges do.
+    """
     totals: dict[tuple[str, str], int] = {}
     counts: dict[tuple[str, str], int] = {}
     for dep in org.dependencies:
-        source = node_of_team.get(dep.upstream)
-        target = node_of_team.get(dep.downstream)
+        source = node_of.get(dep.upstream)
+        target = node_of.get(dep.downstream)
         if source is not None and target is not None and source != target:
             key = (source, target)
             totals[key] = totals.get(key, 0) + dep.propagation_delay
@@ -97,18 +101,20 @@ def _aggregate_section(org: OrgState, parent_id: str) -> OrgState:
     division) carries the proportional weight a team move has inside a leaf.
     """
     nodes: list[Team] = []
-    node_of_team: dict[str, str] = {}
+    node_of: dict[str, str] = {}
     for child in child_domains(org, parent_id):
         teams = teams_in_domain(org, child.id)
         if not teams:
             continue
         for team in teams:
-            node_of_team[team.id] = child.id
+            node_of[team.id] = child.id
+        for domain_id in domain_subtree_ids(org, child.id):
+            node_of[domain_id] = child.id
         skew = round(sum(t.incentive_skew for t in teams) / len(teams), _SKEW_DECIMALS)
         nodes.append(Team(child.id, child.name, _has_majority_authority(teams), skew))
     return OrgState(
         teams=tuple(nodes),
-        dependencies=_aggregate_deps(org, node_of_team),
+        dependencies=_aggregate_deps(org, node_of),
         workload=org.workload,
         origin=org.origin,
     )
@@ -163,7 +169,7 @@ def boundary_dependencies(org: OrgState, domain_id: str) -> tuple[Dependency, ..
     domain-local dependencies a domain lead can resolve internally.
     """
     ids = domain_subtree_ids(org, domain_id)
-    inside = {t.id for t in org.teams if t.domain_id in ids}
+    inside = {t.id for t in org.teams if t.domain_id in ids} | set(ids)
     return tuple(
         d
         for d in org.dependencies

@@ -77,14 +77,17 @@ _CONCEPTS: tuple[ConceptEntry, ...] = (
         key=TERM_DEPENDENCY,
         term="Dependency",
         definition=(
-            "One team waiting on another before it can proceed. Each "
-            "dependency is a boundary work must cross, and a place delay "
-            "collects."
+            "One item waiting on another before it can proceed: team on "
+            "team, unit on unit or across levels (a division blocked on a "
+            "single platform team). Each dependency is a boundary work must "
+            "cross, and a place delay collects; a unit-level dependency "
+            "counts in the frames where both its endpoints appear as nodes."
         ),
         short_help=(
-            "One team waiting on another before it can proceed. If Mobile "
-            "cannot release until Platform publishes an API, Mobile is "
-            "downstream of Platform and every handoff collects delay."
+            "One item waiting on another before it can proceed; either side "
+            "can be a team or a whole unit. If Mobile cannot release until "
+            "Platform publishes an API, Mobile is downstream of Platform "
+            "and every handoff collects delay."
         ),
     ),
     ConceptEntry(

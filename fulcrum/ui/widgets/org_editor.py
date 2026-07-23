@@ -105,13 +105,15 @@ class OrgEditorDialog(NeutralDialog):
         panes.setStretchFactor(1, 0)
         panes.setSizes([ui_scale.px(_TREE_PANE_W), ui_scale.px(_INSPECTOR_PANE_W)])
 
-        self._deps = DependencyEditor()
-        self._deps.set_teams(self._draft.teams())
+        self._deps = DependencyEditor(can_pair=self._draft.can_depend)
+        self._deps.set_options(self._draft.dependency_options())
         self._deps.set_dependencies(self._draft.dependencies)
         deps_box = QWidget()
         deps_layout = QVBoxLayout(deps_box)
         deps_layout.setContentsMargins(0, 0, 0, 0)
-        deps_layout.addWidget(labelled(QLabel("Dependencies between teams")))
+        deps_layout.addWidget(
+            labelled(QLabel("Dependencies between items (teams or whole units)"))
+        )
         deps_layout.addWidget(self._deps)
 
         body = QSplitter(Qt.Orientation.Vertical)
@@ -182,13 +184,13 @@ class OrgEditorDialog(NeutralDialog):
     # ---------------------------------------------------------------- events
 
     def _structure_changed(self) -> None:
-        self._deps.set_teams(self._draft.teams())
+        self._deps.set_options(self._draft.dependency_options())
         self._inspector.set_node(self._tree.selected_id())
         self._refresh_footer()
 
     def _node_edited(self, _node_id: str) -> None:
         self._tree.update_labels()
-        self._deps.set_teams(self._draft.teams())
+        self._deps.set_options(self._draft.dependency_options())
         self._refresh_footer()
 
     def _kind_changed(self, node_id: str) -> None:
@@ -196,7 +198,7 @@ class OrgEditorDialog(NeutralDialog):
         self._tree.rebuild()
         self._tree.select_node(node_id)
         self._inspector.set_node(node_id)
-        self._deps.set_teams(self._draft.teams())
+        self._deps.set_options(self._draft.dependency_options())
         self._refresh_footer()
 
     def _open_glossary(self) -> None:
