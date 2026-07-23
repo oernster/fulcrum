@@ -20,8 +20,10 @@ from fulcrum.application.interfaces import Clock, OrgStore, PlanExporter, Simula
 from fulcrum.application.planner import ImprovementPlanner
 from fulcrum.domain.hierarchy import (
     AGGREGATE_MOVE_KINDS,
+    TOP_LEVEL_FOCUS,
     child_domains,
     focused_suborg,
+    top_level_section,
 )
 from fulcrum.domain.org_size import DEFAULT_BAND
 from fulcrum.shared.resources import find_model_licence, find_ui_licence
@@ -152,13 +154,15 @@ class MainWindow(QMainWindow):
         )
 
     def _install_keyboard_nav(self, buttons) -> None:
-        undo_button, map_view, moves_group, signals_group = self._board.nav_targets()
+        undo_button, level_button, map_view, moves_group, signals_group = (
+            self._board.nav_targets()
+        )
         self._undo_button = undo_button
         self._nav = KeyboardNavigator(
             self,
             self.menuBar(),
             self.menuBar().actions(),
-            (*buttons, undo_button, map_view),
+            (*buttons, undo_button, level_button, map_view),
             (moves_group, signals_group),
             map_view,
         )
@@ -226,8 +230,15 @@ class MainWindow(QMainWindow):
     def _plan_guides(self):
         org = self._session.org
         focused = self._session.focused_on
-        section = focused_suborg(org, focused) if focused is not None else org
-        aggregate = focused is not None and bool(child_domains(org, focused))
+        if focused == TOP_LEVEL_FOCUS:
+            section = top_level_section(org)
+            aggregate = True
+        elif focused is not None:
+            section = focused_suborg(org, focused)
+            aggregate = bool(child_domains(org, focused))
+        else:
+            section = org
+            aggregate = False
         kinds = AGGREGATE_MOVE_KINDS if aggregate else None
         fixed = ImprovementPlanner(self._simulator).plan(section, kinds)
         grown = ImprovementPlanner(self._simulator, allow_growth=True).plan(

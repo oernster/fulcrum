@@ -3,7 +3,7 @@
 from fulcrum.application.game_session import MAX_PLAYABLE_TEAMS, enumerate_moves
 from fulcrum.application.scope_analysis import active_org, analyze_scope
 from fulcrum.application.simulator import DeterministicSimulator
-from fulcrum.domain.hierarchy import AGGREGATE_MOVE_KINDS
+from fulcrum.domain.hierarchy import AGGREGATE_MOVE_KINDS, TOP_LEVEL_FOCUS
 from fulcrum.domain.models import Dependency, Domain, OrgState, Team
 from fulcrum.domain.moves import MoveKind
 
@@ -83,3 +83,13 @@ def test_analyze_aggregate_scope_offers_only_translatable_moves():
     kinds = {v.move.kind for v in result.valuations}
     assert kinds <= set(AGGREGATE_MOVE_KINDS)
     assert MoveKind.COLLAPSE_BOUNDARY not in kinds
+
+
+def test_top_level_focus_scopes_to_the_rolled_frame():
+    org = _org()
+    active = active_org(org, TOP_LEVEL_FOCUS)
+    assert {t.id for t in active.teams} == {"d1", "d2"}
+    result = analyze_scope(org, TOP_LEVEL_FOCUS, _SIM)
+    assert result.playable is True
+    kinds = {v.move.kind for v in result.valuations}
+    assert kinds <= set(AGGREGATE_MOVE_KINDS)

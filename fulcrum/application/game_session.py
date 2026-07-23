@@ -11,9 +11,11 @@ from fulcrum.application.interfaces import Simulator
 from fulcrum.domain.errors import FulcrumError
 from fulcrum.domain.hierarchy import (
     AGGREGATE_MOVE_KINDS,
+    TOP_LEVEL_FOCUS,
     child_domains,
     domain_has_teams,
     focused_suborg,
+    top_level_section,
     translate_focused_move,
 )
 from fulcrum.domain.models import OrgState
@@ -109,10 +111,14 @@ class GameSession:
         signals and candidate moves all reflect its focused sub-org, so a move
         that is only great within that section reads as great. Moves still apply
         to the whole org, so acting on a section's great move is real and
-        permanent. Passing None, or a domain with no teams, returns to the whole
-        org.
+        permanent. TOP_LEVEL_FOCUS plays the top level itself as a frame of
+        rolled root units. Passing None, a domain with no teams or the top
+        level of a flat org returns to the whole org.
         """
-        if domain_id is not None and not domain_has_teams(self._org, domain_id):
+        if domain_id == TOP_LEVEL_FOCUS:
+            if not self._org.domains:
+                domain_id = None
+        elif domain_id is not None and not domain_has_teams(self._org, domain_id):
             domain_id = None
         self._focus_id = domain_id
 
@@ -120,6 +126,8 @@ class GameSession:
         """The org currently being scored: the focused section, or the whole."""
         if self._focus_id is None:
             return self._org
+        if self._focus_id == TOP_LEVEL_FOCUS:
+            return top_level_section(self._org)
         return focused_suborg(self._org, self._focus_id)
 
     def score(self) -> float:
@@ -141,7 +149,10 @@ class GameSession:
         if len(active.teams) > MAX_PLAYABLE_TEAMS:
             return ()
         moves = enumerate_moves(active)
-        if self._focus_id is not None and child_domains(self._org, self._focus_id):
+        aggregate = self._focus_id == TOP_LEVEL_FOCUS or (
+            self._focus_id is not None and child_domains(self._org, self._focus_id)
+        )
+        if aggregate:
             moves = tuple(m for m in moves if m.kind in AGGREGATE_MOVE_KINDS)
         return self._simulator.valuate_moves(active, moves)
 

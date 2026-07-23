@@ -6,6 +6,7 @@ from fulcrum.application.game_session import (
     GameSession,
     enumerate_moves,
 )
+from fulcrum.domain.hierarchy import AGGREGATE_MOVE_KINDS, TOP_LEVEL_FOCUS
 from fulcrum.domain.models import Dependency, Domain, OrgState, Team
 from fulcrum.domain.moves import Move, MoveKind
 from fulcrum.domain.simulation import MoveClassification, StructuralScore
@@ -233,3 +234,31 @@ def test_try_play_rejects_a_move_with_an_unknown_target():
     assert session.history == ()
     assert session.can_take_back is False
     assert session.org == session.initial_org
+
+
+def test_focus_top_level_plays_rolled_roots_and_translates_moves():
+    org = OrgState(
+        teams=(
+            Team("a", "A", False, 0.0, domain_id="r1"),
+            Team("b", "B", False, 0.0, domain_id="r1"),
+            Team("free", "Free", False, 0.0),
+        ),
+        dependencies=(Dependency("r1", "free", 3),),
+        workload=2,
+        domains=(Domain("r1", "One"),),
+    )
+    session = GameSession(org, _FakeSimulator())
+    session.focus(TOP_LEVEL_FOCUS)
+    assert session.focused_on == TOP_LEVEL_FOCUS
+    kinds = {v.move.kind for v in session.candidate_valuations()}
+    assert kinds <= set(AGGREGATE_MOVE_KINDS)
+    session.play(Move(MoveKind.DELEGATE_AUTHORITY, ("r1",)))
+    assert session.org.team("a").has_local_authority
+    assert session.org.team("b").has_local_authority
+    assert not session.org.team("free").has_local_authority
+
+
+def test_focus_top_level_falls_back_to_flat_without_domains():
+    session = GameSession(_org(), _FakeSimulator())
+    session.focus(TOP_LEVEL_FOCUS)
+    assert session.focused_on is None

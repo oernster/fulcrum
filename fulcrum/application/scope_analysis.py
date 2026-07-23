@@ -18,8 +18,10 @@ from fulcrum.application.game_session import MAX_PLAYABLE_TEAMS, enumerate_moves
 from fulcrum.application.interfaces import Simulator
 from fulcrum.domain.hierarchy import (
     AGGREGATE_MOVE_KINDS,
+    TOP_LEVEL_FOCUS,
     child_domains,
     focused_suborg,
+    top_level_section,
 )
 from fulcrum.domain.models import OrgState
 from fulcrum.domain.signals import SignalReading, compute_signals
@@ -44,9 +46,12 @@ class ScopeAnalysis:
 
 
 def active_org(org: OrgState, focus_id: str | None) -> OrgState:
-    """The org actually scored: a focused section, or the whole org."""
+    """The org actually scored: a focused section, the top-level frame or
+    the whole org."""
     if focus_id is None:
         return org
+    if focus_id == TOP_LEVEL_FOCUS:
+        return top_level_section(org)
     return focused_suborg(org, focus_id)
 
 
@@ -54,7 +59,10 @@ def scope_moves(org: OrgState, focus_id: str | None, active: OrgState):
     """The candidate moves for a scope: at an aggregate scope, only the kinds
     that translate cleanly down to its teams."""
     moves = enumerate_moves(active)
-    if focus_id is not None and child_domains(org, focus_id):
+    aggregate = focus_id == TOP_LEVEL_FOCUS or (
+        focus_id is not None and child_domains(org, focus_id)
+    )
+    if aggregate:
         return tuple(m for m in moves if m.kind in AGGREGATE_MOVE_KINDS)
     return moves
 

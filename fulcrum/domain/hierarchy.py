@@ -23,6 +23,11 @@ AGGREGATE_MOVE_KINDS = (
     MoveKind.STABILISE_INTERFACES,
 )
 
+# Focus sentinel for playing the TOP level as its own frame: root units
+# rolled into one node each. Distinct from focus None (the flat whole-org
+# score over real teams), which stays the headline truth.
+TOP_LEVEL_FOCUS = "__top_level__"
+
 
 def root_domains(org: OrgState) -> tuple[Domain, ...]:
     """Top-level domains: those with no parent."""
@@ -92,14 +97,10 @@ def _aggregate_deps(org: OrgState, node_of: dict[str, str]) -> tuple[Dependency,
     )
 
 
-def _aggregate_section(org: OrgState, parent_id: str) -> OrgState:
-    """Score a non-leaf domain as its immediate children, each a rolled-up node.
-
-    Each child domain becomes one synthetic team carrying its subtree's majority
-    authority and mean incentive skew, with dependencies aggregated between the
-    children, so a structural move at this level (empower a department, realign a
-    division) carries the proportional weight a team move has inside a leaf.
-    """
+def _rolled_children(
+    org: OrgState, parent_id: str | None
+) -> tuple[list[Team], dict[str, str]]:
+    """Each child domain as one rolled-up node, plus the endpoint mapping."""
     nodes: list[Team] = []
     node_of: dict[str, str] = {}
     for child in child_domains(org, parent_id):
@@ -112,6 +113,42 @@ def _aggregate_section(org: OrgState, parent_id: str) -> OrgState:
             node_of[domain_id] = child.id
         skew = round(sum(t.incentive_skew for t in teams) / len(teams), _SKEW_DECIMALS)
         nodes.append(Team(child.id, child.name, _has_majority_authority(teams), skew))
+    return nodes, node_of
+
+
+def _aggregate_section(org: OrgState, parent_id: str) -> OrgState:
+    """Score a non-leaf domain as its immediate children, each a rolled-up node.
+
+    Each child domain becomes one synthetic team carrying its subtree's majority
+    authority and mean incentive skew, with dependencies aggregated between the
+    children, so a structural move at this level (empower a department, realign a
+    division) carries the proportional weight a team move has inside a leaf.
+    """
+    nodes, node_of = _rolled_children(org, parent_id)
+    return OrgState(
+        teams=tuple(nodes),
+        dependencies=_aggregate_deps(org, node_of),
+        workload=org.workload,
+        origin=org.origin,
+    )
+
+
+def top_level_section(org: OrgState) -> OrgState:
+    """The top level played as its own frame.
+
+    Root units roll into one node each and unassigned teams stand as
+    themselves, mirroring what the map shows at its top level. This is the
+    frame where dependencies between root units (or from a root unit to a
+    loose team) are priced; the unfocused whole-org score stays the flat
+    team-level truth.
+    """
+    nodes, node_of = _rolled_children(org, None)
+    for team in org.teams:
+        if team.domain_id is None:
+            node_of[team.id] = team.id
+            nodes.append(
+                Team(team.id, team.name, team.has_local_authority, team.incentive_skew)
+            )
     return OrgState(
         teams=tuple(nodes),
         dependencies=_aggregate_deps(org, node_of),
@@ -148,18 +185,25 @@ def focused_suborg(org: OrgState, domain_id: str) -> OrgState:
 def translate_focused_move(org: OrgState, focus_id: str | None, move: Move) -> Move:
     """Map a move played at an aggregate scope onto the real teams beneath it.
 
-    At a non-leaf scope the move's targets are child-domain ids; empowering or
-    realigning a child means doing so to every team in its subtree. A whole-org or
-    leaf scope already targets real teams, so the move is returned unchanged.
+    At a non-leaf scope (a focused unit, or the top-level frame) a target may
+    be a child-domain id, expanded to every team in its subtree, or a real
+    team id (a loose team standing as itself at the top level), kept as is.
+    A whole-org or leaf scope already targets real teams, so the move is
+    returned unchanged.
     """
-    if focus_id is None or not child_domains(org, focus_id):
+    if focus_id is None:
+        return move
+    if focus_id != TOP_LEVEL_FOCUS and not child_domains(org, focus_id):
         return move
     if not move.targets:
         return move
-    team_ids = tuple(
-        team.id for child_id in move.targets for team in teams_in_domain(org, child_id)
-    )
-    return Move(move.kind, team_ids, move.label)
+    team_ids: list[str] = []
+    for target in move.targets:
+        if org.has_team(target):
+            team_ids.append(target)
+        else:
+            team_ids.extend(team.id for team in teams_in_domain(org, target))
+    return Move(move.kind, tuple(team_ids), move.label)
 
 
 def boundary_dependencies(org: OrgState, domain_id: str) -> tuple[Dependency, ...]:

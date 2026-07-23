@@ -213,3 +213,40 @@ def test_headcount_rolls_up_through_the_domain_subtree():
     assert hierarchy.headcount_in_domain(org, "pay") == 25
     assert hierarchy.headcount_in_domain(org, "plat") == 35
     assert hierarchy.total_headcount(org) == 42
+
+
+def _roots_org():
+    return OrgState(
+        teams=(
+            Team("a1", "A1", True, 0.1, domain_id="r1"),
+            Team("b1", "B1", False, 0.3, domain_id="r2"),
+            Team("free", "Free", True, 0.2),
+        ),
+        dependencies=(
+            Dependency("r1", "r2", 4),
+            Dependency("r1", "free", 2),
+        ),
+        workload=2,
+        domains=(Domain("r1", "One"), Domain("r2", "Two")),
+    )
+
+
+def test_top_level_section_rolls_roots_and_keeps_loose_teams():
+    top = hierarchy.top_level_section(_roots_org())
+    assert tuple(t.id for t in top.teams) == ("r1", "r2", "free")
+    assert Dependency("r1", "r2", 4) in top.dependencies
+    assert Dependency("r1", "free", 2) in top.dependencies
+    assert top.team("free").incentive_skew == 0.2
+    assert top.team("r2").has_local_authority is False
+
+
+def test_translate_top_level_expands_units_and_keeps_loose_teams():
+    org = _roots_org()
+    move = Move(MoveKind.DELEGATE_AUTHORITY, ("r2", "free"))
+    real = hierarchy.translate_focused_move(org, hierarchy.TOP_LEVEL_FOCUS, move)
+    assert real.targets == ("b1", "free")
+    untargeted = Move(MoveKind.STABILISE_INTERFACES)
+    assert (
+        hierarchy.translate_focused_move(org, hierarchy.TOP_LEVEL_FOCUS, untargeted)
+        is untargeted
+    )
