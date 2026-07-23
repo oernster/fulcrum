@@ -34,8 +34,9 @@ from fulcrum.ui.widgets.org_tree_dnd import DraftTree
 _ROLE_ID = int(Qt.ItemDataRole.UserRole)
 _COL_LABEL = 0
 _COL_ACTIONS = 1
-_ACTIONS_COLUMN_WIDTH = 44
-_ACTION_SPACING = 2
+_ACTIONS_COLUMN_WIDTH = 84
+_ACTION_SPACING = 4
+_ACTION_MARGIN = 2
 _WARNING_BADGE = " \N{WARNING SIGN}"
 _TOP_LEVEL_LABEL = "(top level)"
 _NEW_COMPANY_TEXT = "New company"
@@ -168,17 +169,23 @@ class OrgTreePane(QWidget):
         return f"{node.name}   ({node.people:,} people)"
 
     def _actions(self, node_id: str, is_container: bool) -> QWidget:
+        # + and - sit side by side so a row only needs one button of height;
+        # a team has no +, so a stretch keeps every - aligned in its own
+        # column under the others.
         holder = QWidget()
-        column = QVBoxLayout(holder)
-        column.setContentsMargins(0, 0, 0, 0)
-        column.setSpacing(ui_scale.px(_ACTION_SPACING))
+        row = QHBoxLayout(holder)
+        margin = ui_scale.px(_ACTION_MARGIN)
+        row.setContentsMargins(0, margin, 0, margin)
+        row.setSpacing(ui_scale.px(_ACTION_SPACING))
         if is_container:
             add = action_button("+", _ADD_ITEM_TEXT)
             add.clicked.connect(lambda _=False, i=node_id: self._add_item(i))
-            column.addWidget(add)
+            row.addWidget(add)
+        else:
+            row.addStretch()
         remove = action_button("-", "Remove this item")
         remove.clicked.connect(lambda _=False, i=node_id: self._remove(i))
-        column.addWidget(remove)
+        row.addWidget(remove)
         return holder
 
     # ------------------------------------------------------------ operations

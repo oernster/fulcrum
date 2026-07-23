@@ -13,8 +13,8 @@ from fulcrum.ui import ui_scale
 
 _HEADING = "Heading"
 _TREE_ACTION = "TreeAction"
-_ACTION_BUTTON_W = 30
-_ACTION_BUTTON_H = 18
+_ACTION_BUTTON_W = 32
+_ACTION_BUTTON_H = 26
 _DICE_GLYPH = "\N{GAME DIE}"
 _DICE_TIP = "Roll a different name"
 
