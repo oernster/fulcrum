@@ -28,14 +28,13 @@
 <body>
 <header class="nav">
   <div class="container nav-inner">
-    <a class="brand" href="#top">
+    <a class="brand" href="index.html">
       <img src="assets/fulcrum.png" alt="Fulcrum icon">Fulcrum</a>
     <nav class="nav-links">
-      <a href="#who">Who it's for</a>
-      <a href="#overview">Overview</a>
-      <a href="#play">Decision-support / Simulation choices</a>
-      <a href="#books">The books</a>
-      <a href="#download">Download</a>
+      <a href="tool.html">The tool</a>
+      <a href="why.html">Why</a>
+      <a href="why.html#books">The books</a>
+      <a href="download.html">Download</a>
       <a href="https://github.com/oernster/fulcrum">GitHub</a>
     </nav>
   </div>
@@ -50,8 +49,8 @@
         any organisation, read its structural health from 0 to 100 and find
         the moves that make it stronger.</p>
       <div class="cta">
-        <a class="btn btn-primary" href="#download">Download</a>
-        <a class="btn btn-ghost" href="#books">Explore the books</a>
+        <a class="btn btn-primary" href="download.html">Download</a>
+        <a class="btn btn-ghost" href="tool.html">See the tool</a>
       </div>
       <p class="release-note">Builds are published on the
         <a href="https://github.com/oernster/fulcrum/releases">releases page</a> as they ship.</p>
@@ -72,101 +71,16 @@
       <div class="features"><div class="feature"><h3>Software architects</h3><p>Reason about authority boundaries, coupling and dependency structure as a system you can score, not a diagram you argue over.</p></div><div class="feature"><h3>Senior and principal engineers</h3><p>See why an organisation slows as it scales and which structural move removes the bottleneck instead of working around it.</p></div><div class="feature"><h3>CTOs and engineering leaders</h3><p>Test a reorg, a delegation or a boundary change against the model before you test it on people, then read the trade-off as one number.</p></div><div class="feature"><h3>Founders and the C-suite</h3><p>Make the shape of the organisation legible: where decisions stall, where authority is missing and where growth will bite.</p></div></div>
     </div>
   </section>
-  <section id="overview">
+  <section id="explore">
     <div class="container">
-      <div class="eyebrow">The model, made incarnate</div>
-      <h2 class="section-title">A model you can hold</h2>
-      <p class="section-sub">Decision Architecture argues that organisations
-        succeed or fail by their structure, not by effort. Fulcrum turns
-        that argument into an engine you operate directly: the decision
-        objects, authority worldlines and structural moves from the books,
-        scored live by a deterministic model.</p>
-      <div class="features"><div class="feature"><div class="fnum">01</div><h3>Structural moves</h3><p>Delegate authority, stabilise interfaces, realign incentives or collapse a boundary. Every move is scored from blunder to great.</p></div><div class="feature"><div class="fnum">02</div><h3>Signals to watch</h3><p>Handoff queue age, escalations, rework and influence without authority: the lagging indicators, each with its own definition.</p></div><div class="feature"><div class="fnum">03</div><h3>A guide to a stronger org</h3><p>Ask for the guide and the planner shows a move-by-move line from where you are to a stronger score, the way an engine shows its line.</p></div><div class="feature"><div class="fnum">04</div><h3>Yours, on your machine</h3><p>Generate a level, model your own organisation or import one as JSON. There is no account and no server; nothing leaves your machine.</p></div></div>
-    </div>
-  </section>
-  <section id="play" class="alt">
-    <div class="container">
-      <div class="eyebrow">Decision-support / Simulation tool</div>
-      <h2 class="section-title">Watch a score climb, move by move</h2>
-      <p class="section-sub">Load an organisation and the board scores its
-        structural health, maps who decides locally against who escalates and
-        lists every move open to you.</p>
-      <div class="shots">
-        <figure class="shot">
-          <div class="frame">
-            <img loading="lazy" src="assets/screenshots/play-board.png" alt="The Fulcrum board scoring an organisation's structure">
-          </div>
-          <figcaption><b>The position.</b> A generated organisation scoring
-            14.4 out of 100. Its 47 people across 9 teams sit under the Sales
-            section on the map; a stick figure marks who decides locally against
-            who escalates; the right-hand list holds the moves the current scope
-            opens up and the signals below flag the pain, including influence
-            without authority.</figcaption>
-        </figure>
-        <figure class="shot">
-          <div class="frame">
-            <img loading="lazy" src="assets/screenshots/play-guide.png" alt="The Fulcrum guide planning a stronger org">
-          </div>
-          <figcaption><b>The line.</b> The guide plans the climb move by
-            move, 14.4 to 77.5, each step a good move. It opens by delegating
-            authority to the teams everyone depends on, then adds owners,
-            stabilises interfaces and collapses boundaries.</figcaption>
-        </figure>
+      <div class="eyebrow">Explore</div>
+      <h2 class="section-title">Find your question</h2>
+      <p class="section-sub">The detail lives on three focused pages instead of one long scroll.</p>
+      <div class="features">
+        <div class="feature"><h3><a href="tool.html">The tool</a></h3><p>The board, the score, the moves and the guide that plans a stronger organisation move by move.</p></div>
+        <div class="feature"><h3><a href="why.html">Why this exists</a></h3><p>Why organisational theory needed an engine, what the numbers show and the books the model comes from.</p></div>
+        <div class="feature"><h3><a href="download.html">Download</a></h3><p>Native builds for Windows, macOS and Linux. Free, local-first, no account.</p></div>
       </div>
-    </div>
-  </section>
-  <section id="download" class="alt">
-    <div class="container">
-      <div class="eyebrow">Get Fulcrum</div>
-      <h2 class="section-title">Download Fulcrum</h2>
-      <p class="section-sub">Pick your platform and you have the newest release. Free and
-        GPL-3.0 + LGPL-3.0 with no cloud and no account; everything stays local on your machine.</p>
-      <span class="dl-version" id="dl-version">Latest release</span>
-      <div class="downloads">
-        <div class="dl-card">
-          <div class="ico">🪟</div>
-          <h3>Windows</h3>
-          <p class="req">Windows 10 or 11, 64-bit</p>
-          <a class="btn btn-primary" href="https://github.com/oernster/fulcrum/releases/latest/download/FulcrumSetup.exe">
-            Download for Windows</a>
-          <p class="meta" data-asset="FulcrumSetup.exe">Setup program (.exe)</p>
-          <p class="how">Run the setup: it installs per-user, so no administrator rights are needed.</p>
-        </div>
-        <div class="dl-card">
-          <div class="ico">🍎</div>
-          <h3>macOS</h3>
-          <p class="req">Apple Silicon (M1 or later)</p>
-          <a class="btn btn-primary" href="https://github.com/oernster/fulcrum/releases/latest/download/fulcrum.dmg">
-            Download for macOS</a>
-          <p class="meta" data-asset="fulcrum.dmg">Disk image (.dmg)</p>
-          <p class="how">Open the DMG and drag Fulcrum into Applications.</p>
-        </div>
-        <div class="dl-card">
-          <div class="ico">🐧</div>
-          <h3>Linux</h3>
-          <p class="req">Any distribution with Flatpak</p>
-          <a class="btn btn-primary" href="https://github.com/oernster/fulcrum/releases/latest/download/fulcrum.flatpak">
-            Download for Linux</a>
-          <p class="meta" data-asset="fulcrum.flatpak">Flatpak bundle (.flatpak)</p>
-          <p class="how">Install with <code>flatpak install fulcrum.flatpak</code>.</p>
-        </div>
-      </div>
-      <p class="dl-links">
-        <a id="dl-whats-new" href="https://github.com/oernster/fulcrum/releases/latest">What's new in this release</a>
-        &nbsp;·&nbsp;
-        <a href="https://github.com/oernster/fulcrum/releases">All releases</a>
-        &nbsp;·&nbsp;
-        <a href="https://github.com/oernster/fulcrum">Source on GitHub</a>
-      </p>
-    </div>
-  </section>
-  <section id="books">
-    <div class="container">
-      <div class="eyebrow">The foundation</div>
-      <h2 class="section-title">Built on the Decision Architecture series</h2>
-      <p class="books-intro">Fulcrum scores organisations with a model whose moves, signals and core ideas come from the Decision Architecture series by Oliver Ernster. The four volumes build the thinking the tool puts into play; the hardback collects all four in one reference edition.</p>
-      <div class="featured"><img loading="lazy" src="assets/books/hardback_cover.png" alt="Decision Architecture Series cover"><div class="meta"><div class="kicker">The complete series</div><h3>Decision Architecture Series</h3><p>All four volumes combined into a single hardback reference edition</p><a class="btn btn-primary" href="https://www.amazon.co.uk/dp/B0GTMVV8T5">View on Amazon UK</a></div></div>
-      <div class="series"><div class="book"><img loading="lazy" src="assets/books/_cover_da.png" alt="Decision Architecture cover"><h4>Decision Architecture</h4><p>How technical organisations fail and recover</p><a class="buy" href="https://www.amazon.co.uk/dp/B0GT4JNMGK">View on Amazon UK &rarr;</a></div><div class="book"><img loading="lazy" src="assets/books/_cover_da_patterns.png" alt="Decision Architecture Patterns cover"><h4>Decision Architecture Patterns</h4><p>Structural patterns that recur across technical organisations</p><a class="buy" href="https://www.amazon.co.uk/dp/B0GT4CZ327">View on Amazon UK &rarr;</a></div><div class="book"><img loading="lazy" src="assets/books/_cover-da-move-space.png" alt="Decision Architecture: The Move Space cover"><h4>Decision Architecture: The Move Space</h4><p>A Positional Model of Organisational Change</p><a class="buy" href="https://www.amazon.co.uk/dp/B0GTDX7186">View on Amazon UK &rarr;</a></div><div class="book"><img loading="lazy" src="assets/books/_cover_relativistic_da_architecture.png" alt="Relativistic Decision Architecture cover"><h4>Relativistic Decision Architecture</h4><p>The geometry of decision systems</p><a class="buy" href="https://www.amazon.co.uk/dp/B0GT7D4P8G">View on Amazon UK &rarr;</a></div></div>
     </div>
   </section>
 </main>
@@ -185,37 +99,17 @@
   </div>
 </footer>
 <script>
-    // The download buttons never go stale: each points at GitHub's releases/latest/download
-    // redirect, which always serves the newest release's asset (the asset names are version-free
-    // by design). This script only decorates the page with live details: the version chip, the
-    // release date and each installer's size, fetched from the GitHub API. If the call fails
-    // (offline, rate-limited), the static text above stands on its own.
+    // The site was one long page; these anchors now live on their own pages.
+    // Old deep links (bookmarks, shared URLs) land here first and hop across.
     (function () {
-        var api = 'https://api.github.com/repos/oernster/fulcrum/releases/latest';
-        fetch(api).then(function (r) {
-            if (!r.ok) { throw new Error('release lookup failed'); }
-            return r.json();
-        }).then(function (rel) {
-            var version = (rel.tag_name || '').replace(/^v/, '');
-            if (version) {
-                var when = '';
-                if (rel.published_at) {
-                    when = ' · ' + new Date(rel.published_at).toLocaleDateString(undefined,
-                        {day: 'numeric', month: 'long', year: 'numeric'});
-                }
-                document.getElementById('dl-version').textContent = 'Version ' + version + when;
-            }
-            if (rel.html_url) {
-                document.getElementById('dl-whats-new').href = rel.html_url;
-            }
-            (rel.assets || []).forEach(function (asset) {
-                var meta = document.querySelector('[data-asset="' + asset.name + '"]');
-                if (meta && asset.size) {
-                    var mb = (asset.size / (1024 * 1024)).toFixed(1);
-                    meta.textContent = meta.textContent + ' · ' + mb + ' MB';
-                }
-            });
-        }).catch(function () { /* The static page already says everything essential. */ });
+        var moved = {
+            '#overview': 'tool.html#overview',
+            '#play': 'tool.html#play',
+            '#books': 'why.html#books',
+            '#download': 'download.html'
+        };
+        var target = moved[window.location.hash];
+        if (target) { window.location.replace(target); }
     })();
 </script>
 </body>

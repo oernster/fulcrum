@@ -199,6 +199,15 @@ section.alt {
 }
 .shot figcaption b { color: var(--text); }
 
+/* Long-form prose (the Why this exists section). */
+.prose p {
+  color: var(--muted);
+  font-size: 16.5px;
+  max-width: 820px;
+  margin: 0 0 18px;
+}
+.prose p:last-child { margin-bottom: 0; }
+
 .books-intro {
   color: var(--muted);
   max-width: none;

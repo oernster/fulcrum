@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Why Fulcrum exists: organisational theory you can run</title>
+<meta name="description" content="Why Fulcrum was built: organisational theory usually cannot be run, so Fulcrum makes the Decision Architecture model executable. Deterministic scoring, move valuation and the books the model comes from.">
+<meta name="author" content="Oliver Ernster">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#0d0f12">
+<link rel="canonical" href="https://ernster.dev/fulcrum/why.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Fulcrum">
+<meta property="og:title" content="Why Fulcrum exists: organisational theory you can run">
+<meta property="og:description" content="Organisational theory usually cannot be run. Fulcrum makes the Decision Architecture model executable: deterministic scoring, move valuation and numbers anyone can reproduce.">
+<meta property="og:url" content="https://ernster.dev/fulcrum/why.html">
+<meta property="og:image" content="https://ernster.dev/fulcrum/assets/books/hardback_cover.png">
+<meta property="og:image:alt" content="The Decision Architecture series hardback cover">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Why Fulcrum exists: organisational theory you can run">
+<meta name="twitter:description" content="Organisational theory usually cannot be run. Fulcrum makes the Decision Architecture model executable: deterministic scoring, move valuation and numbers anyone can reproduce.">
+<meta name="twitter:image" content="https://ernster.dev/fulcrum/assets/books/hardback_cover.png">
+<link rel="icon" type="image/png" href="assets/fulcrum.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="nav">
+  <div class="container nav-inner">
+    <a class="brand" href="index.html">
+      <img src="assets/fulcrum.png" alt="Fulcrum icon">Fulcrum</a>
+    <nav class="nav-links">
+      <a href="tool.html">The tool</a>
+      <a href="why.html">Why</a>
+      <a href="why.html#books">The books</a>
+      <a href="download.html">Download</a>
+      <a href="https://github.com/oernster/fulcrum">GitHub</a>
+    </nav>
+  </div>
+</header>
+<main>
+  <section id="exists">
+    <div class="container prose">
+      <div class="eyebrow">The reasoning</div>
+      <h2 class="section-title">Why this exists</h2>
+      <p>Organisational theory has a recurring weakness: it cannot be run. Claims arrive in prose,
+        illustrated by anecdote and defended by seniority. Debates about structure become narrative
+        contests in which the most senior voice wins and a reorg gets tested on real people because
+        there is nowhere else to test it first.</p>
+      <p>Fulcrum is the Decision Architecture model made executable. It models an organisation the
+        way the books describe one (teams, domains, dependencies with propagation delays, authority
+        placement, incentive skew), scores its structural health deterministically from 0 to 100 and
+        valuates every legal move from blunder to great. There is no randomness in scoring: two
+        people with the same model get the same number, which converts an argument about structure
+        into an examinable model.</p>
+      <p>The numbers behave the way the books predict. Scale exposes structure: typical organisation
+        archetypes collapse from 75.6 to 14.8 as they grow while well-designed ones degrade gently
+        from 98.7 to 66.4. Moves are asymmetric: on the enterprise archetype the one available
+        approval-layer move scores -9.40 while the best good move is worth +6.85, so a single
+        blunder outweighs the best repair. And structural value lives at the leaves: in a generated
+        organisation of 1,732 teams the best whole-organisation move is worth +0.024 while the
+        median best local move is worth +9.7 in its own frame, which is why the app lets you drill
+        into a leaf and see its move space.</p>
+      <p>It runs entirely on your machine: generate a level, model your own organisation or import
+        one as JSON, then ask the guide for a move-by-move line to a stronger score. No account, no
+        server, no telemetry. The claims are falsifiable by design: model a realistic organisation
+        in which adding an approval layer improves structural health and the framework is wrong in
+        a way anyone can inspect.</p>
+      <p>Full reasoning at <a href="https://www.crankthecode.com/books">crankthecode.com</a>, in
+        Relativistic Decision Architecture and the wider Decision Architecture series.</p>
+    </div>
+  </section>
+  <section id="books" class="alt">
+    <div class="container">
+      <div class="eyebrow">The foundation</div>
+      <h2 class="section-title">Built on the Decision Architecture series</h2>
+      <p class="books-intro">Fulcrum scores organisations with a model whose moves, signals and core ideas come from the Decision Architecture series by Oliver Ernster. The four volumes build the thinking the tool puts into play; the hardback collects all four in one reference edition.</p>
+      <div class="featured"><img loading="lazy" src="assets/books/hardback_cover.png" alt="Decision Architecture Series cover"><div class="meta"><div class="kicker">The complete series</div><h3>Decision Architecture Series</h3><p>All four volumes combined into a single hardback reference edition</p><a class="btn btn-primary" href="https://www.amazon.co.uk/dp/B0GTMVV8T5">View on Amazon UK</a></div></div>
+      <div class="series"><div class="book"><img loading="lazy" src="assets/books/_cover_da.png" alt="Decision Architecture cover"><h4>Decision Architecture</h4><p>How technical organisations fail and recover</p><a class="buy" href="https://www.amazon.co.uk/dp/B0GT4JNMGK">View on Amazon UK &rarr;</a></div><div class="book"><img loading="lazy" src="assets/books/_cover_da_patterns.png" alt="Decision Architecture Patterns cover"><h4>Decision Architecture Patterns</h4><p>Structural patterns that recur across technical organisations</p><a class="buy" href="https://www.amazon.co.uk/dp/B0GT4CZ327">View on Amazon UK &rarr;</a></div><div class="book"><img loading="lazy" src="assets/books/_cover-da-move-space.png" alt="Decision Architecture: The Move Space cover"><h4>Decision Architecture: The Move Space</h4><p>A Positional Model of Organisational Change</p><a class="buy" href="https://www.amazon.co.uk/dp/B0GTDX7186">View on Amazon UK &rarr;</a></div><div class="book"><img loading="lazy" src="assets/books/_cover_relativistic_da_architecture.png" alt="Relativistic Decision Architecture cover"><h4>Relativistic Decision Architecture</h4><p>The geometry of decision systems</p><a class="buy" href="https://www.amazon.co.uk/dp/B0GT7D4P8G">View on Amazon UK &rarr;</a></div></div>
+      <div class="cta">
+        <a class="btn btn-primary" href="download.html">Download Fulcrum</a>
+        <a class="btn btn-ghost" href="tool.html">See the tool</a>
+      </div>
+    </div>
+  </section>
+</main>
+<footer>
+  <div class="container footer-inner">
+    <div>
+      <strong>Fulcrum</strong>: Organisational Decision Architecture Simulation Tool<br>
+      (c) 2026 Oliver Ernster · Local-first · GPL-3.0 + LGPL-3.0 · v<!--VERSION-->1.4.3<!--/VERSION-->
+    </div>
+    <div class="footer-links">
+      <a href="https://github.com/oernster/fulcrum/releases">Releases</a>
+      <a href="https://github.com/oernster/fulcrum">GitHub</a>
+      <a href="https://www.crankthecode.com/books">The books</a>
+      <a href="https://www.crankthecode.com/">crankthecode.com</a>
+    </div>
+  </div>
+</footer>
+</body>
+</html>
