@@ -24,12 +24,15 @@ from fulcrum.application.cluster_pool import (
     mean_cluster_people,
     pick_workload,
 )
+from fulcrum.application.name_pool import NamePicker
 from fulcrum.application.simulator import DeterministicSimulator
 from fulcrum.domain.models import GROUP_CATEGORIES, Domain, Origin, OrgState, Team
 from fulcrum.domain.org_size import DEFAULT_BAND, OrgSizeBand
 
-# Cosmetic name pools for generated domains and their leads, the structural
-# equivalent of the "Team N" team names: drawn at random, never load-bearing.
+# Cosmetic name pool for generated domains, the structural equivalent of the
+# "Team N" team names: drawn at random, never load-bearing. Leads and owners
+# come from the shared full-name pool, so a generated org never shows a blank
+# person anywhere.
 _DOMAIN_NAMES: tuple[str, ...] = (
     "Platform",
     "Product",
@@ -47,24 +50,6 @@ _DOMAIN_NAMES: tuple[str, ...] = (
     "Quality",
     "Design",
     "Delivery",
-)
-_LEAD_NAMES: tuple[str, ...] = (
-    "Avery",
-    "Bo",
-    "Cass",
-    "Devi",
-    "Esin",
-    "Faye",
-    "Gabriel",
-    "Hana",
-    "Ira",
-    "Jun",
-    "Kit",
-    "Lena",
-    "Mara",
-    "Nils",
-    "Omar",
-    "Pia",
 )
 
 
@@ -88,7 +73,7 @@ def _split(total: int, parts: int) -> list[int]:
 
 
 def _build_tree(
-    rng: Random, depth: int, leaf_count: int
+    rng: Random, names: NamePicker, depth: int, leaf_count: int
 ) -> tuple[tuple[Domain, ...], tuple[str, ...]]:
     """Build a balanced tree of the given depth holding exactly leaf_count leaves.
 
@@ -110,7 +95,7 @@ def _build_tree(
                 id=domain_id,
                 name=rng.choice(_DOMAIN_NAMES),
                 parent_id=parent_id,
-                lead=rng.choice(_LEAD_NAMES),
+                lead=names.draw(),
                 category=GROUP_CATEGORIES[base + tier],
             )
         )
@@ -126,12 +111,15 @@ def _build_tree(
     return tuple(domains), tuple(leaf_ids)
 
 
-def _single_team_org(rng: Random, band: OrgSizeBand, workload: int) -> OrgState:
+def _single_team_org(
+    rng: Random, names: NamePicker, band: OrgSizeBand, workload: int
+) -> OrgState:
     """The tiny band: one self-contained team sized to the band, no hierarchy."""
     team = Team(
         id="team_1",
         name="Team 1",
         has_local_authority=True,
+        owner=names.draw(),
         headcount=rng.randint(band.min_people, band.max_people),
     )
     return OrgState(teams=(team,), workload=workload, origin=Origin.GENERATED)
@@ -143,18 +131,21 @@ def generate_level(rng: Random, band: OrgSizeBand = DEFAULT_BAND) -> OrgState:
     The target people count is drawn uniformly across the band, then the tree is
     sized to it, so repeated generations spread over the whole range rather than
     clustering at the midpoint. A tiny org is a single team; every larger band
-    fills each leaf with a cloned solvable cluster.
+    fills each leaf with a cloned solvable cluster. Every domain lead and team
+    owner is drawn from the shared name pool, so nothing generated is nameless.
     """
     simulator = DeterministicSimulator()
+    names = NamePicker(rng)
     workload = pick_workload(rng)
     depth = _DEPTHS.get(band.key)
     if depth is None:
-        return _single_team_org(rng, band, workload)
+        return _single_team_org(rng, names, band, workload)
     target = rng.randint(band.min_people, band.max_people)
     leaf_count = max(1, round(target / mean_cluster_people()))
-    domains, leaf_ids = _build_tree(rng, depth, leaf_count)
+    domains, leaf_ids = _build_tree(rng, names, depth, leaf_count)
     pool = build_cluster_pool(rng, simulator, workload, leaf_count)
     teams, dependencies = assemble_clusters(rng, pool, leaf_ids)
+    teams = tuple(team.with_owner(names.draw()) for team in teams)
     return OrgState(
         teams=teams,
         dependencies=dependencies,

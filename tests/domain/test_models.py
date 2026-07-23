@@ -151,6 +151,13 @@ def test_team_headcount_default_validation_and_copies():
         Team("a", "A", True, 0.0, headcount=0)
 
 
+def test_team_with_owner_changes_only_the_owner():
+    team = Team("a", "A", True, 0.2, domain_id="d1", size=2, headcount=9)
+    renamed = team.with_owner("Priya Sharma")
+    assert renamed.owner == "Priya Sharma"
+    assert renamed == Team("a", "A", True, 0.2, "d1", 2, "Priya Sharma", 9)
+
+
 def test_org_state_valid_hierarchy():
     org = OrgState(
         teams=(_team("a"), Team("b", "B", True, 0.0, domain_id="sub")),

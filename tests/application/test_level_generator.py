@@ -104,3 +104,14 @@ def test_sizes_span_the_band_not_just_the_midpoint():
 def test_depths_cover_every_non_tiny_band():
     non_tiny = {band.key for band in ORG_SIZE_BANDS if band.key != "tiny"}
     assert set(_DEPTHS) == non_tiny
+
+
+def test_generated_org_has_no_blank_leads_or_owners():
+    org = generate_level(Random(4), _band("small"))
+    assert all(domain.lead for domain in org.domains)
+    assert all(team.owner for team in org.teams)
+
+
+def test_tiny_band_team_has_an_owner():
+    org = generate_level(Random(4), _band("tiny"))
+    assert org.teams[0].owner

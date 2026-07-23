@@ -41,6 +41,7 @@ class DomainSpec:
     parent_id: str | None = None
     lead: str = ""
     category: str = DEFAULT_CATEGORY
+    headcount: int = 0
 
 
 @dataclass(frozen=True, slots=True)

@@ -129,6 +129,18 @@ class Team:
             value,
         )
 
+    def with_owner(self, value: str) -> "Team":
+        return Team(
+            self.id,
+            self.name,
+            self.has_local_authority,
+            self.incentive_skew,
+            self.domain_id,
+            self.size,
+            value,
+            self.headcount,
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class Dependency:

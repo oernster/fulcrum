@@ -12,6 +12,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QHBoxLayout, QLayout, QPushButton, QWidget
 
 from fulcrum.application.dto import MoveValuation
+from fulcrum.application.glossary import short_help
 from fulcrum.application.move_text import describe_move
 from fulcrum.domain.models import OrgState
 from fulcrum.domain.signals import SignalReading
@@ -80,6 +81,7 @@ def signal_row(
         f"{reading.value:.{_VALUE_DECIMALS}f} {reading.definition.unit}"
     )
     chip.setObjectName("SignalChip")
+    chip.setToolTip(short_help(reading.definition.key))
     chip.setCursor(Qt.CursorShape.PointingHandCursor)
     chip.clicked.connect(lambda _=False, r=reading: on_show(r))
     magnifier = magnifier_button(lambda r=reading: on_show(r))

@@ -9,6 +9,7 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
 from fulcrum.application.simulator import DeterministicSimulator
+from fulcrum.infrastructure.org_autosave import FileOrgStore
 from fulcrum.infrastructure.plan_exporter import FilePlanExporter
 from fulcrum.infrastructure.system_clock import SystemClock
 from fulcrum.shared.resources import find_app_icon
@@ -51,6 +52,7 @@ def main() -> int:
         plan_exporter=FilePlanExporter(),
         clock=SystemClock(),
         rng=Random(),
+        org_store=FileOrgStore(),
     )
     if icon is not None:
         window.setWindowIcon(icon)

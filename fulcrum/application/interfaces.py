@@ -30,6 +30,14 @@ class Clock(Protocol):
     def timestamp(self) -> str: ...
 
 
+class OrgStore(Protocol):
+    """Persists the current org so it survives closing the app."""
+
+    def save(self, org: OrgState) -> None: ...
+
+    def load(self) -> OrgState | None: ...
+
+
 class PlanExporter(Protocol):
     """Writes a plan's HTML report and its JSON source as separate exports."""
 

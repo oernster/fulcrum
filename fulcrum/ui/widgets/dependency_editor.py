@@ -57,6 +57,21 @@ class DependencyEditor(QWidget):
             self._fill_combo(self._table.cellWidget(row, _COL_UP))
             self._fill_combo(self._table.cellWidget(row, _COL_DOWN))
 
+    def set_dependencies(self, specs) -> None:
+        """Replace the rows with the given dependency specs."""
+        self._table.setRowCount(0)
+        for spec in specs:
+            self._add_row()
+            row = self._table.rowCount() - 1
+            self._select(self._table.cellWidget(row, _COL_UP), spec.upstream)
+            self._select(self._table.cellWidget(row, _COL_DOWN), spec.downstream)
+            self._table.cellWidget(row, _COL_DELAY).setValue(spec.propagation_delay)
+
+    def _select(self, combo: QComboBox, team_id: str) -> None:
+        index = combo.findData(team_id)
+        if index >= 0:
+            combo.setCurrentIndex(index)
+
     def dependencies(self) -> tuple[DependencySpec, ...]:
         specs = []
         for row in range(self._table.rowCount()):

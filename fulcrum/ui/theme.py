@@ -180,6 +180,22 @@ QTableWidget {{
     color: {_TEXT};
     border: 1px solid {_BORDER};
 }}
+
+QTreeWidget {{
+    background-color: {_SURFACE};
+    color: {_TEXT};
+    border: 1px solid {_BORDER};
+    border-radius: 6px;
+}}
+QTreeWidget::item {{ padding: 3px 4px; }}
+QTreeWidget::item:selected {{
+    background-color: {_SURFACE_RAISED};
+    color: {_ACCENT_BRIGHT};
+}}
+QSplitter::handle {{ background-color: {_BORDER}; }}
+
+QLabel#BlockedReason {{ color: {_GATE_BORDER}; }}
+QPushButton#DiceButton {{ padding: 2px 8px; font-size: {glyph_pt}pt; }}
 QHeaderView::section {{
     background-color: {_BG};
     color: {_TEXT_MUTED};

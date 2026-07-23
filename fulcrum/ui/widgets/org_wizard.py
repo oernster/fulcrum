@@ -2,10 +2,14 @@
 
 The user describes structure in plain terms (team count, who ships without
 asking, how skewed incentives are, the typical wait at a boundary); the wizard
-returns a blueprint that the application layer compiles into an OrgState.
+returns a blueprint that the application layer compiles into an OrgState. Team
+owners are pre-filled from the shared name pool, so a wizard-built org never
+shows a blank owner.
 """
 
 from __future__ import annotations
+
+from random import Random
 
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -20,6 +24,12 @@ from PySide6.QtWidgets import (
 )
 
 from fulcrum.application.dto import DependencySpec, OrgBlueprint, TeamSpec
+from fulcrum.application.glossary import (
+    TERM_INCENTIVE_SKEW,
+    TERM_LOCAL_AUTHORITY,
+    short_help,
+)
+from fulcrum.application.name_pool import NamePicker
 from fulcrum.ui import ui_scale
 
 _WIZARD_MIN_WIDTH = 640
@@ -96,8 +106,9 @@ class _BasicsPage(QWizardPage):
 
 
 class _TeamsPage(QWizardPage):
-    def __init__(self) -> None:
+    def __init__(self, names: NamePicker) -> None:
         super().__init__()
+        self._names = names
         self.setTitle("The teams")
         self.setSubTitle("Tick the teams that can ship without escalating.")
         layout = QVBoxLayout(self)
@@ -109,6 +120,10 @@ class _TeamsPage(QWizardPage):
             _COL_AUTHORITY, QHeaderView.ResizeMode.ResizeToContents
         )
         header.setSectionResizeMode(_COL_SKEW, QHeaderView.ResizeMode.ResizeToContents)
+        header_item = self._table.horizontalHeaderItem(_COL_AUTHORITY)
+        header_item.setToolTip(short_help(TERM_LOCAL_AUTHORITY))
+        skew_item = self._table.horizontalHeaderItem(_COL_SKEW)
+        skew_item.setToolTip(short_help(TERM_INCENTIVE_SKEW))
         layout.addWidget(self._table)
 
     def initializePage(self) -> None:
@@ -133,6 +148,7 @@ class _TeamsPage(QWizardPage):
                     name=name,
                     has_local_authority=authority,
                     incentive_skew=skew,
+                    owner=self._names.draw(),
                 )
             )
         return tuple(specs)
@@ -141,7 +157,7 @@ class _TeamsPage(QWizardPage):
 class OrgWizard(QWizard):
     """Collects an OrgBlueprint describing the user's current organisation."""
 
-    def __init__(self, parent=None) -> None:
+    def __init__(self, parent=None, rng: Random | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Model my organisation")
         # ClassicStyle drops the native Aero chrome (the white footer, the small
@@ -151,7 +167,7 @@ class OrgWizard(QWizard):
         self.setOption(QWizard.WizardOption.NoBackButtonOnStartPage, True)
         self.setMinimumWidth(ui_scale.px(_WIZARD_MIN_WIDTH))
         self._basics = _BasicsPage()
-        self._teams = _TeamsPage()
+        self._teams = _TeamsPage(NamePicker(rng if rng is not None else Random()))
         self.addPage(self._basics)
         self.addPage(self._teams)
 

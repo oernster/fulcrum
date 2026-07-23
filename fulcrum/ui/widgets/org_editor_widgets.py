@@ -1,54 +1,28 @@
-"""Leaf cell builders for the org editor.
+"""Leaf widget builders shared by the org editor's tree and inspector panes.
 
-Small, self-contained widget and value builders the editor's tree rows are made
-from. They hold no editor state, so they live here to keep the editor module
-itself under the structural line limit.
+Small, self-contained widget builders holding no editor state, kept here so
+the editor modules stay within the structural line limit.
 """
 
 from __future__ import annotations
 
-from PySide6.QtWidgets import (
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QTreeWidgetItem,
-    QWidget,
-)
+from PySide6.QtCore import QTimer
+from PySide6.QtWidgets import QLabel, QLineEdit, QPushButton
 
-from fulcrum.domain.models import GROUP_CATEGORIES
 from fulcrum.ui import ui_scale
 
 _HEADING = "Heading"
 _TREE_ACTION = "TreeAction"
 _ACTION_BUTTON_W = 30
 _ACTION_BUTTON_H = 18
+_DICE_GLYPH = "\N{GAME DIE}"
+_DICE_TIP = "Roll a different name"
 
 
 def labelled(label: QLabel) -> QLabel:
     """Tag a label as a heading for the shared stylesheet."""
     label.setObjectName(_HEADING)
     return label
-
-
-def default_category(parent: QTreeWidgetItem | None) -> str:
-    """The group tier suggested for a new group at the given parent's depth."""
-    depth = 0
-    node = parent
-    while node is not None:
-        depth += 1
-        node = node.parent()
-    return GROUP_CATEGORIES[min(depth, len(GROUP_CATEGORIES) - 1)]
-
-
-def centered(widget: QWidget) -> QWidget:
-    """Wrap a widget in a holder that centres it within its cell."""
-    holder = QWidget()
-    row = QHBoxLayout(holder)
-    row.setContentsMargins(0, 0, 0, 0)
-    row.addStretch()
-    row.addWidget(widget)
-    row.addStretch()
-    return holder
 
 
 def action_button(glyph: str, tip: str) -> QPushButton:
@@ -58,3 +32,25 @@ def action_button(glyph: str, tip: str) -> QPushButton:
     button.setToolTip(tip)
     button.setFixedSize(ui_scale.px(_ACTION_BUTTON_W), ui_scale.px(_ACTION_BUTTON_H))
     return button
+
+
+def dice_button() -> QPushButton:
+    """The reroll die shown beside a lead or owner field."""
+    button = QPushButton(_DICE_GLYPH)
+    button.setObjectName("DiceButton")
+    button.setToolTip(_DICE_TIP)
+    return button
+
+
+class SelectAllLineEdit(QLineEdit):
+    """A line edit that selects its whole value on focus.
+
+    A lead or owner arrives pre-filled from the name pool; selecting it all
+    lets the user overtype the real person's name in one motion. The select
+    is deferred a tick because Qt's own mouse handling would otherwise clear
+    the selection right after focus-in.
+    """
+
+    def focusInEvent(self, event) -> None:
+        super().focusInEvent(event)
+        QTimer.singleShot(0, self.selectAll)
