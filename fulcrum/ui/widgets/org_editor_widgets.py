@@ -6,7 +6,8 @@ the editor modules stay within the structural line limit.
 
 from __future__ import annotations
 
-from PySide6.QtCore import QEvent, QTimer
+from PySide6.QtCore import QEvent, QPointF, QTimer
+from PySide6.QtGui import QPainter, QPainterPath, QPalette
 from PySide6.QtWidgets import QComboBox, QLabel, QLineEdit, QPushButton
 
 from fulcrum.ui import ui_scale
@@ -16,6 +17,42 @@ _TREE_ACTION = "TreeAction"
 _ACTION_BUTTON_W = 36
 _DICE_GLYPH = "\N{GAME DIE}"
 _DICE_TIP = "Roll a different name"
+
+
+class _GlyphButton(QPushButton):
+    """A push button that paints its glyph optically centred.
+
+    Qt centres a text LINE BOX, not the glyph ink; Segoe UI's tall ascent
+    (internal leading) leaves a + or minus glyph sitting visibly low in the
+    button. The button therefore holds no style text (the stylesheet still
+    paints frame and fill) and fills the glyph's outline path itself, with
+    the path's exact bounds centred on the button rect. Font-metric routes
+    (tightBoundingRect) are per-glyph inaccurate on Windows; the outline
+    path is centred by construction.
+    """
+
+    def __init__(self, glyph: str) -> None:
+        super().__init__("")
+        self._glyph = glyph
+
+    def paintEvent(self, event) -> None:
+        super().paintEvent(event)
+        path = QPainterPath()
+        path.addText(0, 0, self.font(), self._glyph)
+        bounds = path.boundingRect()
+        centre = QPointF(self.rect().center())
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.translate(centre - bounds.center())
+        group = (
+            QPalette.ColorGroup.Normal
+            if self.isEnabled()
+            else QPalette.ColorGroup.Disabled
+        )
+        painter.fillPath(
+            path, self.palette().color(group, QPalette.ColorRole.ButtonText)
+        )
+        painter.end()
 
 
 def labelled(label: QLabel) -> QLabel:
@@ -32,7 +69,7 @@ def action_button(glyph: str, tip: str) -> QPushButton:
     frame needs makes Qt clip it, which sliced the bottom border off the
     hover ring at some UI scales.
     """
-    button = QPushButton(glyph)
+    button = _GlyphButton(glyph)
     button.setObjectName(_TREE_ACTION)
     button.setToolTip(tip)
     button.setFixedWidth(ui_scale.px(_ACTION_BUTTON_W))
