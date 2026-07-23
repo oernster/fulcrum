@@ -6,7 +6,7 @@ the editor modules stay within the structural line limit.
 
 from __future__ import annotations
 
-from PySide6.QtCore import QEvent, QPointF, QTimer
+from PySide6.QtCore import QEvent, QPointF, Qt, QTimer
 from PySide6.QtGui import QPainter, QPainterPath, QPalette
 from PySide6.QtWidgets import QComboBox, QLabel, QLineEdit, QPushButton
 
@@ -91,6 +91,11 @@ class ClickOpenComboBox(QComboBox):
     a click as cursor placement. Here a click anywhere opens the list, as
     every other dropdown in the app does. Typing a custom label still works:
     the click also places the cursor and Escape closes the list to edit.
+
+    The popup opens on the RELEASE, never the press: a popup shown from the
+    press is immediately hidden again by the same click's release (the popup
+    container closes on any release unless Qt's own arrow handling armed its
+    block-release timer), which read as a bounce.
     """
 
     def __init__(self, parent=None) -> None:
@@ -101,7 +106,8 @@ class ClickOpenComboBox(QComboBox):
     def eventFilter(self, obj, event) -> bool:
         if (
             obj is self.lineEdit()
-            and event.type() == QEvent.Type.MouseButtonPress
+            and event.type() == QEvent.Type.MouseButtonRelease
+            and event.button() == Qt.MouseButton.LeftButton
             and not self.view().isVisible()
         ):
             self.showPopup()
