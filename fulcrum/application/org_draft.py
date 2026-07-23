@@ -22,6 +22,7 @@ from fulcrum.application.org_draft_nodes import (
     can_nest,
     default_category_for_depth,
     iter_nodes,
+    sequence_token,
     subtree,
     teams_beneath,
 )
@@ -55,7 +56,7 @@ class OrgDraft(DraftConversions, DraftSerialisation):
         node = ContainerDraft(
             id=self._new_id(_CONTAINER_PREFIX),
             category=category,
-            name=f"{category} {self._container_count}",
+            name=f"{category} {sequence_token(self._container_count)}",
             lead=self._names.draw(),
         )
         siblings.append(node)
@@ -67,7 +68,7 @@ class OrgDraft(DraftConversions, DraftSerialisation):
         self._team_count += 1
         node = TeamDraft(
             id=self._new_id(_TEAM_PREFIX),
-            name=f"Team {self._team_count}",
+            name=f"Team {sequence_token(self._team_count)}",
             owner=self._names.draw(),
         )
         siblings.append(node)

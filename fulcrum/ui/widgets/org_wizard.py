@@ -30,6 +30,7 @@ from fulcrum.application.glossary import (
     short_help,
 )
 from fulcrum.application.name_pool import NamePicker
+from fulcrum.application.org_draft_nodes import sequence_token
 from fulcrum.ui import ui_scale
 
 _WIZARD_MIN_WIDTH = 640
@@ -131,7 +132,7 @@ class _TeamsPage(QWizardPage):
         self._table.setRowCount(count)
         for row in range(count):
             name = QLineEdit()
-            name.setText(f"Team {row + 1}")
+            name.setText(f"Team {sequence_token(row + 1)}")
             self._table.setCellWidget(row, _COL_NAME, name)
             self._table.setCellWidget(row, _COL_AUTHORITY, QCheckBox())
             self._table.setCellWidget(row, _COL_SKEW, _skew_spin())
@@ -139,7 +140,9 @@ class _TeamsPage(QWizardPage):
     def teams(self) -> tuple[TeamSpec, ...]:
         specs = []
         for row in range(self._table.rowCount()):
-            name = self._table.cellWidget(row, _COL_NAME).text() or f"Team {row + 1}"
+            name = self._table.cellWidget(row, _COL_NAME).text() or (
+                f"Team {sequence_token(row + 1)}"
+            )
             authority = self._table.cellWidget(row, _COL_AUTHORITY).isChecked()
             skew = self._table.cellWidget(row, _COL_SKEW).value() / _PERCENT
             specs.append(

@@ -71,6 +71,53 @@ def default_category_for_depth(depth: int) -> str:
     return GROUP_CATEGORIES[min(depth, len(GROUP_CATEGORIES) - 1)]
 
 
+# The placeholder sequence for auto-generated names: Team Alpha, Division
+# Beta and so on, wrapping to "Alpha 2" once the alphabet runs out. More
+# inviting to overtype than bare numbers, while still carrying an order.
+GREEK_SEQUENCE: tuple[str, ...] = (
+    "Alpha",
+    "Beta",
+    "Gamma",
+    "Delta",
+    "Epsilon",
+    "Zeta",
+    "Eta",
+    "Theta",
+    "Iota",
+    "Kappa",
+    "Lambda",
+    "Mu",
+    "Nu",
+    "Xi",
+    "Omicron",
+    "Pi",
+    "Rho",
+    "Sigma",
+    "Tau",
+    "Upsilon",
+    "Phi",
+    "Chi",
+    "Psi",
+    "Omega",
+)
+
+
+def sequence_token(ordinal: int) -> str:
+    """The placeholder token for the nth item: Alpha ... Omega, then Alpha 2."""
+    index = (ordinal - 1) % len(GREEK_SEQUENCE)
+    lap = (ordinal - 1) // len(GREEK_SEQUENCE)
+    name = GREEK_SEQUENCE[index]
+    return name if lap == 0 else f"{name} {lap + 1}"
+
+
+def _is_sequence_suffix(suffix: str) -> bool:
+    """Whether a name's tail is an auto token: Greek, 'Greek n' or digits."""
+    parts = suffix.split(" ")
+    if parts[0] in GREEK_SEQUENCE:
+        return len(parts) == 1 or (len(parts) == 2 and parts[1].isdigit())
+    return suffix.isdigit()
+
+
 def can_nest(child_category: str, parent_category: str) -> bool:
     """Whether a unit of child_category may sit under parent_category.
 
@@ -89,14 +136,14 @@ def can_nest(child_category: str, parent_category: str) -> bool:
 
 
 def retitle_for_category(name: str, old_category: str, new_category: str) -> str:
-    """Re-derive an auto-generated name when its unit's category changes.
+    """Re-derive an auto-generated name when its item's type changes.
 
-    'Company 1' becomes 'Group 1' when the category drops to Group; a name the
-    user has typed over (anything not exactly the old category plus a number)
-    is left alone.
+    'Company Alpha' becomes 'Group Alpha' when the category drops to Group
+    (numeric tails such as 'Company 3' from older models retitle too); a name
+    the user has typed over is left alone.
     """
     prefix = f"{old_category} "
-    if name.startswith(prefix) and name[len(prefix) :].isdigit():
+    if name.startswith(prefix) and _is_sequence_suffix(name[len(prefix) :]):
         return f"{new_category} {name[len(prefix):]}"
     return name
 

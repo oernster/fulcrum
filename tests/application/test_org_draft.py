@@ -14,11 +14,13 @@ from fulcrum.application.intake import build_org_state, org_to_blueprint
 from fulcrum.application.name_pool import NamePicker
 from fulcrum.application.org_draft import OrgDraft
 from fulcrum.application.org_draft_nodes import (
+    GREEK_SEQUENCE,
     ContainerDraft,
     TeamDraft,
     can_nest,
     default_category_for_depth,
     retitle_for_category,
+    sequence_token,
 )
 from fulcrum.domain.models import GROUP_CATEGORIES, Origin
 
@@ -63,15 +65,23 @@ def test_default_category_deepens_then_saturates():
     assert labels[-1] == GROUP_CATEGORIES[-1]
 
 
+def test_sequence_tokens_run_greek_then_wrap_with_a_lap_number():
+    assert sequence_token(1) == "Alpha"
+    assert sequence_token(2) == "Beta"
+    assert sequence_token(len(GREEK_SEQUENCE)) == "Omega"
+    assert sequence_token(len(GREEK_SEQUENCE) + 1) == "Alpha 2"
+
+
 def test_add_container_names_categorises_and_leads():
     draft = _draft()
     root = draft.add_container(None)
     child = draft.add_container(root.id)
     grandchild = draft.add_container(child.id)
     assert root.category == "Company"
-    assert root.name == "Company 1"
+    assert root.name == "Company Alpha"
     assert root.lead
     assert child.category == "Group"
+    assert child.name == "Group Beta"
     assert child in root.children
     assert grandchild.category == "Division"
     assert grandchild in child.children
@@ -82,9 +92,10 @@ def test_add_team_lands_under_its_parent_with_an_owner():
     root = draft.add_container(None)
     team = draft.add_team(root.id)
     assert team in root.children
-    assert team.name == "Team 1"
+    assert team.name == "Team Alpha"
     assert team.owner
     loose = draft.add_team(None)
+    assert loose.name == "Team Beta"
     assert loose in draft.roots
 
 
@@ -290,10 +301,14 @@ def test_can_nest_enforces_tier_order_only_for_known_tiers():
 
 
 def test_retitle_follows_only_auto_generated_names():
+    assert retitle_for_category("Company Alpha", "Company", "Group") == "Group Alpha"
+    assert retitle_for_category("Company Alpha 2", "Company", "Group") == (
+        "Group Alpha 2"
+    )
     assert retitle_for_category("Company 1", "Company", "Group") == "Group 1"
     assert retitle_for_category("Acme", "Company", "Group") == "Acme"
-    assert retitle_for_category("Company 1 copy", "Company", "Group") == (
-        "Company 1 copy"
+    assert retitle_for_category("Company Alpha copy", "Company", "Group") == (
+        "Company Alpha copy"
     )
 
 
@@ -343,7 +358,7 @@ def test_set_category_retitles_and_guards_the_tier():
     company = draft.add_container(None)
     child = draft.add_container(company.id)
     assert draft.set_category(company.id, "Group")
-    assert company.name == "Group 1"
+    assert company.name == "Group Alpha"
     assert not draft.set_category(child.id, "Company")
     assert draft.set_category(child.id, "Domain")
     team = draft.add_team(company.id)
@@ -387,9 +402,9 @@ def test_conversion_retitles_auto_names():
     parent = draft.add_container(None)
     team = draft.add_team(parent.id)
     unit = draft.convert_to_container(team.id, "Division")
-    assert unit.name == "Division 1"
+    assert unit.name == "Division Alpha"
     back = draft.convert_to_team(unit.id)
-    assert back.name == "Team 1"
+    assert back.name == "Team Alpha"
 
 
 def test_parent_of_finds_the_holder():
