@@ -39,6 +39,9 @@ _ACTION_SPACING = 4
 _ACTION_MARGIN = 2
 _WARNING_BADGE = " \N{WARNING SIGN}"
 _TOP_LEVEL_LABEL = "(top level)"
+_ADD_GLYPH = "+"
+# A real minus sign: the ASCII hyphen renders as a tiny dash at button size.
+_REMOVE_GLYPH = "\N{MINUS SIGN}"
 _NEW_COMPANY_TEXT = "New company"
 _ADD_ITEM_TEXT = "Add item here"
 _DRAG_HINT = (
@@ -171,19 +174,21 @@ class OrgTreePane(QWidget):
     def _actions(self, node_id: str, is_container: bool) -> QWidget:
         # + and - sit side by side so a row only needs one button of height;
         # a team has no +, so a stretch keeps every - aligned in its own
-        # column under the others.
+        # column under the others. The holder is named so the stylesheet can
+        # keep it transparent over the tree surface.
         holder = QWidget()
+        holder.setObjectName("TreeActionCell")
         row = QHBoxLayout(holder)
         margin = ui_scale.px(_ACTION_MARGIN)
         row.setContentsMargins(0, margin, 0, margin)
         row.setSpacing(ui_scale.px(_ACTION_SPACING))
         if is_container:
-            add = action_button("+", _ADD_ITEM_TEXT)
+            add = action_button(_ADD_GLYPH, _ADD_ITEM_TEXT)
             add.clicked.connect(lambda _=False, i=node_id: self._add_item(i))
             row.addWidget(add)
         else:
             row.addStretch()
-        remove = action_button("-", "Remove this item")
+        remove = action_button(_REMOVE_GLYPH, "Remove this item")
         remove.clicked.connect(lambda _=False, i=node_id: self._remove(i))
         row.addWidget(remove)
         return holder

@@ -1,8 +1,10 @@
-"""Dark theme for Fulcrum, built around an amber interactive accent.
+"""Dark theme for Fulcrum, built around an amber accent with green hover.
 
-Every button takes an amber border on hover only while it is enabled, never when
-disabled; the 2px transparent default border keeps the hover from shifting the
-layout. The accent is defined once here as a token rather than scattered hex.
+Every button takes a green border on hover only while it is enabled (green
+reads as "this is actionable"), never when disabled; keyboard focus keeps the
+amber border and move-gated controls keep their red cue. The 2px transparent
+default border keeps the hover from shifting the layout. Each colour is
+defined once here as a token rather than scattered hex.
 """
 
 from __future__ import annotations
@@ -24,6 +26,9 @@ _ACCENT = "#f59e0b"
 _ACCENT_BRIGHT = "#fbbf24"
 _PRIMARY_BG = "#7fb0ff"
 _DISABLED_TEXT = "#5b6470"
+# Green hover border: an enabled control under the mouse reads as actionable;
+# the amber border stays for keyboard focus and disabled gating stays red.
+_HOVER_GREEN = "#22c55e"
 # Red border that flags a control disabled until the first move is played.
 _GATE_BORDER = "#ef4444"
 
@@ -81,13 +86,13 @@ QPushButton {{
     padding: 8px 16px;
     font-weight: 600;
 }}
-QPushButton:enabled:hover {{ border-color: {_ACCENT}; }}
+QPushButton:enabled:hover {{ border-color: {_HOVER_GREEN}; }}
 QPushButton:enabled:focus {{ border-color: {_ACCENT}; outline: none; }}
 QPushButton:pressed {{ background-color: {_SURFACE}; }}
 QPushButton:disabled {{ color: {_DISABLED_TEXT}; background-color: {_SURFACE}; }}
 
 QPushButton#Primary {{ background-color: {_PRIMARY_BG}; color: {_BG}; }}
-QPushButton#Primary:enabled:hover {{ border-color: {_ACCENT_BRIGHT}; }}
+QPushButton#Primary:enabled:hover {{ border-color: {_HOVER_GREEN}; }}
 QPushButton#Primary:enabled:focus {{ border-color: {_ACCENT}; }}
 QPushButton#MoveButton {{
     text-align: left;
@@ -95,7 +100,15 @@ QPushButton#MoveButton {{
     font-size: {compact_pt}pt;
 }}
 QPushButton#SignalChip {{ padding: 6px 10px; font-size: {compact_pt}pt; }}
-QPushButton#TreeAction {{ padding: 0; min-width: 0; font-weight: 700; }}
+QPushButton#TreeAction {{
+    padding: 0;
+    min-width: 0;
+    font-weight: 700;
+    font-size: {glyph_pt}pt;
+}}
+/* The tree's action cells sit over the tree surface; without this they paint
+   the window background as opaque blocks in each row. */
+QWidget#TreeActionCell {{ background: transparent; }}
 QPushButton#IconLink {{
     background: transparent;
     border: 2px solid transparent;
@@ -103,7 +116,7 @@ QPushButton#IconLink {{
     font-size: {glyph_pt}pt;
 }}
 QPushButton#IconLink:enabled:hover {{
-    border-color: {_ACCENT};
+    border-color: {_HOVER_GREEN};
     color: {_ACCENT_BRIGHT};
 }}
 QPushButton#IconLink:enabled:focus {{
@@ -120,7 +133,7 @@ QPushButton#PreviewButton {{
     font-size: {glyph_pt}pt;
 }}
 QPushButton#PreviewButton:enabled:hover {{
-    border-color: {_ACCENT};
+    border-color: {_HOVER_GREEN};
     color: {_ACCENT_BRIGHT};
 }}
 QPushButton#PreviewButton:enabled:focus {{
@@ -267,7 +280,7 @@ QRadioButton::indicator {{
     background: transparent;
 }}
 QRadioButton::indicator:checked {{ background: {_ACCENT}; border-color: {_ACCENT}; }}
-QRadioButton::indicator:enabled:hover {{ border-color: {_ACCENT}; }}
+QRadioButton::indicator:enabled:hover {{ border-color: {_HOVER_GREEN}; }}
 
 QSlider::groove:horizontal {{ height: 4px; background: {_BORDER}; border-radius: 2px; }}
 QSlider::handle:horizontal {{

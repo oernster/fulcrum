@@ -159,7 +159,7 @@ _INSTALLER_LICENSE_FALLBACK = (
 
 # --- Fulcrum amber palette ---------------------------------------------------
 # Named colour tokens for the installer surfaces, text and controls. Every
-# QPushButton carries a transparent 2px border by default so the amber hover
+# QPushButton carries a transparent 2px border by default so the green hover
 # border does not reflow the layout, and the hover reaction is gated on
 # :enabled so disabled buttons stay muted with no border change.
 _BACKGROUND = "#0d0f12"
@@ -171,6 +171,9 @@ _TEXT_MUTED = "#9aa3af"
 _ACCENT = "#f59e0b"
 _ACCENT_BRIGHT = "#fbbf24"
 _DISABLED_TEXT = "#5b6470"
+# Green hover border: an enabled control under the mouse reads as actionable,
+# matching the app's own theme.
+_HOVER_GREEN = "#22c55e"
 
 _STYLESHEET = f"""
 QWidget {{
@@ -191,7 +194,7 @@ QPushButton {{
     border: 2px solid transparent;
 }}
 QPushButton:enabled:hover {{
-    border-color: {_ACCENT};
+    border-color: {_HOVER_GREEN};
 }}
 QPushButton#LicenceButton {{
     background: {_SURFACE}; color: {_TEXT};
@@ -203,7 +206,7 @@ QPushButton#PrimaryAction {{
     font-weight: 700; min-width: 150px;
 }}
 QPushButton#PrimaryAction:enabled:hover {{
-    background: {_ACCENT_BRIGHT}; border-color: {_ACCENT};
+    background: {_ACCENT_BRIGHT}; border-color: {_HOVER_GREEN};
 }}
 QPushButton#PrimaryAction:disabled {{
     background: {_SURFACE_RAISED}; color: {_DISABLED_TEXT};
