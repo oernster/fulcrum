@@ -6,8 +6,8 @@ the editor modules stay within the structural line limit.
 
 from __future__ import annotations
 
-from PySide6.QtCore import QTimer
-from PySide6.QtWidgets import QLabel, QLineEdit, QPushButton
+from PySide6.QtCore import QEvent, QTimer
+from PySide6.QtWidgets import QComboBox, QLabel, QLineEdit, QPushButton
 
 from fulcrum.ui import ui_scale
 
@@ -40,6 +40,30 @@ def dice_button() -> QPushButton:
     button.setObjectName("DiceButton")
     button.setToolTip(_DICE_TIP)
     return button
+
+
+class ClickOpenComboBox(QComboBox):
+    """An editable combo whose whole body opens the list on click.
+
+    An editable combo normally opens only from its arrow; the text area takes
+    a click as cursor placement. Here a click anywhere opens the list, as
+    every other dropdown in the app does. Typing a custom label still works:
+    the click also places the cursor and Escape closes the list to edit.
+    """
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self.setEditable(True)
+        self.lineEdit().installEventFilter(self)
+
+    def eventFilter(self, obj, event) -> bool:
+        if (
+            obj is self.lineEdit()
+            and event.type() == QEvent.Type.MouseButtonPress
+            and not self.view().isVisible()
+        ):
+            self.showPopup()
+        return super().eventFilter(obj, event)
 
 
 class SelectAllLineEdit(QLineEdit):

@@ -33,7 +33,11 @@ from fulcrum.application.glossary import (
 from fulcrum.application.org_draft import OrgDraft
 from fulcrum.application.org_draft_nodes import TEAM_TYPE, ContainerDraft, TeamDraft
 from fulcrum.domain.models import GROUP_CATEGORIES
-from fulcrum.ui.widgets.org_editor_widgets import SelectAllLineEdit, dice_button
+from fulcrum.ui.widgets.org_editor_widgets import (
+    ClickOpenComboBox,
+    SelectAllLineEdit,
+    dice_button,
+)
 
 _MAX_SKEW_PERCENT = 100
 _MAX_HEADCOUNT = 1_000_000
@@ -68,8 +72,7 @@ def _person_row(field: SelectAllLineEdit, dice) -> QWidget:
 
 
 def _type_combo() -> QComboBox:
-    combo = QComboBox()
-    combo.setEditable(True)
+    combo = ClickOpenComboBox()
     combo.addItems([*GROUP_CATEGORIES, TEAM_TYPE])
     combo.setToolTip(_TYPE_TIP)
     return combo
