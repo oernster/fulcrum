@@ -121,13 +121,6 @@ class OrgEditorDialog(NeutralDialog):
         self._totals = QLabel("")
         self._totals.setObjectName("Muted")
         status.addWidget(self._totals)
-        self._warnings = QLabel("")
-        self._warnings.setObjectName("Muted")
-        self._warnings.setWordWrap(True)
-        self._warnings.setOpenExternalLinks(False)
-        self._warnings.linkActivated.connect(self._goto_warning)
-        self._warnings.setVisible(False)
-        status.addWidget(self._warnings)
         self._reason = QLabel("")
         self._reason.setObjectName("BlockedReason")
         self._reason.setVisible(False)
@@ -163,22 +156,12 @@ class OrgEditorDialog(NeutralDialog):
         self._deps.set_teams(self._draft.teams())
         self._refresh_footer()
 
-    def _goto_warning(self, node_id: str) -> None:
-        self._tree.select_node(node_id)
-
     def _open_glossary(self) -> None:
         GlossaryDialog(self).exec()
 
     def _refresh_footer(self) -> None:
         teams, people = self._draft.totals()
         self._totals.setText(f"{people:,} people across {teams} teams")
-        warnings = self._draft.warnings()
-        links = "<br>".join(
-            f'<a href="{w.node_id}" style="color: {_ACCENT};">{w.message}</a>'
-            for w in warnings
-        )
-        self._warnings.setText(links)
-        self._warnings.setVisible(bool(warnings))
         reason = self._draft.blocking_reason()
         self._reason.setText(reason or "")
         self._reason.setVisible(reason is not None)

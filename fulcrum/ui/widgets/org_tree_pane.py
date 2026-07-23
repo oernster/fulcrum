@@ -102,7 +102,7 @@ class OrgTreePane(QWidget):
         selected = self.selected_id()
         self._tree.blockSignals(True)
         self._tree.clear()
-        warned = {w.node_id for w in self._draft.warnings()}
+        warned = self._warnings_by_id()
         for node in self._draft.roots:
             self._add_row(node, None, warned)
         if had_items:
@@ -113,11 +113,15 @@ class OrgTreePane(QWidget):
 
     def update_labels(self) -> None:
         """Refresh every row's text after field edits, without rebuilding."""
-        warned = {w.node_id for w in self._draft.warnings()}
+        warned = self._warnings_by_id()
         for item in self._all_items():
             node = self._draft.find(item.data(_COL_LABEL, _ROLE_ID))
             if node is not None:
                 item.setText(_COL_LABEL, self._label(node, warned))
+                item.setToolTip(_COL_LABEL, warned.get(node.id, ""))
+
+    def _warnings_by_id(self) -> dict[str, str]:
+        return {w.node_id: w.message for w in self._draft.warnings()}
 
     def select_node(self, node_id: str) -> None:
         """Select and reveal the row for a node id, if it exists."""
@@ -131,9 +135,10 @@ class OrgTreePane(QWidget):
         item = self._tree.currentItem()
         return item.data(_COL_LABEL, _ROLE_ID) if item is not None else ""
 
-    def _add_row(self, node, parent_item, warned: set[str]) -> None:
+    def _add_row(self, node, parent_item, warned: dict[str, str]) -> None:
         item = QTreeWidgetItem()
         item.setText(_COL_LABEL, self._label(node, warned))
+        item.setToolTip(_COL_LABEL, warned.get(node.id, ""))
         item.setData(_COL_LABEL, _ROLE_ID, node.id)
         is_container = isinstance(node, ContainerDraft)
         if is_container:
@@ -154,7 +159,7 @@ class OrgTreePane(QWidget):
                 self._add_row(child, item, warned)
         item.setExpanded(True)
 
-    def _label(self, node, warned: set[str]) -> str:
+    def _label(self, node, warned: dict[str, str]) -> str:
         if isinstance(node, ContainerDraft):
             teams, people = self._draft.rollup(node.id)
             badge = f"{teams} teams · {people:,} people"

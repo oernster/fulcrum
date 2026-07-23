@@ -33,9 +33,10 @@ A short tour and the books behind it are at <https://oernster.github.io/fulcrum/
   Department, Domain, your own label or Team); units nest to any depth with
   teams as the leaves. Rows drag like folders in a file manager: onto a unit
   to move inside, between rows to reorder, Ctrl held to copy, with illegal
-  drops refused on the spot. An inspector edits the selected item and the
-  footer shows a live people-and-teams rollup with warnings for empty units.
-  A quick wizard is also there for a fast first position.
+  drops refused on the spot. An inspector edits the selected item, the footer
+  shows a live people-and-teams rollup and an empty unit carries a warning
+  badge on its own row that explains itself on hover. A quick wizard is also
+  there for a fast first position.
 - "Edit my org": reopen the current organisation in the same editor at any
   time, whatever its origin (wizard, JSON import, random generation or a
   previous edit), change it and rescore. The current org autosaves, so the
