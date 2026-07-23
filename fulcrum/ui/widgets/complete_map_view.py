@@ -30,6 +30,7 @@ from fulcrum.domain.hierarchy import (
     teams_in_domain,
 )
 from fulcrum.domain.models import Domain, OrgState
+from fulcrum.shared.text import count_noun
 
 _AUTHORITY = QColor("#34d399")
 _NO_AUTHORITY = QColor("#f59e0b")
@@ -239,9 +240,10 @@ class CompleteMapView(QGraphicsView):
         path.addRoundedRect(QRectF(x, y, box.w, box.h), _CORNER, _CORNER)
         self._scene.addPath(path, QPen(_NO_AUTHORITY, _PEN_W), QBrush(_DOMAIN_FILL))
         people = headcount_in_domain(self._org, domain.id)
-        detail = f"{domain.category} · {people:,} people"
+        detail = f"{domain.category} · {count_noun(people, 'person', 'people')}"
         if self._is_summary(domain):
-            detail = f"{detail} · {len(teams_in_domain(self._org, domain.id)):,} teams"
+            teams = len(teams_in_domain(self._org, domain.id))
+            detail = f"{detail} · {count_noun(teams, 'team')}"
         category = self._scene.addSimpleText(detail, _font())
         category.setBrush(_NO_AUTHORITY)
         category.setPos(x + _PAD, y + _DOMAIN_CATEGORY_DY)
@@ -264,7 +266,7 @@ class CompleteMapView(QGraphicsView):
         name.setBrush(_TEXT)
         name.setPos(x + _PAD, y + _NAME_DY)
         status = "decides locally" if team.has_local_authority else "escalates"
-        sub_text = f"{status} · {team.headcount:,} people"
+        sub_text = f"{status} · {count_noun(team.headcount, 'person', 'people')}"
         sub = self._scene.addSimpleText(sub_text, _font())
         sub.setBrush(_TEXT_MUTED)
         sub.setPos(x + _PAD, y + _SUB_DY)

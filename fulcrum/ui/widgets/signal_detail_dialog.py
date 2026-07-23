@@ -15,13 +15,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from fulcrum.domain.signals import SignalReading
+from fulcrum.domain.signals import SignalReading, format_reading_value
 from fulcrum.ui import ui_scale
 from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 
 _MIN_WIDTH = 460
 _MIN_HEIGHT = 320
-_VALUE_DECIMALS = 1
 
 
 class SignalDetailDialog(NeutralDialog):
@@ -39,9 +38,7 @@ class SignalDetailDialog(NeutralDialog):
         heading = QLabel(definition.label)
         heading.setObjectName("Heading")
         inner.addWidget(heading)
-        reading_label = QLabel(
-            f"Current reading: {reading.value:.{_VALUE_DECIMALS}f} {definition.unit}"
-        )
+        reading_label = QLabel(f"Current reading: {format_reading_value(reading)}")
         reading_label.setObjectName("Muted")
         inner.addWidget(reading_label)
         gloss = QLabel(definition.gloss)

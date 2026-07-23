@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 from fulcrum.application.org_draft import OrgDraft
 from fulcrum.application.org_draft_nodes import TEAM_TYPE, ContainerDraft
 from fulcrum.domain.models import GROUP_CATEGORIES
+from fulcrum.shared.text import count_noun
 from fulcrum.ui import ui_scale
 from fulcrum.ui.widgets.org_editor_widgets import action_button
 from fulcrum.ui.widgets.org_tree_dnd import DraftTree
@@ -179,10 +180,12 @@ class OrgTreePane(QWidget):
     def _label(self, node, warned: dict[str, str]) -> str:
         if isinstance(node, ContainerDraft):
             teams, people = self._draft.rollup(node.id)
-            badge = f"{teams} teams · {people:,} people"
+            units = count_noun(teams, "team")
+            heads = count_noun(people, "person", "people")
+            badge = f"{units} · {heads}"
             warning = _WARNING_BADGE if node.id in warned else ""
             return f"{node.category} · {node.name}   ({badge}){warning}"
-        return f"{node.name}   ({node.people:,} people)"
+        return f"{node.name}   ({count_noun(node.people, 'person', 'people')})"
 
     def _actions(self, node_id: str, is_container: bool) -> QWidget:
         # + and - sit side by side so a row only needs one button of height;
@@ -233,8 +236,9 @@ class OrgTreePane(QWidget):
         summary = self._draft.removal_summary(node_id)
         if summary.is_container and summary.team_count:
             message = (
-                f"Remove {summary.name} and its {summary.team_count} teams, "
-                f"{summary.people:,} people?"
+                f"Remove {summary.name} and its "
+                f"{count_noun(summary.team_count, 'team')}, "
+                f"{count_noun(summary.people, 'person', 'people')}?"
             )
         elif summary.is_container:
             message = f"Remove the unit '{summary.name}'?"

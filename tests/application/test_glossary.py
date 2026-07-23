@@ -18,6 +18,7 @@ from fulcrum.application.glossary import (
 )
 from fulcrum.domain.moves import MoveKind
 from fulcrum.domain.signals import SIGNAL_DEFINITIONS
+from fulcrum.domain.simulation import DEFAULT_THRESHOLDS
 
 
 def test_glossary_has_sections_for_moves_signals_and_ideas():
@@ -65,3 +66,14 @@ def test_short_help_rejects_unknown_keys():
 
 def test_incentive_skew_short_help_uses_a_concrete_example():
     assert "tickets closed" in short_help(TERM_INCENTIVE_SKEW)
+
+
+def test_move_classification_states_the_threshold_ranges():
+    concepts = dict(build_glossary()[2][1])
+    definition = concepts["Move classification"]
+    great = f"{DEFAULT_THRESHOLDS.great_delta:g}"
+    good = f"{DEFAULT_THRESHOLDS.good_delta:g}"
+    blunder = f"{-DEFAULT_THRESHOLDS.blunder_delta:g}"
+    for token in (great, good, blunder):
+        assert token in definition
+    assert great in short_help(TERM_MOVE_CLASSIFICATION)

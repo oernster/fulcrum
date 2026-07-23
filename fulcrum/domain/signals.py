@@ -62,7 +62,7 @@ SIGNAL_DEFINITIONS: tuple[SignalDefinition, ...] = (
             "Decisions pushed up to higher authority to get a single " "release out."
         ),
         measures="Teams that must escalate rather than decide locally",
-        unit="count",
+        unit="teams",
         reads_high_when="local authority is missing where the work happens",
         maps_to="broken authority worldlines",
     ),
@@ -84,7 +84,7 @@ SIGNAL_DEFINITIONS: tuple[SignalDefinition, ...] = (
             "unchecked it burns people out."
         ),
         measures="Excess inbound dependence on teams that lack local authority",
-        unit="load",
+        unit="load index",
         reads_high_when=(
             "influence is concentrating on a team with no authority to wield it"
         ),
@@ -106,6 +106,28 @@ class SignalReading:
 
     definition: SignalDefinition
     value: float
+
+
+_TURNS_DECIMALS = 1
+_LOAD_DECIMALS = 1
+
+
+def format_reading_value(reading: SignalReading) -> str:
+    """The display text for a reading: '1.5 turns', '2', '30%', '0.4'.
+
+    A count renders as a bare integer and the rework share as a percent
+    sign, so the chips read as plain English rather than internal unit
+    names ('2.0 count', '30.0 percent').
+    """
+    value = reading.value
+    key = reading.definition.key
+    if key == QUEUE_AGE:
+        return f"{value:.{_TURNS_DECIMALS}f} turns"
+    if key == ESCALATIONS:
+        return f"{round(value):,}"
+    if key == REWORK_RATE:
+        return f"{round(value)}%"
+    return f"{value:.{_LOAD_DECIMALS}f}"
 
 
 def compute_signals(

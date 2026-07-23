@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 
 from fulcrum.domain.hierarchy import total_headcount
 from fulcrum.domain.models import OrgState
+from fulcrum.shared.text import count_noun
 from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 from fulcrum.ui import ui_scale
 from fulcrum.ui.widgets.complete_map_view import CompleteMapView
@@ -46,7 +47,10 @@ class OrgOverviewDialog(NeutralDialog):
         self._mode.addItems([_COMPLETE, _DRILL])
         controls.addWidget(self._mode)
         controls.addStretch()
-        summary = QLabel(f"{total_headcount(org):,} people · {len(org.teams)} teams")
+        summary = QLabel(
+            f"{count_noun(total_headcount(org), 'person', 'people')} · "
+            f"{count_noun(len(org.teams), 'team')}"
+        )
         summary.setObjectName("Heading")
         controls.addWidget(summary)
         layout.addLayout(controls)

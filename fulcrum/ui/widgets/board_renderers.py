@@ -15,7 +15,7 @@ from fulcrum.application.dto import MoveValuation
 from fulcrum.application.glossary import short_help
 from fulcrum.application.move_text import describe_move
 from fulcrum.domain.models import OrgState
-from fulcrum.domain.signals import SignalReading
+from fulcrum.domain.signals import SignalReading, format_reading_value
 from fulcrum.ui import ui_scale
 
 _VALUE_DECIMALS = 1
@@ -76,10 +76,7 @@ def signal_row(
     on_show: Callable[[SignalReading], None],
 ) -> QWidget:
     """A signal chip plus a magnifier that opens its definition, like a move row."""
-    chip = QPushButton(
-        f"{reading.definition.label}: "
-        f"{reading.value:.{_VALUE_DECIMALS}f} {reading.definition.unit}"
-    )
+    chip = QPushButton(f"{reading.definition.label}: {format_reading_value(reading)}")
     chip.setObjectName("SignalChip")
     chip.setToolTip(short_help(reading.definition.key))
     chip.setCursor(Qt.CursorShape.PointingHandCursor)

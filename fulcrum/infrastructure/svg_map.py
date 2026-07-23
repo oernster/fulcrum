@@ -12,6 +12,7 @@ from html import escape
 
 from fulcrum.application.map_model import build_level
 from fulcrum.domain.models import OrgState
+from fulcrum.shared.text import count_noun
 
 _KIND_DOMAIN = "domain"
 _NODE_W = 180
@@ -87,7 +88,7 @@ def _node_svg(node, pos) -> list[str]:
     x, y = pos
     fill = _DOMAIN_FILL if node.kind == _KIND_DOMAIN else _TEAM_FILL
     if node.kind == _KIND_DOMAIN:
-        sub = f"{node.team_count} teams"
+        sub = count_noun(node.team_count, "team")
     else:
         sub = "decides locally" if node.authority_ratio >= _FULL else "escalates"
     parts = [

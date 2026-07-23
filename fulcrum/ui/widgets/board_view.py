@@ -19,6 +19,7 @@ from fulcrum.application.game_session import GameSession
 from fulcrum.application.move_text import move_note
 from fulcrum.domain.hierarchy import child_domains, total_headcount
 from fulcrum.domain.signals import SignalReading
+from fulcrum.shared.text import count_noun
 from fulcrum.domain.simulation import MoveClassification
 from fulcrum.ui import ui_scale
 from fulcrum.ui.analysis_thread import AnalysisThread
@@ -209,8 +210,8 @@ class BoardView(QWidget):
             f"moves played: {len(self._session.history)}"
         )
         self._headcount_label.setText(
-            f"{total_headcount(self._session.org):,} people across "
-            f"{len(self._session.org.teams)} teams"
+            f"{count_noun(total_headcount(self._session.org), 'person', 'people')} "
+            f"across {count_noun(len(self._session.org.teams), 'team')}"
         )
         self._set_focus_note()
         self._map_caption.setText(self._map_caption_text())

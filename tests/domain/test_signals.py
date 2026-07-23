@@ -9,8 +9,10 @@ from fulcrum.domain.signals import (
     QUEUE_AGE,
     REWORK_RATE,
     SIGNAL_DEFINITIONS,
+    SignalReading,
     compute_signals,
     definition,
+    format_reading_value,
 )
 
 
@@ -42,6 +44,19 @@ def test_compute_signals_values_and_order():
     assert by_key[REWORK_RATE] == pytest.approx((0.4 + 0.6) / 2 * 100)
     assert by_key[QUEUE_AGE] >= 0.0
     assert by_key[INFLUENCE] >= 0.0
+
+
+def _reading(key: str, value: float) -> SignalReading:
+    return SignalReading(definition=definition(key), value=value)
+
+
+def test_format_reading_value_reads_as_plain_english():
+    assert format_reading_value(_reading(QUEUE_AGE, 1.53)) == "1.5 turns"
+    assert format_reading_value(_reading(ESCALATIONS, 2.0)) == "2"
+    assert format_reading_value(_reading(ESCALATIONS, 1234.0)) == "1,234"
+    assert format_reading_value(_reading(REWORK_RATE, 30.04)) == "30%"
+    assert format_reading_value(_reading(INFLUENCE, 0.0)) == "0.0"
+    assert format_reading_value(_reading(INFLUENCE, 0.46)) == "0.5"
 
 
 def test_influence_signal_reads_the_load_for_an_authority_less_hub():

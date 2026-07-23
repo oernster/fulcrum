@@ -14,6 +14,7 @@ from dataclasses import dataclass
 
 from fulcrum.application.move_text import move_note
 from fulcrum.domain.moves import MoveKind
+from fulcrum.domain.simulation import DEFAULT_THRESHOLDS as _THRESHOLDS
 from fulcrum.domain.signals import ESCALATIONS, INFLUENCE, QUEUE_AGE, REWORK_RATE
 from fulcrum.domain.signals import SIGNAL_DEFINITIONS
 
@@ -161,13 +162,20 @@ _CONCEPTS: tuple[ConceptEntry, ...] = (
         key=TERM_MOVE_CLASSIFICATION,
         term="Move classification",
         definition=(
-            "How a move scores: great or good is a clear improvement, neutral "
-            "has little effect, bad or blunder makes the structure worse."
+            "How a move scores, by the points it would add to or remove from "
+            f"the structural health score: great adds "
+            f"{_THRESHOLDS.great_delta:g} or more, good adds "
+            f"{_THRESHOLDS.good_delta:g} or more, neutral gains less than "
+            f"{_THRESHOLDS.good_delta:g} without losing anything, bad loses "
+            f"less than {-_THRESHOLDS.blunder_delta:g} and blunder loses "
+            f"{-_THRESHOLDS.blunder_delta:g} or more."
         ),
         short_help=(
-            "How a move scores before you play it: great or good clearly "
-            "improves the structure, neutral barely moves it and bad or "
-            "blunder damages it, exactly as a chess engine grades moves."
+            "How a move scores before you play it, exactly as a chess engine "
+            f"grades moves: great adds {_THRESHOLDS.great_delta:g} or more "
+            f"points, good at least {_THRESHOLDS.good_delta:g}, neutral "
+            f"gains less than {_THRESHOLDS.good_delta:g}, bad dips below "
+            f"zero and blunder loses {-_THRESHOLDS.blunder_delta:g} or more."
         ),
     ),
     ConceptEntry(

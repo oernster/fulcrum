@@ -12,7 +12,8 @@ from __future__ import annotations
 
 from random import Random
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSize, Qt
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
     QDialogButtonBox,
     QHBoxLayout,
@@ -20,12 +21,14 @@ from PySide6.QtWidgets import (
     QSpinBox,
     QSplitter,
     QVBoxLayout,
+    QWidget,
 )
 
 from fulcrum.application.dto import OrgBlueprint
 from fulcrum.application.glossary import TERM_WORKLOAD, short_help
 from fulcrum.application.name_pool import NamePicker
 from fulcrum.application.org_draft import OrgDraft
+from fulcrum.shared.text import count_noun
 from fulcrum.ui import ui_scale
 from fulcrum.ui.widgets.dependency_editor import DependencyEditor
 from fulcrum.ui.widgets.glossary_dialog import GlossaryDialog
@@ -41,12 +44,24 @@ _MIN_WORKLOAD = 1
 _MAX_WORKLOAD = 50
 _TREE_PANE_W = 560
 _INSPECTOR_PANE_W = 400
+# Modelling needs room: the dialog opens at nearly the whole app window (or
+# screen, when there is no parent) and carries a maximise button, so the tree
+# workspace scales to the organisation rather than to a fixed dialog.
+_PARENT_FILL = 0.95
+_SCREEN_FILL = 0.90
+# The structure rows dominate the dependency rows; the splitter lets the user
+# rebalance.
+_STRUCTURE_SHARE = 3
+_DEPS_SHARE = 1
+_STRUCTURE_ROW_H = 460
+_DEPS_ROW_H = 220
 _FRESH_TITLE = "Model my organisation"
 _EDIT_TITLE = "Edit my organisation"
 _HINT = (
-    "Start a company, add items inside it with + or the right-click menu and "
-    "set what each item is (a tier, your own label or Team) with the Type "
-    "dropdown on the right. Unsure on a term? Open the "
+    "Start at any tier from the New dropdown (a whole company down to a "
+    "single team), add items inside a unit with + or the right-click menu "
+    "and set what each item is (a tier, your own label or Team) with the "
+    "Type dropdown on the right. Unsure on a term? Open the "
     f'<a href="#glossary" style="color: {_ACCENT};">decision glossary</a>.'
 )
 
@@ -62,7 +77,9 @@ class OrgEditorDialog(NeutralDialog):
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle(_EDIT_TITLE if blueprint is not None else _FRESH_TITLE)
+        self.setWindowFlag(Qt.WindowType.WindowMaximizeButtonHint, True)
         self.setMinimumSize(ui_scale.px(_MIN_WIDTH), ui_scale.px(_MIN_HEIGHT))
+        self.resize(self._initial_size(parent))
         names = NamePicker(rng if rng is not None else Random())
         if blueprint is not None:
             self._draft = OrgDraft.from_blueprint(blueprint, names)
@@ -81,19 +98,29 @@ class OrgEditorDialog(NeutralDialog):
 
         self._tree = OrgTreePane(self._draft)
         self._inspector = OrgInspectorPane(self._draft)
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.addWidget(self._tree)
-        splitter.addWidget(self._inspector)
-        splitter.setStretchFactor(0, 1)
-        splitter.setStretchFactor(1, 0)
-        splitter.setSizes([ui_scale.px(_TREE_PANE_W), ui_scale.px(_INSPECTOR_PANE_W)])
-        layout.addWidget(splitter, 1)
+        panes = QSplitter(Qt.Orientation.Horizontal)
+        panes.addWidget(self._tree)
+        panes.addWidget(self._inspector)
+        panes.setStretchFactor(0, 1)
+        panes.setStretchFactor(1, 0)
+        panes.setSizes([ui_scale.px(_TREE_PANE_W), ui_scale.px(_INSPECTOR_PANE_W)])
 
-        layout.addWidget(labelled(QLabel("Dependencies between teams")))
         self._deps = DependencyEditor()
         self._deps.set_teams(self._draft.teams())
         self._deps.set_dependencies(self._draft.dependencies)
-        layout.addWidget(self._deps)
+        deps_box = QWidget()
+        deps_layout = QVBoxLayout(deps_box)
+        deps_layout.setContentsMargins(0, 0, 0, 0)
+        deps_layout.addWidget(labelled(QLabel("Dependencies between teams")))
+        deps_layout.addWidget(self._deps)
+
+        body = QSplitter(Qt.Orientation.Vertical)
+        body.addWidget(panes)
+        body.addWidget(deps_box)
+        body.setStretchFactor(0, _STRUCTURE_SHARE)
+        body.setStretchFactor(1, _DEPS_SHARE)
+        body.setSizes([ui_scale.px(_STRUCTURE_ROW_H), ui_scale.px(_DEPS_ROW_H)])
+        layout.addWidget(body, 1)
 
         workload_row = QHBoxLayout()
         workload_label = QLabel("Decisions arriving per team each turn")
@@ -114,6 +141,22 @@ class OrgEditorDialog(NeutralDialog):
         self._inspector.nodeEdited.connect(self._node_edited)
         self._inspector.kindChanged.connect(self._kind_changed)
         self._refresh_footer()
+
+    @staticmethod
+    def _initial_size(parent) -> QSize:
+        """Nearly the app window's size, or the screen's when parentless."""
+        if parent is not None:
+            base = parent.window().size()
+            return QSize(
+                round(base.width() * _PARENT_FILL),
+                round(base.height() * _PARENT_FILL),
+            )
+        screen = QGuiApplication.primaryScreen()
+        available = screen.availableGeometry().size()
+        return QSize(
+            round(available.width() * _SCREEN_FILL),
+            round(available.height() * _SCREEN_FILL),
+        )
 
     def _build_footer(self) -> QHBoxLayout:
         footer = QHBoxLayout()
@@ -161,7 +204,10 @@ class OrgEditorDialog(NeutralDialog):
 
     def _refresh_footer(self) -> None:
         teams, people = self._draft.totals()
-        self._totals.setText(f"{people:,} people across {teams} teams")
+        self._totals.setText(
+            f"{count_noun(people, 'person', 'people')} across "
+            f"{count_noun(teams, 'team')}"
+        )
         reason = self._draft.blocking_reason()
         self._reason.setText(reason or "")
         self._reason.setVisible(reason is not None)

@@ -21,6 +21,8 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import QGraphicsScene
 
+from fulcrum.shared.text import count_noun
+
 KIND_DOMAIN = "domain"
 NODE_W = 240.0
 NODE_H = 88.0
@@ -83,9 +85,9 @@ def _blend(low: QColor, high: QColor, ratio: float) -> QColor:
 
 
 def _sublabel(node) -> str:
-    people = f"{node.headcount:,} people"
+    people = count_noun(node.headcount, "person", "people")
     if node.kind == KIND_DOMAIN:
-        return f"{node.category} · {node.team_count} teams · {people}"
+        return f"{node.category} · {count_noun(node.team_count, 'team')} · {people}"
     decides = "decides locally" if node.authority_ratio >= _FULL else "escalates"
     return f"{decides} · {people}"
 
