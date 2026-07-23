@@ -171,9 +171,10 @@ _TEXT_MUTED = "#9aa3af"
 _ACCENT = "#f59e0b"
 _ACCENT_BRIGHT = "#fbbf24"
 _DISABLED_TEXT = "#5b6470"
-# Green hover border: an enabled control under the mouse reads as actionable,
-# matching the app's own theme.
+# The app's ring model: no ring at rest, a green ring while an enabled
+# control is hovered or focused and a permanent red ring while disabled.
 _HOVER_GREEN = "#22c55e"
+_DISABLED_BORDER = "#ef4444"
 
 _STYLESHEET = f"""
 QWidget {{
@@ -195,6 +196,12 @@ QPushButton {{
 }}
 QPushButton:enabled:hover {{
     border-color: {_HOVER_GREEN};
+}}
+QPushButton:enabled:focus {{
+    border-color: {_HOVER_GREEN};
+}}
+QPushButton:disabled {{
+    border-color: {_DISABLED_BORDER};
 }}
 QPushButton#LicenceButton {{
     background: {_SURFACE}; color: {_TEXT};

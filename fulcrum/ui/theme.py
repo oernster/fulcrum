@@ -1,10 +1,12 @@
-"""Dark theme for Fulcrum, built around an amber accent with green hover.
+"""Dark theme for Fulcrum: amber for meaning, green and red for state.
 
-Every button takes a green border on hover only while it is enabled (green
-reads as "this is actionable"), never when disabled; keyboard focus keeps the
-amber border and move-gated controls keep their red cue. The 2px transparent
-default border keeps the hover from shifting the layout. Each colour is
-defined once here as a token rather than scattered hex.
+The ring model is three states and nothing else: no ring at rest, a green
+ring while an enabled control is hovered or focused (green reads as "you can
+use this") and a permanent red ring while a control is disabled. Amber is
+never a ring; it carries data meaning only (the score, authority encoding,
+brand text). The 2px transparent default border keeps rings from shifting the
+layout. Each colour is defined once here as a token rather than scattered
+hex.
 """
 
 from __future__ import annotations
@@ -24,15 +26,11 @@ _TEXT = "#e6e9ee"
 _TEXT_MUTED = "#9aa3af"
 _ACCENT = "#f59e0b"
 _ACCENT_BRIGHT = "#fbbf24"
-# A muted steel blue: distinct enough to read as the primary action without
-# fighting the amber accent, and dark enough that the ring colours sit on it.
-_PRIMARY_BG = "#5d81ad"
 _DISABLED_TEXT = "#5b6470"
-# Green hover border: an enabled control under the mouse reads as actionable;
-# the amber border stays for keyboard focus and disabled gating stays red.
-_HOVER_GREEN = "#22c55e"
-# Red border that flags a control disabled until the first move is played.
-_GATE_BORDER = "#ef4444"
+# Green ring: an enabled control under the mouse or holding keyboard focus.
+_RING_GREEN = "#22c55e"
+# Red ring: any disabled control, permanently, so unavailable is visible.
+_RING_RED = "#ef4444"
 
 _BASE_FONT_PT = 14
 _HEADING_SCALE = 1.5
@@ -88,14 +86,14 @@ QPushButton {{
     padding: 8px 16px;
     font-weight: 600;
 }}
-QPushButton:enabled:hover {{ border-color: {_HOVER_GREEN}; }}
-QPushButton:enabled:focus {{ border-color: {_ACCENT}; outline: none; }}
+QPushButton:enabled:hover {{ border-color: {_RING_GREEN}; }}
+QPushButton:enabled:focus {{ border-color: {_RING_GREEN}; outline: none; }}
 QPushButton:pressed {{ background-color: {_SURFACE}; }}
-QPushButton:disabled {{ color: {_DISABLED_TEXT}; background-color: {_SURFACE}; }}
-
-QPushButton#Primary {{ background-color: {_PRIMARY_BG}; color: {_BG}; }}
-QPushButton#Primary:enabled:hover {{ border-color: {_HOVER_GREEN}; }}
-QPushButton#Primary:enabled:focus {{ border-color: {_ACCENT}; }}
+QPushButton:disabled {{
+    color: {_DISABLED_TEXT};
+    background-color: {_SURFACE};
+    border-color: {_RING_RED};
+}}
 QPushButton#MoveButton {{
     text-align: left;
     padding: 6px 12px;
@@ -118,16 +116,14 @@ QPushButton#IconLink {{
     font-size: {glyph_pt}pt;
 }}
 QPushButton#IconLink:enabled:hover {{
-    border-color: {_HOVER_GREEN};
+    border-color: {_RING_GREEN};
     color: {_ACCENT_BRIGHT};
 }}
 QPushButton#IconLink:enabled:focus {{
-    border-color: {_ACCENT};
+    border-color: {_RING_GREEN};
     color: {_ACCENT_BRIGHT};
 }}
-/* Move-gated controls reverse the usual no-border-when-disabled rule. */
-QPushButton#IconLink:disabled {{ border-color: {_GATE_BORDER}; }}
-QPushButton#UndoButton:disabled {{ border-color: {_GATE_BORDER}; }}
+QPushButton#IconLink:disabled {{ border-color: {_RING_RED}; }}
 QPushButton#PreviewButton {{
     background: transparent;
     border: 2px solid transparent;
@@ -135,11 +131,11 @@ QPushButton#PreviewButton {{
     font-size: {glyph_pt}pt;
 }}
 QPushButton#PreviewButton:enabled:hover {{
-    border-color: {_HOVER_GREEN};
+    border-color: {_RING_GREEN};
     color: {_ACCENT_BRIGHT};
 }}
 QPushButton#PreviewButton:enabled:focus {{
-    border-color: {_ACCENT};
+    border-color: {_RING_GREEN};
     color: {_ACCENT_BRIGHT};
 }}
 
@@ -160,7 +156,7 @@ QMenuBar::item {{
     border: 2px solid transparent;
     border-radius: 4px;
 }}
-QMenuBar::item:selected {{ border: 2px solid {_ACCENT}; color: {_ACCENT_BRIGHT}; }}
+QMenuBar::item:selected {{ border: 2px solid {_RING_GREEN}; color: {_TEXT}; }}
 QMenu {{
     background-color: {_SURFACE};
     color: {_TEXT};
@@ -175,8 +171,8 @@ QMenu::item {{
     margin: 2px 4px;
 }}
 QMenu::item:selected {{
-    border: 2px solid {_ACCENT};
-    color: {_ACCENT_BRIGHT};
+    border: 2px solid {_RING_GREEN};
+    color: {_TEXT};
     background: transparent;
 }}
 QMenu::separator {{ height: 1px; background-color: {_BORDER}; margin: 4px 8px; }}
@@ -209,7 +205,7 @@ QTreeWidget::item:selected {{
 }}
 QSplitter::handle {{ background-color: {_BORDER}; }}
 
-QLabel#BlockedReason {{ color: {_GATE_BORDER}; }}
+QLabel#BlockedReason {{ color: {_RING_RED}; }}
 QPushButton#DiceButton {{ padding: 2px 8px; font-size: {glyph_pt}pt; }}
 QHeaderView::section {{
     background-color: {_BG};
@@ -226,7 +222,7 @@ QSpinBox, QDoubleSpinBox, QLineEdit, QComboBox {{
     padding: 4px 8px;
 }}
 QSpinBox:focus, QDoubleSpinBox:focus, QLineEdit:focus, QComboBox:focus {{
-    border: 2px solid {_ACCENT};
+    border: 2px solid {_RING_GREEN};
 }}
 QSpinBox::up-button, QDoubleSpinBox::up-button {{
     subcontrol-origin: border;
@@ -282,7 +278,7 @@ QRadioButton::indicator {{
     background: transparent;
 }}
 QRadioButton::indicator:checked {{ background: {_ACCENT}; border-color: {_ACCENT}; }}
-QRadioButton::indicator:enabled:hover {{ border-color: {_HOVER_GREEN}; }}
+QRadioButton::indicator:enabled:hover {{ border-color: {_RING_GREEN}; }}
 
 QSlider::groove:horizontal {{ height: 4px; background: {_BORDER}; border-radius: 2px; }}
 QSlider::handle:horizontal {{
