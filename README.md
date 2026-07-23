@@ -28,15 +28,27 @@ A short tour and the books behind it are at <https://oernster.github.io/fulcrum/
 
 - Generated levels, each resampled until it provably has a great move to find.
 - "Model my organisation": a two-pane editor where the org tree you are
-  building is always visible as a structure. Start a company, add items inside
-  it and set what each one is with a Type dropdown (Company, Division,
+  building is always visible as a structure. Start at any tier from the New
+  dropdown (a whole company down to a single team), add items inside a unit
+  and set what each one is with a Type dropdown (Company, Division,
   Department, Domain, your own label or Team); units nest to any depth with
   teams as the leaves. Rows drag like folders in a file manager: onto a unit
   to move inside, between rows to reorder, Ctrl held to copy, with illegal
   drops refused on the spot. An inspector edits the selected item, the footer
   shows a live people-and-teams rollup and an empty unit carries a warning
-  badge on its own row that explains itself on hover. A quick wizard is also
-  there for a fast first position.
+  badge on its own row that explains itself on hover. The dialog opens at
+  nearly the size of the app window and can be maximised, so a large
+  organisation gets a workspace to match. A quick wizard is also there for a
+  fast first position.
+- Dependencies between any two items: team to team, unit to unit or across
+  levels (a division blocked on a single platform team). An edge counts in
+  whichever frame shows both its endpoints as nodes: it merges into the
+  drilled map's arrows and the aggregate scores while the flat team-level
+  score stays honest.
+- Every level of the map is playable, the top level included: "Play this
+  level" scores the top-level units as one actor each, so dependencies
+  between them are priced, then "Score the whole org" returns to the flat
+  view.
 - "Edit my org": reopen the current organisation in the same editor at any
   time, whatever its origin (wizard, JSON import, random generation or a
   previous edit), change it and rescore. The current org autosaves, so the
@@ -71,8 +83,8 @@ A short tour and the books behind it are at <https://oernster.github.io/fulcrum/
 | Language | Python 3.11+ (developed on 3.13) |
 | UI | PySide6 (Qt for Python) |
 | Persistence | Local JSON files |
-| Tests | pytest, 100% gate on domain, application and infrastructure |
-| Format and lint | black (line length 88), flake8 |
+| Tests | pytest, 100% gate on domain, application, infrastructure and shared |
+| Format and lint | black (line length 88), flake8, ruff |
 | Icons and images | Pillow (build time) |
 | Packaging | Nuitka (Windows and macOS), Flatpak (Linux) |
 | Site | static HTML from `build_docs.py`, served on GitHub Pages |
