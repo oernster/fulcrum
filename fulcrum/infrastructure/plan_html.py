@@ -13,6 +13,7 @@ from html import escape
 from fulcrum.application.dto import DomainRecommendation, PlanReport, PlanStep
 from fulcrum.domain.models import OrgState
 from fulcrum.infrastructure.svg_map import render_overview_svg
+from fulcrum.shared.text import count_noun
 
 _BADGE = {
     "great": "#34d399",
@@ -74,7 +75,7 @@ def _summary_html(
             '<div class="card">',
             '<p class="score-line">Structural health: ',
             f"<b>{report.start_score:.1f}</b> &rarr; <b>{report.final_score:.1f}</b> ",
-            f"({delta:+.1f}) over {len(report.steps)} moves.</p>",
+            f"({delta:+.1f}) over {count_noun(len(report.steps), 'move')}.</p>",
             '<div class="maps">',
             f"<figure><figcaption>Before</figcaption>"
             f"{render_overview_svg(initial_org)}</figure>",

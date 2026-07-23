@@ -14,7 +14,7 @@ from fulcrum.application.interfaces import Simulator
 from fulcrum.application.move_text import describe_move
 from fulcrum.domain.models import OrgState
 from fulcrum.domain.moves import Move, apply_move
-from fulcrum.domain.signals import compute_signals
+from fulcrum.domain.signals import compute_signals, format_reading_value
 from fulcrum.domain.simulation import DEFAULT_THRESHOLDS, classify_delta
 
 _ORG_WIDE_LABEL = "Organisation-wide (CTO)"
@@ -90,16 +90,15 @@ def _rationale(
     best = None
     for reading_before, reading_after in zip(signals_before, signals_after):
         drop = reading_before.value - reading_after.value
-        if best is None or drop > best[1] - best[2]:
-            best = (
-                reading_before.definition.label,
-                reading_before.value,
-                reading_after.value,
-            )
-    label, value_before, value_after = best
+        if best is None or drop > best[0].value - best[1].value:
+            best = (reading_before, reading_after)
+    eased_from, eased_to = best
     health = f"structural health {before:.1f} -> {after:.1f} ({classification})"
-    if value_before - value_after > _EPS:
-        eased = f"{label} falls {value_before:.1f} -> {value_after:.1f}"
+    if eased_from.value - eased_to.value > _EPS:
+        eased = (
+            f"{eased_from.definition.label} falls "
+            f"{format_reading_value(eased_from)} -> {format_reading_value(eased_to)}"
+        )
         return f"{description}: {eased}; {health}."
     return f"{description}: {health}."
 
