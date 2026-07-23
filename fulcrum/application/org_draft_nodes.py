@@ -13,6 +13,10 @@ from fulcrum.domain.models import DEFAULT_HEADCOUNT, GROUP_CATEGORIES
 
 DEFAULT_SKEW_PERCENT = 30
 
+# The type label offered beside the group tiers in the editor's type dropdown.
+# It is not a category: choosing it converts the item to a team leaf.
+TEAM_TYPE = "Team"
+
 
 @dataclass
 class TeamDraft:
@@ -65,6 +69,36 @@ class DraftWarning:
 def default_category_for_depth(depth: int) -> str:
     """The group tier suggested at a nesting depth: Company down to Domain."""
     return GROUP_CATEGORIES[min(depth, len(GROUP_CATEGORIES) - 1)]
+
+
+def can_nest(child_category: str, parent_category: str) -> bool:
+    """Whether a unit of child_category may sit under parent_category.
+
+    A tier never supersedes the tiers above it: a Company cannot sit under a
+    Division. Same-or-lower tiers nest freely, including skipping levels (a
+    Domain directly under a Company) and repeating one (a Domain under a
+    Domain). A custom label carries no tier, so it nests anywhere.
+    """
+    if child_category not in GROUP_CATEGORIES:
+        return True
+    if parent_category not in GROUP_CATEGORIES:
+        return True
+    child_tier = GROUP_CATEGORIES.index(child_category)
+    parent_tier = GROUP_CATEGORIES.index(parent_category)
+    return child_tier >= parent_tier
+
+
+def retitle_for_category(name: str, old_category: str, new_category: str) -> str:
+    """Re-derive an auto-generated name when its unit's category changes.
+
+    'Company 1' becomes 'Group 1' when the category drops to Group; a name the
+    user has typed over (anything not exactly the old category plus a number)
+    is left alone.
+    """
+    prefix = f"{old_category} "
+    if name.startswith(prefix) and name[len(prefix) :].isdigit():
+        return f"{new_category} {name[len(prefix):]}"
+    return name
 
 
 def iter_nodes(siblings: list):

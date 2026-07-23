@@ -1,24 +1,25 @@
 """The org editor's left pane: the organisation rendered as a live tree.
 
-Every node shows its category, name and a rolled-up badge; containers carry an
-inline + (add a team or sub-group) and every node a - (remove, behind a
-confirm). The context menu adds Duplicate, Move up, Move down and Move to. The
-pane is a thin view over the OrgDraft: every operation calls the draft then
-rebuilds, so the tree always reflects the model.
+A new company is the outer cage (button or right-click on empty space); every
+unit takes items with the inline + or the context menu and a new item starts
+as a team, converted to any tier from the inspector's type dropdown. Rows can
+be dragged file-manager style: onto a unit to move inside, between rows to
+reorder, Ctrl held to copy. The pane is a thin view over the OrgDraft: every
+operation calls the draft then rebuilds, so the tree always reflects the
+model.
 """
 
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QInputDialog,
+    QLabel,
     QMenu,
     QMessageBox,
     QPushButton,
-    QTreeWidget,
     QTreeWidgetItem,
     QVBoxLayout,
     QWidget,
@@ -28,6 +29,7 @@ from fulcrum.application.org_draft import OrgDraft
 from fulcrum.application.org_draft_nodes import ContainerDraft
 from fulcrum.ui import ui_scale
 from fulcrum.ui.widgets.org_editor_widgets import action_button
+from fulcrum.ui.widgets.org_tree_dnd import DraftTree
 
 _ROLE_ID = int(Qt.ItemDataRole.UserRole)
 _COL_LABEL = 0
@@ -36,8 +38,13 @@ _ACTIONS_COLUMN_WIDTH = 44
 _ACTION_SPACING = 2
 _WARNING_BADGE = " \N{WARNING SIGN}"
 _TOP_LEVEL_LABEL = "(top level)"
-_ADD_TEAM_TEXT = "Add a team here"
-_ADD_SUBGROUP_TEXT = "Add a sub-group here"
+_NEW_COMPANY_TEXT = "New company"
+_ADD_ITEM_TEXT = "Add item here"
+_DRAG_HINT = (
+    "Drag an item onto a unit to move it inside, between rows to reorder; "
+    "hold Ctrl to copy. A unit never sits under a lower tier and teams are "
+    "always the leaves."
+)
 
 
 class OrgTreePane(QWidget):
@@ -52,7 +59,7 @@ class OrgTreePane(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        self._tree = QTreeWidget()
+        self._tree = DraftTree(self._draft.can_place, self._handle_drop)
         self._tree.setColumnCount(2)
         self._tree.setHeaderHidden(True)
         self._tree.setColumnWidth(_COL_ACTIONS, ui_scale.px(_ACTIONS_COLUMN_WIDTH))
@@ -66,18 +73,23 @@ class OrgTreePane(QWidget):
         layout.addWidget(self._tree, 1)
 
         row = QHBoxLayout()
-        add_group = QPushButton("Add a group")
-        add_group.setToolTip("Start a new top-level group")
-        add_group.clicked.connect(self._add_root_group)
+        new_company = QPushButton(_NEW_COMPANY_TEXT)
+        new_company.setToolTip("Start a new top-level company")
+        new_company.clicked.connect(self._new_company)
         expand = QPushButton("Expand all")
         expand.clicked.connect(self._tree.expandAll)
         collapse = QPushButton("Collapse all")
         collapse.clicked.connect(self._tree.collapseAll)
-        row.addWidget(add_group)
+        row.addWidget(new_company)
         row.addWidget(expand)
         row.addWidget(collapse)
         row.addStretch()
         layout.addLayout(row)
+
+        hint = QLabel(_DRAG_HINT)
+        hint.setObjectName("Muted")
+        hint.setWordWrap(True)
+        layout.addWidget(hint)
 
         self.rebuild()
 
@@ -85,14 +97,16 @@ class OrgTreePane(QWidget):
 
     def rebuild(self) -> None:
         """Re-render the whole tree, preserving expansion and selection."""
+        had_items = self._tree.topLevelItemCount() > 0
         expanded = self._expanded_ids()
         selected = self.selected_id()
         self._tree.blockSignals(True)
         self._tree.clear()
         warned = {w.node_id for w in self._draft.warnings()}
         for node in self._draft.roots:
-            self._tree.addTopLevelItem(self._build_item(node, warned))
-        self._restore_expansion(expanded)
+            self._add_row(node, None, warned)
+        if had_items:
+            self._restore_expansion(expanded)
         self._tree.blockSignals(False)
         if selected:
             self.select_node(selected)
@@ -117,7 +131,7 @@ class OrgTreePane(QWidget):
         item = self._tree.currentItem()
         return item.data(_COL_LABEL, _ROLE_ID) if item is not None else ""
 
-    def _build_item(self, node, warned: set[str]) -> QTreeWidgetItem:
+    def _add_row(self, node, parent_item, warned: set[str]) -> None:
         item = QTreeWidgetItem()
         item.setText(_COL_LABEL, self._label(node, warned))
         item.setData(_COL_LABEL, _ROLE_ID, node.id)
@@ -126,13 +140,19 @@ class OrgTreePane(QWidget):
             font = item.font(_COL_LABEL)
             font.setBold(True)
             item.setFont(_COL_LABEL, font)
-            for child in node.children:
-                item.addChild(self._build_item(child, warned))
+        # Attach before decorating: item widgets and expansion state are view
+        # state, which Qt silently drops on rows not yet in the tree.
+        if parent_item is None:
+            self._tree.addTopLevelItem(item)
+        else:
+            parent_item.addChild(item)
         self._tree.setItemWidget(
             item, _COL_ACTIONS, self._actions(node.id, is_container)
         )
+        if is_container:
+            for child in node.children:
+                self._add_row(child, item, warned)
         item.setExpanded(True)
-        return item
 
     def _label(self, node, warned: set[str]) -> str:
         if isinstance(node, ContainerDraft):
@@ -148,8 +168,8 @@ class OrgTreePane(QWidget):
         column.setContentsMargins(0, 0, 0, 0)
         column.setSpacing(ui_scale.px(_ACTION_SPACING))
         if is_container:
-            add = action_button("+", "Add a team or a sub-group here")
-            add.clicked.connect(lambda _=False, i=node_id: self._add_menu(i))
+            add = action_button("+", _ADD_ITEM_TEXT)
+            add.clicked.connect(lambda _=False, i=node_id: self._add_item(i))
             column.addWidget(add)
         remove = action_button("-", "Remove this item")
         remove.clicked.connect(lambda _=False, i=node_id: self._remove(i))
@@ -158,22 +178,12 @@ class OrgTreePane(QWidget):
 
     # ------------------------------------------------------------ operations
 
-    def _add_root_group(self) -> None:
+    def _new_company(self) -> None:
         node = self._draft.add_container(None)
         self._after_change(node.id)
 
-    def _add_menu(self, node_id: str) -> None:
-        menu = QMenu(self)
-        menu.addAction(_ADD_TEAM_TEXT, lambda: self._add_team(node_id))
-        menu.addAction(_ADD_SUBGROUP_TEXT, lambda: self._add_subgroup(node_id))
-        menu.exec(QCursor.pos())
-
-    def _add_team(self, parent_id: str) -> None:
+    def _add_item(self, parent_id: str) -> None:
         node = self._draft.add_team(parent_id)
-        self._after_change(node.id)
-
-    def _add_subgroup(self, parent_id: str) -> None:
-        node = self._draft.add_container(parent_id)
         self._after_change(node.id)
 
     def _remove(self, node_id: str) -> None:
@@ -184,7 +194,7 @@ class OrgTreePane(QWidget):
                 f"{summary.people:,} people?"
             )
         elif summary.is_container:
-            message = f"Remove the group '{summary.name}'?"
+            message = f"Remove the unit '{summary.name}'?"
         else:
             message = f"Remove the team '{summary.name}'?"
         answer = QMessageBox.question(
@@ -197,6 +207,16 @@ class OrgTreePane(QWidget):
             return
         self._draft.remove(node_id)
         self._after_change("")
+
+    def _handle_drop(
+        self, node_id: str, parent_id: str | None, index, copy: bool
+    ) -> None:
+        if copy:
+            node = self._draft.copy_into(node_id, parent_id, index)
+            if node is not None:
+                self._after_change(node.id)
+        elif self._draft.move_to(node_id, parent_id, index):
+            self._after_change(node_id)
 
     def _move_up(self, node_id: str) -> None:
         if self._draft.move_up(node_id):
@@ -227,14 +247,15 @@ class OrgTreePane(QWidget):
 
     def _context_menu(self, position) -> None:
         item = self._tree.itemAt(position)
+        menu = QMenu(self)
         if item is None:
+            menu.addAction(_NEW_COMPANY_TEXT, self._new_company)
+            menu.exec(self._tree.viewport().mapToGlobal(position))
             return
         node_id = item.data(_COL_LABEL, _ROLE_ID)
         node = self._draft.find(node_id)
-        menu = QMenu(self)
         if isinstance(node, ContainerDraft):
-            menu.addAction(_ADD_TEAM_TEXT, lambda: self._add_team(node_id))
-            menu.addAction(_ADD_SUBGROUP_TEXT, lambda: self._add_subgroup(node_id))
+            menu.addAction(_ADD_ITEM_TEXT, lambda: self._add_item(node_id))
             menu.addSeparator()
         menu.addAction("Duplicate", lambda: self._duplicate(node_id))
         menu.addAction("Move up", lambda: self._move_up(node_id))
@@ -272,7 +293,5 @@ class OrgTreePane(QWidget):
         }
 
     def _restore_expansion(self, expanded: set[str]) -> None:
-        if not expanded:
-            return
         for item in self._all_items():
             item.setExpanded(item.data(_COL_LABEL, _ROLE_ID) in expanded)

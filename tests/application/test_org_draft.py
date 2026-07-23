@@ -16,7 +16,9 @@ from fulcrum.application.org_draft import OrgDraft
 from fulcrum.application.org_draft_nodes import (
     ContainerDraft,
     TeamDraft,
+    can_nest,
     default_category_for_depth,
+    retitle_for_category,
 )
 from fulcrum.domain.models import GROUP_CATEGORIES, Origin
 
@@ -276,3 +278,123 @@ def test_new_ids_never_collide_with_imported_ones():
     added = draft.add_team(None)
     assert added.id not in {"team_1", "team_2"}
     assert draft.find(added.id) is added
+
+
+def test_can_nest_enforces_tier_order_only_for_known_tiers():
+    assert can_nest("Division", "Company")
+    assert can_nest("Domain", "Company")
+    assert can_nest("Domain", "Domain")
+    assert not can_nest("Company", "Division")
+    assert can_nest("Tribe", "Division")
+    assert can_nest("Company", "Tribe")
+
+
+def test_retitle_follows_only_auto_generated_names():
+    assert retitle_for_category("Company 1", "Company", "Group") == "Group 1"
+    assert retitle_for_category("Acme", "Company", "Group") == "Acme"
+    assert retitle_for_category("Company 1 copy", "Company", "Group") == (
+        "Company 1 copy"
+    )
+
+
+def test_move_to_with_index_reorders_within_a_parent():
+    draft = _draft()
+    parent = draft.add_container(None)
+    first = draft.add_team(parent.id)
+    second = draft.add_team(parent.id)
+    third = draft.add_team(parent.id)
+    assert draft.move_to(first.id, parent.id, 3)
+    assert parent.children == [second, third, first]
+    assert draft.move_to(first.id, parent.id, 0)
+    assert parent.children == [first, second, third]
+
+
+def test_move_to_refuses_a_tier_above_the_parent():
+    draft = _draft()
+    company = draft.add_container(None)
+    division = draft.add_container(None)
+    division.category = "Division"
+    assert not draft.move_to(company.id, division.id)
+    assert draft.move_to(division.id, company.id)
+
+
+def test_can_place_covers_every_refusal():
+    draft = OrgDraft.from_blueprint(_blueprint(), NamePicker(Random(0)))
+    assert draft.can_place("team_2", "d2")
+    assert draft.can_place("d2", None)
+    assert not draft.can_place("d1", "d2")
+    assert not draft.can_place("team_2", "team_1")
+    assert not draft.can_place("d1", "d1")
+
+
+def test_copy_into_copies_a_subtree_with_fresh_ids():
+    draft = OrgDraft.from_blueprint(_blueprint(), NamePicker(Random(0)))
+    copy = draft.copy_into("d2", None, 0)
+    assert copy is not None
+    assert draft.roots[0] is copy
+    assert copy.id != "d2"
+    assert copy.name == "Payments"
+    assert copy.children[0].id != "team_1"
+    assert draft.copy_into("d1", "d2") is None
+
+
+def test_set_category_retitles_and_guards_the_tier():
+    draft = _draft()
+    company = draft.add_container(None)
+    child = draft.add_container(company.id)
+    assert draft.set_category(company.id, "Group")
+    assert company.name == "Group 1"
+    assert not draft.set_category(child.id, "Company")
+    assert draft.set_category(child.id, "Domain")
+    team = draft.add_team(company.id)
+    assert not draft.set_category(team.id, "Division")
+
+
+def test_convert_team_to_container_and_back():
+    draft = OrgDraft.from_blueprint(_blueprint(), NamePicker(Random(0)))
+    owner = draft.find("team_2").owner
+    unit = draft.convert_to_container("team_2", "Division")
+    assert isinstance(unit, ContainerDraft)
+    assert unit.id == "team_2"
+    assert unit.lead == owner
+    assert draft.dependencies == ()
+    team = draft.convert_to_team("team_2")
+    assert isinstance(team, TeamDraft)
+    assert team.owner == owner
+
+
+def test_convert_refusals():
+    draft = OrgDraft.from_blueprint(_blueprint(), NamePicker(Random(0)))
+    assert draft.convert_to_team("d1") is None
+    assert draft.convert_to_team("team_2") is None
+    assert draft.convert_to_container("d1", "Division") is None
+    division = draft.find("d2")
+    division.children.clear()
+    assert draft.convert_to_team("d2") is not None
+
+
+def test_convert_respects_the_parent_tier():
+    draft = _draft()
+    division = draft.add_container(None)
+    division.category = "Division"
+    team = draft.add_team(division.id)
+    assert draft.convert_to_container(team.id, "Company") is None
+    assert draft.convert_to_container(team.id, "Domain") is not None
+
+
+def test_conversion_retitles_auto_names():
+    draft = _draft()
+    parent = draft.add_container(None)
+    team = draft.add_team(parent.id)
+    unit = draft.convert_to_container(team.id, "Division")
+    assert unit.name == "Division 1"
+    back = draft.convert_to_team(unit.id)
+    assert back.name == "Team 1"
+
+
+def test_parent_of_finds_the_holder():
+    draft = OrgDraft.from_blueprint(_blueprint(), NamePicker(Random(0)))
+    assert draft.parent_of("team_1").id == "d2"
+    assert draft.parent_of("d2").id == "d1"
+    assert draft.parent_of("d1") is None
+    assert draft.parent_of("team_2") is None

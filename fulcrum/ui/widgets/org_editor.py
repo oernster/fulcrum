@@ -44,9 +44,10 @@ _INSPECTOR_PANE_W = 400
 _FRESH_TITLE = "Model my organisation"
 _EDIT_TITLE = "Edit my organisation"
 _HINT = (
-    "Build the organisation in the tree; select an item to edit it on the "
-    'right. Unsure on a term? Open the <a href="#glossary" '
-    f'style="color: {_ACCENT};">decision glossary</a>.'
+    "Start a company, add items inside it with + or the right-click menu and "
+    "set what each item is (a tier, your own label or Team) with the Type "
+    "dropdown on the right. Unsure on a term? Open the "
+    f'<a href="#glossary" style="color: {_ACCENT};">decision glossary</a>.'
 )
 
 
@@ -111,6 +112,7 @@ class OrgEditorDialog(NeutralDialog):
         self._tree.nodeSelected.connect(self._inspector.set_node)
         self._tree.structureChanged.connect(self._structure_changed)
         self._inspector.nodeEdited.connect(self._node_edited)
+        self._inspector.kindChanged.connect(self._kind_changed)
         self._refresh_footer()
 
     def _build_footer(self) -> QHBoxLayout:
@@ -150,6 +152,14 @@ class OrgEditorDialog(NeutralDialog):
 
     def _node_edited(self, _node_id: str) -> None:
         self._tree.update_labels()
+        self._deps.set_teams(self._draft.teams())
+        self._refresh_footer()
+
+    def _kind_changed(self, node_id: str) -> None:
+        """An item was converted between team and unit: re-render around it."""
+        self._tree.rebuild()
+        self._tree.select_node(node_id)
+        self._inspector.set_node(node_id)
         self._deps.set_teams(self._draft.teams())
         self._refresh_footer()
 

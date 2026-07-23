@@ -1,29 +1,30 @@
 """The editable draft of an organisation: the model behind the org editor.
 
 The editor UI is a thin view over this draft. Every structural operation (add,
-remove, move, duplicate) and every query (rollups, warnings, acceptance) lives
-here, so the behaviour is tested under the coverage gate and the editor is a
-pure function of the model. A draft converts losslessly to and from an
-OrgBlueprint, which is also how an existing org re-enters the editor. The node
-types themselves live in org_draft_nodes.
+remove, move, duplicate), every query (rollups, warnings, acceptance) and the
+placement rules live here, so the behaviour is tested under the coverage gate
+and the editor is a pure function of the model. The node types live in
+org_draft_nodes; blueprint serialisation and the type conversions are mixed in
+from org_draft_io and org_draft_convert.
 """
 
 from __future__ import annotations
 
-from fulcrum.application.dto import DependencySpec, DomainSpec, OrgBlueprint, TeamSpec
+from fulcrum.application.dto import DependencySpec
 from fulcrum.application.name_pool import NamePicker
+from fulcrum.application.org_draft_convert import DraftConversions
+from fulcrum.application.org_draft_io import DraftSerialisation
 from fulcrum.application.org_draft_nodes import (
     ContainerDraft,
     DraftWarning,
     RemovalSummary,
     TeamDraft,
+    can_nest,
     default_category_for_depth,
     iter_nodes,
     subtree,
     teams_beneath,
 )
-
-_PERCENT = 100
 
 DEFAULT_WORKLOAD = 6
 
@@ -32,7 +33,7 @@ _CONTAINER_PREFIX = "domain"
 _DUPLICATE_SUFFIX = " copy"
 
 
-class OrgDraft:
+class OrgDraft(DraftConversions, DraftSerialisation):
     """A mutable org structure with the operations the editor exposes."""
 
     def __init__(self, names: NamePicker, workload: int = DEFAULT_WORKLOAD) -> None:
@@ -112,21 +113,47 @@ class OrgDraft:
         siblings[index], siblings[index + 1] = siblings[index + 1], node
         return True
 
-    def move_to(self, node_id: str, parent_id: str | None) -> bool:
-        """Reparent a node, refusing a move into its own subtree or itself."""
-        node, siblings = self._locate(node_id)
-        if parent_id is not None:
-            if parent_id in (n.id for n in subtree(node)):
-                return False
-            target, _ = self._locate(parent_id)
-            if not isinstance(target, ContainerDraft):
-                return False
-            destination = target.children
-        else:
-            destination = self.roots
-        siblings.remove(node)
-        destination.append(node)
+    def can_place(self, node_id: str, parent_id: str | None) -> bool:
+        """Whether moving or copying a node under a parent would be legal.
+
+        Illegal placements: into the node's own subtree, into a team and a
+        unit under a lower tier than its own (a Company under a Division).
+        The top level accepts anything.
+        """
+        node, _ = self._locate(node_id)
+        if parent_id is None:
+            return True
+        if parent_id in (n.id for n in subtree(node)):
+            return False
+        target = self.find(parent_id)
+        if not isinstance(target, ContainerDraft):
+            return False
+        if isinstance(node, ContainerDraft):
+            return can_nest(node.category, target.category)
         return True
+
+    def move_to(
+        self, node_id: str, parent_id: str | None, index: int | None = None
+    ) -> bool:
+        """Reparent (and optionally position) a node, refusing illegal moves."""
+        if not self.can_place(node_id, parent_id):
+            return False
+        node, siblings = self._locate(node_id)
+        destination = self._children_of(parent_id)
+        position = self._insert_index(siblings, node, destination, index)
+        siblings.remove(node)
+        destination.insert(position, node)
+        return True
+
+    def copy_into(self, node_id: str, parent_id: str | None, index: int | None = None):
+        """Copy a subtree under a parent with fresh ids; None when illegal."""
+        if not self.can_place(node_id, parent_id):
+            return None
+        node, _ = self._locate(node_id)
+        copy = self._copy_node(node)
+        destination = self._children_of(parent_id)
+        destination.insert(len(destination) if index is None else index, copy)
+        return copy
 
     def duplicate(self, node_id: str):
         """Copy a node (and its subtree) beside itself with fresh ids."""
@@ -184,12 +211,10 @@ class OrgDraft:
 
     def move_targets(self, node_id: str) -> tuple[tuple[str, str], ...]:
         """The containers a node may legally move into."""
-        node, _ = self._locate(node_id)
-        excluded = {n.id for n in subtree(node)}
         return tuple(
             (ident, path)
             for ident, path in self.container_paths()
-            if ident not in excluded
+            if self.can_place(node_id, ident)
         )
 
     def warnings(self) -> tuple[DraftWarning, ...]:
@@ -212,94 +237,25 @@ class OrgDraft:
             return "At least one team needs people in it."
         return None
 
-    # --------------------------------------------------------- serialisation
-
-    @classmethod
-    def from_blueprint(cls, blueprint: OrgBlueprint, names: NamePicker) -> OrgDraft:
-        """Rebuild an editable draft from a blueprint, filling blank names."""
-        draft = cls(names, workload=blueprint.workload)
-        containers: dict[str, ContainerDraft] = {}
-        for spec in blueprint.domains:
-            containers[spec.id] = ContainerDraft(
-                id=spec.id,
-                category=spec.category,
-                name=spec.name,
-                lead=spec.lead or names.draw(),
-                unit_headcount=spec.headcount,
-            )
-        for spec in blueprint.domains:
-            parent = containers.get(spec.parent_id) if spec.parent_id else None
-            siblings = parent.children if parent is not None else draft.roots
-            siblings.append(containers[spec.id])
-        for team_spec in blueprint.teams:
-            team = TeamDraft(
-                id=team_spec.id,
-                name=team_spec.name,
-                people=team_spec.headcount,
-                ships_without_asking=team_spec.has_local_authority,
-                skew_percent=round(team_spec.incentive_skew * _PERCENT),
-                owner=team_spec.owner or names.draw(),
-                size=team_spec.size,
-            )
-            parent = (
-                containers.get(team_spec.domain_id) if team_spec.domain_id else None
-            )
-            siblings = parent.children if parent is not None else draft.roots
-            siblings.append(team)
-        draft.dependencies = blueprint.dependencies
-        draft._container_count = len(blueprint.domains)
-        draft._team_count = len(blueprint.teams)
-        return draft
-
-    def to_blueprint(self) -> OrgBlueprint:
-        """Serialise the draft back to the shared blueprint shape."""
-        domains: list[DomainSpec] = []
-        teams: list[TeamSpec] = []
-
-        def visit(node, parent_id: str | None) -> None:
-            if isinstance(node, ContainerDraft):
-                domains.append(
-                    DomainSpec(
-                        id=node.id,
-                        name=node.name or node.id,
-                        parent_id=parent_id,
-                        lead=node.lead,
-                        category=node.category,
-                        headcount=node.unit_headcount,
-                    )
-                )
-                for child in node.children:
-                    visit(child, node.id)
-            else:
-                teams.append(
-                    TeamSpec(
-                        id=node.id,
-                        name=node.name or node.id,
-                        has_local_authority=node.ships_without_asking,
-                        incentive_skew=node.skew_percent / _PERCENT,
-                        domain_id=parent_id,
-                        size=node.size,
-                        owner=node.owner,
-                        headcount=node.people,
-                    )
-                )
-
-        for root in self.roots:
-            visit(root, None)
-        team_ids = {team.id for team in teams}
-        dependencies = tuple(
-            dep
-            for dep in self.dependencies
-            if dep.upstream in team_ids and dep.downstream in team_ids
-        )
-        return OrgBlueprint(
-            teams=tuple(teams),
-            dependencies=dependencies,
-            workload=self.workload,
-            domains=tuple(domains),
-        )
-
     # -------------------------------------------------------------- internal
+
+    def _children_of(self, parent_id: str | None) -> list:
+        """The sibling list a legal placement under parent_id inserts into."""
+        if parent_id is None:
+            return self.roots
+        parent, _ = self._locate(parent_id)
+        return parent.children
+
+    @staticmethod
+    def _insert_index(
+        siblings: list, node, destination: list, index: int | None
+    ) -> int:
+        """Where to insert after removal, correcting for a same-list shift."""
+        if index is None:
+            return len(destination) - (1 if destination is siblings else 0)
+        if destination is siblings and siblings.index(node) < index:
+            return index - 1
+        return index
 
     def _new_id(self, prefix: str) -> str:
         existing = {node.id for node in self._walk()}
