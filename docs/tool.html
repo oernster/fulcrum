@@ -60,28 +60,83 @@
       <div class="shots">
         <figure class="shot">
           <div class="frame">
-            <img loading="lazy" src="assets/screenshots/play-board.png" alt="The Fulcrum board scoring an organisation's structure">
+            <img loading="lazy" src="assets/screenshots/play-board.png" alt="The Fulcrum board scoring a modelled organisation's structure">
           </div>
-          <figcaption><b>The position.</b> A generated organisation scoring
-            14.4 out of 100. Its 47 people across 9 teams sit under the Sales
-            section on the map; a stick figure marks who decides locally against
-            who escalates; the right-hand list holds the moves the current scope
-            opens up and the signals below flag the pain, including influence
-            without authority.</figcaption>
+          <figcaption><b>The position.</b> A modelled organisation scoring
+            62.8 out of 100: 51 people across 7 teams, drawn as the units of
+            the top level with the dependencies between them. Green marks a
+            unit whose teams decide locally; amber marks one that escalates.
+            The right-hand list holds every move the current scope opens up,
+            each graded from blunder to great with its exact gain, and the
+            signals below flag the pain. "Play this level" scores the top
+            level as its own frame, so even a dependency between two whole
+            units is priced.</figcaption>
         </figure>
         <figure class="shot">
           <div class="frame">
             <img loading="lazy" src="assets/screenshots/play-guide.png" alt="The Fulcrum guide planning a stronger org">
           </div>
           <figcaption><b>The line.</b> The guide plans the climb move by
-            move, 14.4 to 77.5, each step a good move. It opens by delegating
-            authority to the teams everyone depends on, then adds owners,
-            stabilises interfaces and collapses boundaries.</figcaption>
+            move, 62.8 to 97.6. It delegates authority team by team first,
+            because that is where the points are, then sweeps up the remaining
+            incentive skew: the same order the books argue for, discovered by
+            the engine.</figcaption>
         </figure>
       </div>
       <div class="cta">
         <a class="btn btn-primary" href="download.html">Download Fulcrum</a>
         <a class="btn btn-ghost" href="why.html">Why this exists</a>
+      </div>
+    </div>
+  </section>
+  <section id="model">
+    <div class="container">
+      <div class="eyebrow">Model your organisation</div>
+      <h2 class="section-title">Draw the org you actually have</h2>
+      <p class="section-sub">A two-pane editor keeps the structure visible
+        while you build it: units nest to any depth with teams as the leaves,
+        and an inspector edits whatever is selected.</p>
+      <div class="shots">
+        <figure class="shot">
+          <div class="frame">
+            <img loading="lazy" src="assets/screenshots/model-org.png" alt="The Fulcrum organisation editor: the org tree, the inspector and the dependency table">
+          </div>
+          <figcaption><b>The editor.</b> Start at any tier from the New
+            dropdown (a whole company down to a single team), drag rows like
+            folders and convert an item's type in place. Dependencies link any
+            two items: team to team, unit to unit or across levels, so a
+            division blocked on a single platform team is one honest row, not
+            a workaround. Everything round-trips: the model autosaves, reopens
+            for editing whatever its origin and exports as JSON.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+  <section id="output" class="alt">
+    <div class="container">
+      <div class="eyebrow">The output</div>
+      <h2 class="section-title">From a played line to a plan you can send</h2>
+      <p class="section-sub">One click exports the moves you played as a
+        self-contained HTML report: the health change, before and after maps
+        and a recommendation section addressed to each unit's lead, each move
+        justified by the signal it eased. This is a real export, embedded
+        here as shipped.</p>
+      <div class="shots">
+        <figure class="shot">
+          <div class="frame">
+            <iframe src="assets/html/fulcrum-presentation.html"
+                    title="An example Fulcrum plan export"
+                    loading="lazy"
+                    style="display:block;width:100%;height:640px;border:0;background:#0d0f12"></iframe>
+          </div>
+          <figcaption><b>The plan.</b> One delegation, plus six points of
+            structural health: the report names the move, the lead it belongs
+            to and the signal that eased. A JSON twin exports alongside it, so
+            the organisation and its played moves re-import to resume.</figcaption>
+        </figure>
+      </div>
+      <div class="cta">
+        <a class="btn btn-ghost" href="assets/html/fulcrum-presentation.html" target="_blank" rel="noopener">Open the example report</a>
       </div>
     </div>
   </section>
