@@ -19,7 +19,18 @@ The three composite penalty weights (latency, escalation, rework) must sum to
 1.0 by construction, so each is perturbed and the trio renormalised rather
 than perturbed in isolation. Integer parameters (ideal_team_size,
 influence_tolerance) are structural counts, not tuned magnitudes, so they are
-outside the sweep. The sweep is deterministic: no randomness, no wall clock.
+outside the sweep.
+
+The axis sweep explores only the edges of the perturbation box; models
+typically break in the interior. So a second, joint sweep follows: a Latin
+hypercube of draws inside the same box with every coefficient moving at once,
+reporting the fraction of draws under which each conclusion holds. Each draw
+is renormalised and capped the same way the axis sweep is, so every sampled
+configuration respects the constraints SimulationParameters validates.
+
+Both sweeps are deterministic and free of the wall clock: the axis sweep has
+no randomness at all and the joint sweep draws from a fixed published seed,
+so every run reproduces this output exactly.
 
 Run from the repo root:
 
@@ -29,10 +40,12 @@ Run from the repo root:
 from __future__ import annotations
 
 import json
+import random
 from dataclasses import replace
+from itertools import pairwise
 from pathlib import Path
 
-from fulcrum.domain.models import Dependency, Origin, OrgState, Team
+from fulcrum.domain.models import Dependency, OrgState, Origin, Team
 from fulcrum.domain.moves import Move, MoveKind, apply_move
 from fulcrum.domain.simulation import (
     DEFAULT_PARAMETERS,
@@ -47,6 +60,12 @@ WELL_DESIGNED_DIR = EXAMPLES / "well-designed"
 # The perturbation applied to each coefficient, as a fraction of its default.
 PERTURBATION = 0.2
 FACTORS = (1.0 - PERTURBATION, 1.0 + PERTURBATION)
+
+# The joint sweep: Latin hypercube draws inside the same box, every
+# coefficient moving at once. The seed is the published one from the books'
+# worked numbers, so the run reproduces exactly.
+JOINT_DRAWS = 1000
+JOINT_SEED = 20260711
 
 # The archetypes, smallest organisation first. The published claim under test
 # is that the typical column collapses with scale while the well-designed
@@ -93,6 +112,15 @@ COMPOSITE_WEIGHTS = ("latency_weight", "escalation_weight", "rework_weight")
 _APPROVAL_MOVE = Move(MoveKind.ADD_APPROVAL_LAYER)
 _OVERLAY_MOVE = Move(MoveKind.IMPOSE_MATRIX_OVERLAY)
 
+# The five qualitative conclusions under test, as (check-result key, label).
+CONCLUSIONS = (
+    ("typical_order", "typical order holds"),
+    ("well_order", "well-designed order holds"),
+    ("pairwise", "well-designed > typical pairwise"),
+    ("approval_negative", "approval layer stays negative"),
+    ("overlay_negative", "matrix overlay stays negative"),
+)
+
 
 def load_org(path: Path) -> OrgState:
     """Build an OrgState from an archetype JSON file (the blueprint shape)."""
@@ -134,12 +162,52 @@ def perturbed(name: str, factor: float) -> SimulationParameters:
     return replace(base, **normalised)
 
 
+def latin_hypercube(
+    rng: random.Random, draws: int, dims: int
+) -> tuple[tuple[float, ...], ...]:
+    """Latin hypercube of factors in [1 - PERTURBATION, 1 + PERTURBATION].
+
+    Each dimension is stratified into `draws` equal bands and every band is
+    sampled exactly once, so the interior of the box is covered evenly
+    rather than clustered around the centre.
+    """
+    low = 1.0 - PERTURBATION
+    width = 2.0 * PERTURBATION
+    columns = []
+    for _ in range(dims):
+        column = [low + width * (i + rng.random()) / draws for i in range(draws)]
+        rng.shuffle(column)
+        columns.append(column)
+    return tuple(zip(*columns))
+
+
+def jointly_perturbed(factors: tuple[float, ...]) -> SimulationParameters:
+    """DEFAULT_PARAMETERS with every coefficient scaled at once.
+
+    The composite trio is renormalised to its enforced sum of 1.0 and
+    contested_penalty is capped at the perturbed authority_penalty, so every
+    draw respects the same structural constraints the model validates.
+    """
+    names = INDEPENDENT_COEFFICIENTS + COMPOSITE_WEIGHTS
+    scaled = {
+        name: getattr(DEFAULT_PARAMETERS, name) * factor
+        for name, factor in zip(names, factors)
+    }
+    scaled["contested_penalty"] = min(
+        scaled["contested_penalty"], scaled["authority_penalty"]
+    )
+    total = sum(scaled[weight] for weight in COMPOSITE_WEIGHTS)
+    for weight in COMPOSITE_WEIGHTS:
+        scaled[weight] /= total
+    return replace(DEFAULT_PARAMETERS, **scaled)
+
+
 def scores(orgs: tuple[OrgState, ...], params: SimulationParameters) -> tuple:
     return tuple(evaluate(org, params).value for org in orgs)
 
 
 def strictly_decreasing(values: tuple) -> bool:
-    return all(a > b for a, b in zip(values, values[1:]))
+    return all(a > b for a, b in pairwise(values))
 
 
 def check(
@@ -200,13 +268,7 @@ def main() -> int:
     for name in INDEPENDENT_COEFFICIENTS + COMPOSITE_WEIGHTS:
         for factor in FACTORS:
             result = check(typical, well, perturbed(name, factor))
-            holds = (
-                result["typical_order"]
-                and result["well_order"]
-                and result["pairwise"]
-                and result["approval_negative"]
-                and result["overlay_negative"]
-            )
+            holds = all(result[key] for key, _ in CONCLUSIONS)
             all_hold = all_hold and holds
             print(
                 f"{name:<24}{factor:>8.1f}"
@@ -223,6 +285,26 @@ def main() -> int:
         else "At least one qualitative conclusion FAILED under perturbation."
     )
     print(verdict)
+    print()
+
+    dims = len(INDEPENDENT_COEFFICIENTS + COMPOSITE_WEIGHTS)
+    draws = latin_hypercube(random.Random(JOINT_SEED), JOINT_DRAWS, dims)
+    held = dict.fromkeys((key for key, _ in CONCLUSIONS), 0)
+    all_five = 0
+    for factors in draws:
+        result = check(typical, well, jointly_perturbed(factors))
+        if all(result[key] for key, _ in CONCLUSIONS):
+            all_five += 1
+        for key, _ in CONCLUSIONS:
+            held[key] += result[key]
+    print(
+        f"Joint sweep (Latin hypercube, {JOINT_DRAWS} draws, every coefficient "
+        f"moving at once, seed {JOINT_SEED})"
+    )
+    print(f"{'conclusion':<36}{'fraction of draws holding':>28}")
+    for key, label in CONCLUSIONS:
+        print(f"{label:<36}{held[key] / JOINT_DRAWS:>28.1%}")
+    print(f"{'all five together':<36}{all_five / JOINT_DRAWS:>28.1%}")
     return 0 if all_hold else 1
 
 

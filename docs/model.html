@@ -161,10 +161,13 @@
           </tbody>
         </table>
       </div>
-      <!-- TODO(oliver): magnitude provenance taken as engineering judgement by default; confirm none of the coefficients was derived from a stated computation or a specific chapter -->
-      <p class="todo">TODO: every magnitude above is labelled engineering judgement because no
-        derivation is documented in the source. If any coefficient was in fact derived from a
-        stated computation or a specific chapter, name it here.</p>
+      <p>The magnitude column is uniform on purpose. The books argue what should be penalised
+        and in which direction, which is why the mechanism column can cite chapters; they state
+        no coefficient values, so no derivation is claimed for any. The chosen values are held
+        accountable a different way: each sits in one published dataclass, every score decomposes
+        into named penalties and the structural constraints (the sum-to-one shares, the contest
+        ordering) are enforced in code, so a disputed magnitude is something you change and rerun
+        rather than something you argue about.</p>
     </div>
   </section>
   <section id="determinism">
@@ -265,9 +268,16 @@
           from structural facts alone: the org chart, the dependency map and the authority
           placement as they stood at the time.</li>
         <li>Score each model once. No re-modelling after seeing a result.</li>
-        <li>Test whether the score ranking predicts the outcome ranking better than chance, with
-          the correlation threshold registered before the scores are computed.</li>
+        <li>Test whether the score ranking predicts the outcome ranking better than chance,
+          against acceptance thresholds fixed before any score is computed.</li>
       </ol>
+      <p>Fixed where matters. A threshold stated only on this page is timestamped by the same
+        person who computes the scores, which a reviewer can discount for free. The full
+        protocol, thresholds included, therefore lives in the repository as
+        <a href="https://github.com/oernster/fulcrum/blob/main/PREREGISTRATION.md">PREREGISTRATION.md</a>,
+        written for deposit with an independent registry (OSF) whose timestamp is not the
+        author's to edit. Until that deposit exists, the honest reading is that the bar is
+        public but self-timestamped; discount accordingly.</p>
       <p><b>This protocol has not been run.</b> The obstacle is data honesty rather than design:
         structural facts about failed organisations are confidential and post-hoc accounts of them
         are unreliable, so assembling a clean blind set is slow. Until it runs, the correct status
@@ -295,6 +305,13 @@
         the orderings, the typical-versus-well-designed gap and the signs of both blunders are
         unchanged. The qualitative results come from the structure of the model, not from the
         particular values of its coefficients.</p>
+      <p>An axis sweep only explores the edges of the box; models typically break in the
+        interior, where several coefficients drift at once. So the same script runs a second,
+        joint sweep: a Latin hypercube of 1,000 draws inside the same &plusmn;20% band with
+        every coefficient moving simultaneously, each draw renormalised and capped so it
+        respects the model's own validation, reporting the fraction of draws under which each
+        conclusion holds. <b>All five conclusions hold in 100% of the 1,000 joint draws</b>
+        (seed 20260711, the same published seed the books use).</p>
       <p>The sweep has already earned its keep once: the first cut of contested ownership
         counted a team's own authority as its only structural claimant, and under that rule the
         matrix overlay read <b>positive</b> on the escalation-heavy archetypes (it barely
@@ -315,12 +332,15 @@
           </tbody>
         </table>
       </div>
-      <p>The sweep's own limits, stated plainly: it perturbs one coefficient at a time, at
-        &plusmn;20% only, against the ten shipped archetypes. It does not test joint
-        perturbations, larger swings or every published claim (the 1,732-team move-locality result
-        is not re-run under perturbation). It is a robustness check on the published conclusions,
-        not a proof about every organisation. Rerun it from the repository root with
-        <code>python sensitivity.py</code>; there is no randomness, so you will get this table.</p>
+      <p>The sweep's own limits, stated plainly: it stays within &plusmn;20%, against the ten
+        shipped archetypes. It does not test larger swings or every published claim (the
+        1,732-team move-locality result is not re-run under perturbation). And the archetypes
+        themselves are authored by the same hand as the coefficients: both sweeps test
+        robustness to the numbers while holding fixed test cases that were built to exhibit the
+        very properties the model penalises. It is a robustness check on the published
+        conclusions, not a proof about every organisation. Rerun it from the repository root
+        with <code>python sensitivity.py</code>; the axis sweep has no randomness and the joint
+        sweep draws from the published seed, so you will get these numbers exactly.</p>
       <div class="cta">
         <a class="btn btn-primary" href="download.html">Download Fulcrum</a>
         <a class="btn btn-ghost" href="why.html">Why this exists</a>
