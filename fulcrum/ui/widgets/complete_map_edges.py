@@ -23,6 +23,12 @@ _TOP_HALF_START = 180.0
 _TOP_HALF_SWEEP = -180.0
 _TOP_HALF_START_BACK = 0.0
 _TOP_HALF_SWEEP_BACK = 180.0
+# A box with several connections fans them out along its right edge, this
+# far apart, so parallel runs never overlap; when a box has more
+# connections than its edge can hold at this spacing, the fan compresses
+# to fit between the corner margins.
+_FAN_STEP = 12.0
+_FAN_MARGIN = 12.0
 
 
 def _crosses(segment: QLineF, rect: QRectF) -> bool:
@@ -56,6 +62,34 @@ def direct_is_clear(start: QPointF, end: QPointF, rects: dict[str, QRectF]) -> b
         if _crosses(segment, rect):
             return False
     return True
+
+
+def fan_anchors(
+    pairs: tuple[tuple[str, str], ...], rects: dict[str, QRectF]
+) -> tuple[tuple[float, float], ...]:
+    """One (source_y, target_y) per routed pair, fanned along each box edge.
+
+    Every box's attachments are ordered by where their counterpart sits, so
+    the fan follows the geometry (the run to a higher counterpart leaves
+    higher) and neighbouring runs never swap over right at the box.
+    """
+    attachments: dict[str, list[tuple[int, int, float]]] = {}
+    for index, (source_id, target_id) in enumerate(pairs):
+        counterpart_y = rects[target_id].center().y()
+        attachments.setdefault(source_id, []).append((index, 0, counterpart_y))
+        source_y = rects[source_id].center().y()
+        attachments.setdefault(target_id, []).append((index, 1, source_y))
+    anchors = [[0.0, 0.0] for _ in pairs]
+    for ident, items in attachments.items():
+        rect = rects[ident]
+        items.sort(key=lambda item: item[2])
+        count = len(items)
+        usable = max(rect.height() - _FAN_MARGIN * _HALF, 0.0)
+        step = _FAN_STEP if count == 1 else min(_FAN_STEP, usable / (count - 1))
+        start = rect.center().y() - step * (count - 1) / _HALF
+        for slot, (index, role, _) in enumerate(items):
+            anchors[index][role] = start + slot * step
+    return tuple((source_y, target_y) for source_y, target_y in anchors)
 
 
 def _hop_crossings(
@@ -97,14 +131,14 @@ def lane_path(
     source: QRectF,
     target: QRectF,
     lane_x: float,
+    source_y: float,
+    target_y: float,
     verticals: tuple[tuple[float, float, float], ...] = (),
 ) -> QPainterPath:
     """Right-angled route: out of the source's side, down the lane, into the
-    target's side, stopping where the arrow head takes over. verticals are
-    the OTHER routed edges' lanes as (x, y_low, y_high); the horizontal runs
-    hop over any of them they cross."""
-    source_y = source.center().y()
-    target_y = target.center().y()
+    target's side, stopping where the arrow head takes over. The y anchors
+    come from fan_anchors; verticals are the OTHER routed edges' lanes as
+    (x, y_low, y_high) and the horizontal runs hop over any they cross."""
     path = QPainterPath(QPointF(source.right(), source_y))
     _horizontal_run(path, lane_x, verticals)
     path.lineTo(lane_x, target_y)
@@ -112,9 +146,9 @@ def lane_path(
     return path
 
 
-def lane_arrow(target: QRectF) -> QPolygonF:
+def lane_arrow(target: QRectF, target_y: float) -> QPolygonF:
     """An arrow head entering the target's right edge, pointing left."""
-    tip = QPointF(target.right(), target.center().y())
+    tip = QPointF(target.right(), target_y)
     return QPolygonF(
         [
             tip,

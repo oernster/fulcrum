@@ -34,6 +34,7 @@ from fulcrum.domain.simulation import is_contested
 from fulcrum.shared.text import count_noun
 from fulcrum.ui.widgets.complete_map_edges import (
     direct_is_clear,
+    fan_anchors,
     lane_arrow,
     lane_path,
 )
@@ -239,7 +240,7 @@ class CompleteMapView(QGraphicsView):
         if not rects:
             return
         diagram_right = max(rect.right() for rect in rects.values())
-        routes: list[tuple[QRectF, QRectF, float]] = []
+        routes: list[tuple[str, str, float]] = []
         for dep in self._org.dependencies:
             if dep.upstream not in rects or dep.downstream not in rects:
                 continue
@@ -248,19 +249,24 @@ class CompleteMapView(QGraphicsView):
                 self._draw_edge(source.center(), target.center())
                 continue
             lane_x = diagram_right + _LANE_BASE + len(routes) * _LANE_STEP
-            routes.append((source, target, lane_x))
-        # Every lane is known before any path is drawn, so each horizontal
-        # run can hop the other edges' verticals with a semicircle.
+            routes.append((dep.upstream, dep.downstream, lane_x))
+        # Anchors fan each box's connections apart and every lane is known
+        # before any path is drawn, so no two runs overlap and each
+        # horizontal can hop the other edges' verticals with a semicircle.
+        pairs = tuple((up, down) for up, down, _ in routes)
+        anchors = fan_anchors(pairs, rects)
         verticals = tuple(
-            (lane_x, *sorted((s.center().y(), t.center().y())))
-            for s, t, lane_x in routes
+            (lane_x, *sorted(anchor)) for (_, _, lane_x), anchor in zip(routes, anchors)
         )
-        for source, target, lane_x in routes:
+        for (up, down, lane_x), (source_y, target_y) in zip(routes, anchors):
             others = tuple(v for v in verticals if v[0] != lane_x)
             self._scene.addPath(
-                lane_path(source, target, lane_x, others), QPen(_EDGE, _EDGE_PEN_W)
+                lane_path(rects[up], rects[down], lane_x, source_y, target_y, others),
+                QPen(_EDGE, _EDGE_PEN_W),
             )
-            self._scene.addPolygon(lane_arrow(target), QPen(_EDGE), QBrush(_EDGE))
+            self._scene.addPolygon(
+                lane_arrow(rects[down], target_y), QPen(_EDGE), QBrush(_EDGE)
+            )
 
     def _collect(self, box, x, y, rects, domains, teams) -> None:
         # Domains register a rectangle too, so an authored unit-level
