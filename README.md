@@ -77,8 +77,12 @@ A short tour and the books behind it are at <https://oernster.github.io/fulcrum/
   priced in whole-org points (the badges sum to the headline), the leaf
   lines compose into an honest whole-org before and after and an aggregate
   row is labelled as the view from that altitude (its gains overlap the leaf
-  repairs beneath it). A toggle lets the org grow (split or add teams) per
-  leaf and you can preview and play any step straight from the guide.
+  repairs beneath it). Teams sitting directly inside a unit that also holds
+  sub-units get their own row, so every team counts. A toggle lets the org
+  grow, priced where the edges live: a whole-org growth line joins the tree
+  as its last composable row, frames whose real teams carry the load may
+  split them or add owners and a frame growth cannot improve says so. Every
+  step shows its before and after score and previews and plays in place.
 - Take a move back: an undo stack steps the organisation back through the moves
   you have played, from the board or with Ctrl+Z.
 - Plan export as a self-contained HTML report or as JSON you can re-import to
