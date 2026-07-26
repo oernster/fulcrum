@@ -221,8 +221,8 @@ QTreeWidget::item:selected {{
    transparent inside the handle slot, so pane content never butts against
    the bar itself. */
 QSplitter::handle {{ background-color: {_DIVIDER}; border-radius: 2px; }}
-QSplitter::handle:horizontal {{ width: 3px; margin: 0 3px; }}
-QSplitter::handle:vertical {{ height: 3px; margin: 3px 0; }}
+QSplitter::handle:horizontal {{ width: 3px; margin: 0 10px; }}
+QSplitter::handle:vertical {{ height: 3px; margin: 10px 0; }}
 
 QLabel#BlockedReason {{ color: {_RING_RED}; }}
 QPushButton#DiceButton {{ padding: 2px 8px; font-size: {glyph_pt}pt; }}
