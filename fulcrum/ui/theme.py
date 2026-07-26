@@ -27,6 +27,9 @@ _TEXT_MUTED = "#9aa3af"
 _ACCENT = "#f59e0b"
 _ACCENT_BRIGHT = "#fbbf24"
 _DISABLED_TEXT = "#5b6470"
+# The one standard divider colour: every splitter bar in the app and both
+# scrollbar orientations use this token, so no divider-like line drifts.
+_DIVIDER = _TEXT_MUTED
 # Green ring: an enabled control under the mouse or holding keyboard focus.
 _RING_GREEN = "#22c55e"
 # Red ring: any disabled control, permanently, so unavailable is visible.
@@ -214,7 +217,12 @@ QTreeWidget::item:selected {{
     background-color: {_SURFACE_RAISED};
     color: {_ACCENT_BRIGHT};
 }}
-QSplitter::handle {{ background-color: {_BORDER}; }}
+/* A visible splitter bar with clear space either side: the margins stay
+   transparent inside the handle slot, so pane content never butts against
+   the bar itself. */
+QSplitter::handle {{ background-color: {_DIVIDER}; border-radius: 2px; }}
+QSplitter::handle:horizontal {{ width: 3px; margin: 0 3px; }}
+QSplitter::handle:vertical {{ height: 3px; margin: 3px 0; }}
 
 QLabel#BlockedReason {{ color: {_RING_RED}; }}
 QPushButton#DiceButton {{ padding: 2px 8px; font-size: {glyph_pt}pt; }}
@@ -299,12 +307,22 @@ QSlider::handle:horizontal {{
     margin: -6px 0;
 }}
 
+/* Both scrollbar orientations share the splitter bar's muted colour, so no
+   native light strip breaks the theme and every divider-like line matches. */
 QScrollBar:vertical {{ background-color: {_SURFACE}; width: 8px; }}
+QScrollBar:horizontal {{ background-color: {_SURFACE}; height: 8px; }}
 QScrollBar::handle:vertical {{
-    background-color: {_BORDER};
+    background-color: {_DIVIDER};
     border-radius: 4px;
     min-height: 20px;
 }}
+QScrollBar::handle:horizontal {{
+    background-color: {_DIVIDER};
+    border-radius: 4px;
+    min-width: 20px;
+}}
+QScrollBar::add-line, QScrollBar::sub-line {{ width: 0px; height: 0px; }}
+QScrollBar::add-page, QScrollBar::sub-page {{ background: none; }}
 QStatusBar {{
     background-color: {_BG};
     color: {_TEXT_MUTED};
