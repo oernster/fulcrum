@@ -26,17 +26,20 @@ British spelling is used in comments. No em dashes appear anywhere.
 from __future__ import annotations
 
 import argparse
+import ctypes
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import traceback
 import zipfile
+from ctypes import wintypes
 from pathlib import Path
 from types import TracebackType
 
-from PySide6.QtCore import QSize, Qt
+from PySide6.QtCore import QSize, Qt, QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QApplication,
@@ -741,12 +744,41 @@ def _schedule_delete_after_exit(install_dir: Path) -> None:
         return
 
 
-def _launch(exe_path: Path) -> None:
+def _launch(exe_path: Path) -> subprocess.Popen | None:
     """Start the installed application without waiting for it (best effort)."""
     try:
-        subprocess.Popen([str(exe_path)], cwd=str(exe_path.parent))
+        return subprocess.Popen([str(exe_path)], cwd=str(exe_path.parent))
     except OSError:
-        return
+        return None
+
+
+# The app takes a few seconds to show its window; the installer stays open
+# until it appears (or this passes) and fronts it while the installer still
+# owns the foreground, since a window arriving after the installer has gone
+# is denied focus by Windows and only flashes on the taskbar.
+_FOREGROUND_WAIT_S = 15.0
+_FOREGROUND_POLL_MS = 200
+
+
+def _bring_process_window_to_front(pid: int) -> bool:
+    """Front the process's first visible top-level window, if it exists yet."""
+    user32 = ctypes.windll.user32
+    found: list[int] = []
+
+    @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+    def _on_window(hwnd, _lparam):
+        owner = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
+        if owner.value == pid and user32.IsWindowVisible(hwnd):
+            found.append(hwnd)
+            return False
+        return True
+
+    user32.EnumWindows(_on_window, 0)
+    if not found:
+        return False
+    user32.SetForegroundWindow(found[0])
+    return True
 
 
 # ------------------------------------------------------------------- app state
@@ -1036,10 +1068,28 @@ class InstallerWindow(QWidget):
             return
         self._status.setText(f"Installed to {exe_path.parent}.")
         if self._launch_on_finish.isChecked():
-            _launch(exe_path)
-            self.close()
+            self._launch_and_front(exe_path)
             return
         self._refresh_after_change()
+
+    def _launch_and_front(self, exe_path: Path) -> None:
+        """Launch the app, wait for its window, front it, then close."""
+        process = _launch(exe_path)
+        if process is None:
+            self.close()
+            return
+        self._set_busy(f"Launching {APP_DISPLAY_NAME}...")
+        self._front_pid = process.pid
+        self._front_deadline = time.monotonic() + _FOREGROUND_WAIT_S
+        self._front_timer = QTimer(self)
+        self._front_timer.timeout.connect(self._front_launched_app)
+        self._front_timer.start(_FOREGROUND_POLL_MS)
+
+    def _front_launched_app(self) -> None:
+        fronted = _bring_process_window_to_front(self._front_pid)
+        if fronted or time.monotonic() > self._front_deadline:
+            self._front_timer.stop()
+            self.close()
 
     def _on_repair(self) -> None:
         """Re-deploy the application files over the existing install."""
