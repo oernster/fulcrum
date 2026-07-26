@@ -53,6 +53,7 @@ Dependencies follow one projection rule across every view and frame: an edge (au
 | Contest priced, not simulated | Reconciliation traffic between claimants is not synthesised as dependency edges (that would recreate the cartesian-expansion problem frame projection rejects); the capacity cut, the escalation share and the per-claim divisor carry the cost instead. |
 | Stabilise is frame-scoped | A stabilise move carries its frame's node ids and thins only the edges that frame prices; an untargeted move keeps the legacy thin-everything meaning so saved plans replay unchanged. Without the scoping, hierarchy-guide lines would re-apply the global thinning once per leaf. |
 | The guide plans every frame; only leaf lines compose | Sibling leaf frames are disjoint, so their lines apply to the real org without collision and the headline is the real flat score after playing them all. Aggregate rows are shown as the view from that altitude and never composed, since their gains overlap the leaf repairs beneath them: the move-locality result, made visible. |
+| Growth is a whole-org line, not a frame move | No frame can price a split or an added owner: a leaf frame drops the cross-boundary edges a split relieves and aggregate frames roll teams into synthetic units. With growth allowed, the guide plans one growth-only line against the real organisation from the position after the leaf repairs and appends it as the tree's last composable row, so its org points are growth's honest worth on top of the other lines. |
 
 ## Tooling
 

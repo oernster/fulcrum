@@ -4,6 +4,7 @@ import pytest
 
 from fulcrum.application.game_session import MAX_PLAYABLE_TEAMS
 from fulcrum.application.org_guide import (
+    GROWTH_FRAME_LABEL,
     TOP_FRAME_LABEL,
     WHOLE_ORG_LABEL,
     GuideNode,
@@ -154,6 +155,82 @@ def test_growth_flag_is_carried_on_the_result():
     grown = build_org_guide(_hierarchical_org(), _SIM, allow_growth=True)
     assert fixed.grown is False
     assert grown.grown is True
+
+
+def _hub_org():
+    """Single-team units around a loose hub whose coupling is all
+    cross-boundary, the shape where only the whole org can price a split."""
+    return OrgState(
+        teams=(
+            _t("a", authority=True, skew=0.2, domain_id="da"),
+            _t("b", authority=True, skew=0.2, domain_id="db"),
+            _t("c", skew=0.6, domain_id="dc"),
+            _t("hub", skew=0.6),
+        ),
+        dependencies=(
+            Dependency("a", "hub", 2),
+            Dependency("b", "hub", 2),
+            Dependency("c", "hub", 1),
+            Dependency("a", "c", 2),
+        ),
+        workload=6,
+        domains=(Domain("da", "A"), Domain("db", "B"), Domain("dc", "C")),
+    )
+
+
+def test_grown_guide_appends_a_whole_org_growth_row():
+    fixed = build_org_guide(_hub_org(), _SIM)
+    grown = build_org_guide(_hub_org(), _SIM, allow_growth=True)
+    assert all(node.label != GROWTH_FRAME_LABEL for node in fixed.nodes)
+    growth = grown.nodes[-1]
+    assert growth.label == GROWTH_FRAME_LABEL
+    assert growth.grown_line and growth.is_leaf and growth.playable
+    assert growth.frame_id is None
+    kinds = {step.move.kind for step in growth.guide.steps}
+    assert kinds and kinds <= {MoveKind.SPLIT_TEAM, MoveKind.ADD_TEAM}
+    # The leaf repairs are identical, so growth's org points are exactly
+    # the headline improvement over the fixed-size guide.
+    assert grown.flat_after > fixed.flat_after
+    assert growth.org_delta == pytest.approx(grown.flat_after - fixed.flat_after)
+    assert growth.org_delta == pytest.approx(
+        growth.guide.final_score - growth.guide.start_score
+    )
+
+
+def test_growth_row_is_absent_when_growth_gains_nothing():
+    org = OrgState(
+        teams=(_t("a", domain_id="d1"), _t("b", domain_id="d2")),
+        workload=2,
+        domains=(Domain("d1", "One"), Domain("d2", "Two")),
+    )
+    fixed = build_org_guide(org, _SIM)
+    grown = build_org_guide(org, _SIM, allow_growth=True)
+    assert [n.label for n in grown.nodes] == [n.label for n in fixed.nodes]
+    assert grown.flat_after == pytest.approx(fixed.flat_after)
+
+
+def test_oversized_org_reports_growth_unplannable():
+    teams = tuple(_t(f"t{i}", domain_id="big") for i in range(MAX_PLAYABLE_TEAMS + 1))
+    org = OrgState(teams=teams, workload=1, domains=(Domain("big", "Big"),))
+    grown = build_org_guide(org, _SIM, allow_growth=True)
+    growth = grown.nodes[-1]
+    assert growth.label == GROWTH_FRAME_LABEL
+    assert growth.grown_line is True
+    assert growth.playable is False
+    assert growth.guide.steps == ()
+
+
+def test_progress_counts_the_growth_pass_when_growing():
+    seen = []
+    build_org_guide(
+        _hierarchical_org(),
+        _SIM,
+        allow_growth=True,
+        progress=lambda done, total: seen.append((done, total)),
+    )
+    # Five sections plus the whole-org growth pass.
+    assert seen[0] == (1, 6)
+    assert seen[-1] == (6, 6)
 
 
 def test_compose_stops_a_line_that_cannot_replay_and_keeps_the_rest():

@@ -12,6 +12,12 @@ Sibling leaf frames are disjoint team sets and their moves act on real teams
 applying every leaf line to the real organisation gives an honest whole-org
 before and after, which is the tree's headline. Aggregate lines are shown but
 never composed; they overlap the leaf repairs beneath them by construction.
+
+Growth (splitting a team, adding an owner) is a whole-org act: a frame cannot
+price it, since a leaf drops the cross-boundary edges a split relieves and an
+aggregate frame rolls teams into synthetic units. With growth allowed, one
+extra line is planned against the real organisation after the leaf repairs
+compose and appended as the tree's last leaf row, so it composes too.
 """
 
 from __future__ import annotations
@@ -33,10 +39,12 @@ from fulcrum.domain.hierarchy import (
     top_level_section,
 )
 from fulcrum.domain.models import Domain, OrgState
-from fulcrum.domain.moves import apply_move
+from fulcrum.domain.moves import MoveKind, apply_move
 
 TOP_FRAME_LABEL = "Top level (units as actors)"
 WHOLE_ORG_LABEL = "Whole organisation"
+GROWTH_FRAME_LABEL = "Growth (whole organisation)"
+_GROWTH_MOVE_KINDS = (MoveKind.SPLIT_TEAM, MoveKind.ADD_TEAM)
 _EMPTY_SCORE = 0.0
 
 # A progress callback receives (sections planned so far, total sections).
@@ -53,6 +61,9 @@ class GuideNode:
     alone to the real organisation), the honest number a row advertises; a
     frame's own climb is on its 0..100 scale and would overstate it.
     Aggregate rows carry no org_delta: they are views, never composed.
+    grown_line marks the whole-org growth row, whose line is planned from
+    the position after every leaf line, so its org_delta is growth's worth
+    on top of the other lines rather than applied alone.
     """
 
     frame_id: str | None
@@ -63,6 +74,7 @@ class GuideNode:
     guide: Guide
     org_delta: float = 0.0
     children: tuple[GuideNode, ...] = ()
+    grown_line: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -142,16 +154,62 @@ class _Builder:
         self._flat_before = self._simulator.score(self._org).value
         roots = _plannable_domains(self._org, None)
         if not roots:
+            # The flat row plans over the real org, so growth is already
+            # inline in its one line; no separate growth row is needed.
             self._total = 1
-            node = self._flat_node()
-            nodes: tuple[GuideNode, ...] = (node,)
-        else:
-            self._total = 1 + _count_sections(self._org, None)
-            top = self._top_frame_node()
-            nodes = (top,) + tuple(self._unit_node(d) for d in roots)
+            nodes: tuple[GuideNode, ...] = (self._flat_node(),)
+            composed = compose_leaf_lines(
+                self._org, OrgGuide(nodes, 0.0, 0.0, self._grown)
+            )
+            flat_after = self._simulator.score(composed).value
+            return OrgGuide(nodes, self._flat_before, flat_after, self._grown)
+        extra = 1 if self._grown else 0
+        self._total = 1 + _count_sections(self._org, None) + extra
+        top = self._top_frame_node()
+        nodes = (top,) + tuple(self._unit_node(d) for d in roots)
         composed = compose_leaf_lines(self._org, OrgGuide(nodes, 0.0, 0.0, self._grown))
         flat_after = self._simulator.score(composed).value
+        if self._grown:
+            growth, flat_after = self._growth_node(composed, flat_after)
+            if growth is not None:
+                nodes = nodes + (growth,)
         return OrgGuide(nodes, self._flat_before, flat_after, self._grown)
+
+    def _growth_node(
+        self, composed: OrgState, composed_score: float
+    ) -> tuple[GuideNode | None, float]:
+        """The whole-org growth line, or None when growth gains nothing.
+
+        Planned from the composed position so every remaining edge is
+        visible; returns the node plus the headline including its climb.
+        """
+        if len(composed.teams) > MAX_PLAYABLE_TEAMS:
+            self._tick()
+            too_large = GuideNode(
+                frame_id=None,
+                label=GROWTH_FRAME_LABEL,
+                category="",
+                is_leaf=True,
+                playable=False,
+                guide=Guide(_EMPTY_SCORE, _EMPTY_SCORE, ()),
+                grown_line=True,
+            )
+            return too_large, composed_score
+        guide = self._full.plan(composed, _GROWTH_MOVE_KINDS)
+        self._tick()
+        if not guide.steps:
+            return None, composed_score
+        node = GuideNode(
+            frame_id=None,
+            label=GROWTH_FRAME_LABEL,
+            category="",
+            is_leaf=True,
+            playable=True,
+            guide=guide,
+            org_delta=guide.final_score - guide.start_score,
+            grown_line=True,
+        )
+        return node, guide.final_score
 
     def _org_delta(self, guide: Guide) -> float:
         """A leaf line's worth in whole-org points, applied alone."""

@@ -65,6 +65,7 @@ _AGGREGATE_NOTE = (
     "it, so only leaf lines count toward the headline."
 )
 _TOO_LARGE = "This section is too large to plan live; drill into its units."
+_GROWTH_TOO_LARGE = "The organisation is too large to plan growth live."
 
 
 def _step_text(index: int, step: GuideStep) -> str:
@@ -104,6 +105,12 @@ def _frame_note_text(node: GuideNode) -> str:
     """The explanatory line under the title: frame scale, stated plainly."""
     if not node.playable or not node.guide.steps:
         return ""
+    if node.grown_line:
+        return (
+            f"Planned from the position after every leaf line: "
+            f"{_frame_climb(node)} on the whole organisation's scale. The "
+            "org points above are growth's worth on top of the other lines."
+        )
     if node.is_leaf:
         return (
             f"This line scores {_frame_climb(node)} on this level's own "
@@ -289,7 +296,7 @@ class OrgGuideDialog(NeutralDialog):
         self._frame_note.setText(_frame_note_text(node))
         self._frame_note.setVisible(bool(self._frame_note.text()))
         if not node.playable:
-            self._add_note(_TOO_LARGE)
+            self._add_note(_GROWTH_TOO_LARGE if node.grown_line else _TOO_LARGE)
             return
         if not node.guide.steps:
             self._add_note(_ALREADY_GOOD)
