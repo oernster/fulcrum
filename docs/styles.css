@@ -383,8 +383,11 @@ footer {
 .weights tr:last-child td { border-bottom: 0; }
 .weights td i { color: var(--text); font-style: italic; }
 
-/* Unshippable placeholder: loud on purpose, so a TODO never slips out quietly. */
-.todo {
+/* Unshippable placeholder: loud on purpose, so a TODO never slips out quietly.
+   The doubled selector outranks the .prose p width cap so it aligns with the
+   tables rather than the narrower prose column. */
+.todo,
+.prose .todo {
   border: 2px dashed var(--accent);
   border-radius: 8px;
   background: rgba(245, 158, 11, 0.08);
@@ -392,7 +395,7 @@ footer {
   font-family: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace;
   font-size: 14px;
   padding: 12px 16px;
-  max-width: 820px;
+  max-width: 1020px;
 }
 
 /* Keyboard focus stays visible site-wide. */
