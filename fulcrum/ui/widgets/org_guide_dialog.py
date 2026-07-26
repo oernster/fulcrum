@@ -71,6 +71,7 @@ def _step_text(index: int, step: GuideStep) -> str:
     return (
         f"{index + 1}. {step.move.display_label()}   "
         f"[{step.classification.value}]   "
+        f"{step.score_before:.{_SCORE_DECIMALS}f} "
         f"→ {step.score_after:.{_SCORE_DECIMALS}f}"
     )
 
