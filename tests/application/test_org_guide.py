@@ -197,6 +197,38 @@ def test_grown_guide_appends_a_whole_org_growth_row():
     )
 
 
+def test_top_frame_offers_growth_for_real_teams_when_growing():
+    # All edges are unit-level, so the flat org has no internal deps and
+    # the whole-org growth row cannot fire; the top frame is the only place
+    # those edges are priced and must propose growth for the real loose
+    # team standing in it, never for a rolled unit node.
+    org = OrgState(
+        teams=(
+            _t("a", authority=True, skew=0.2, domain_id="da"),
+            _t("b", authority=True, skew=0.2, domain_id="db"),
+            _t("hub", skew=0.6),
+        ),
+        dependencies=(
+            Dependency("da", "hub", 2),
+            Dependency("db", "hub", 2),
+            Dependency("da", "db", 1),
+        ),
+        workload=6,
+        domains=(Domain("da", "A"), Domain("db", "B")),
+    )
+    fixed = build_org_guide(org, _SIM)
+    grown = build_org_guide(org, _SIM, allow_growth=True)
+    growth_kinds = {MoveKind.SPLIT_TEAM, MoveKind.ADD_TEAM}
+    fixed_top = {step.move.kind for step in fixed.nodes[0].guide.steps}
+    assert not fixed_top & growth_kinds
+    grown_top = [
+        step for step in grown.nodes[0].guide.steps if step.move.kind in growth_kinds
+    ]
+    assert grown_top
+    for step in grown_top:
+        assert all(org.has_team(target) for target in step.move.targets)
+
+
 def test_growth_row_is_absent_when_growth_gains_nothing():
     org = OrgState(
         teams=(_t("a", domain_id="d1"), _t("b", domain_id="d2")),

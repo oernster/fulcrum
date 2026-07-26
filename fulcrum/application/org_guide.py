@@ -39,7 +39,7 @@ from fulcrum.domain.hierarchy import (
     top_level_section,
 )
 from fulcrum.domain.models import Domain, OrgState
-from fulcrum.domain.moves import MoveKind, apply_move
+from fulcrum.domain.moves import Move, MoveKind, apply_move
 
 TOP_FRAME_LABEL = "Top level (units as actors)"
 WHOLE_ORG_LABEL = "Whole organisation"
@@ -225,11 +225,28 @@ class _Builder:
         if len(section.teams) > MAX_PLAYABLE_TEAMS:
             self._tick()
             return False, Guide(_EMPTY_SCORE, _EMPTY_SCORE, ())
-        planner = self._aggregate if aggregate else self._full
-        kinds = AGGREGATE_MOVE_KINDS if aggregate else None
-        guide = planner.plan(section, kinds)
+        if not aggregate:
+            guide = self._full.plan(section)
+        elif self._grown:
+            # An aggregate frame is where cross-unit edges are priced, so
+            # with growth allowed it may propose split or add for the real
+            # teams standing in it (a loose team at the top level); rolled
+            # unit nodes are synthetic and cannot grow as one act.
+            guide = self._full.plan(
+                section,
+                AGGREGATE_MOVE_KINDS + _GROWTH_MOVE_KINDS,
+                self._real_growth_only,
+            )
+        else:
+            guide = self._aggregate.plan(section, AGGREGATE_MOVE_KINDS)
         self._tick()
         return True, guide
+
+    def _real_growth_only(self, move: Move) -> bool:
+        """Keep a growth move only when every target is a real team."""
+        if move.kind not in _GROWTH_MOVE_KINDS:
+            return True
+        return all(self._org.has_team(target) for target in move.targets)
 
     def _flat_node(self) -> GuideNode:
         playable, guide = self._plan(self._org, aggregate=False)

@@ -73,6 +73,17 @@ def test_plan_without_growth_offers_no_growth_moves():
     assert MoveKind.SPLIT_TEAM not in kinds
 
 
+def test_plan_move_filter_excludes_specific_moves():
+    grown = ImprovementPlanner(DeterministicSimulator(), allow_growth=True)
+    unfiltered = grown.plan(_overloaded_hub())
+    assert MoveKind.ADD_TEAM in {step.move.kind for step in unfiltered.steps}
+    filtered = grown.plan(
+        _overloaded_hub(),
+        move_filter=lambda move: move.kind != MoveKind.ADD_TEAM,
+    )
+    assert MoveKind.ADD_TEAM not in {step.move.kind for step in filtered.steps}
+
+
 def test_plan_restricts_to_allowed_move_kinds():
     guide = ImprovementPlanner(DeterministicSimulator()).plan(
         _broken(), allowed_kinds=(MoveKind.DELEGATE_AUTHORITY,)

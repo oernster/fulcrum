@@ -10,6 +10,7 @@ an owner); left off, it plans at a fixed size, the 'do not grow' path.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Callable
 
 from fulcrum.application.game_session import enumerate_moves
 from fulcrum.application.interfaces import Simulator
@@ -52,7 +53,10 @@ class ImprovementPlanner:
     allow_growth: bool = False
 
     def plan(
-        self, org: OrgState, allowed_kinds: tuple[MoveKind, ...] | None = None
+        self,
+        org: OrgState,
+        allowed_kinds: tuple[MoveKind, ...] | None = None,
+        move_filter: Callable[[Move], bool] | None = None,
     ) -> Guide:
         start = self.simulator.score(org).value
         current = org
@@ -63,6 +67,8 @@ class ImprovementPlanner:
             moves = enumerate_moves(current, allow_growth=self.allow_growth)
             if allowed_kinds is not None:
                 moves = tuple(m for m in moves if m.kind in allowed_kinds)
+            if move_filter is not None:
+                moves = tuple(m for m in moves if move_filter(m))
             # Never repeat an identical move within one line: replaying a
             # partial repair (realign, stabilise) converges with diminishing
             # gains, and a guide that names the same move three times reads

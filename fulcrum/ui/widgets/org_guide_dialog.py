@@ -124,11 +124,23 @@ def _frame_note_text(node: GuideNode) -> str:
 
 
 def _same_lines(first: OrgGuide, second: OrgGuide) -> bool:
+    """Whether every frame's line matches, aggregate rows included: growth
+    may change an aggregate line only (a split priced at the top level), and
+    that must still count as growth improving a line."""
+
     def lines(tree: OrgGuide):
-        return tuple(
-            tuple((s.move.kind, s.move.targets) for s in node.guide.steps)
-            for node in tree.leaf_nodes()
-        )
+        collected = []
+
+        def visit(node: GuideNode) -> None:
+            collected.append(
+                tuple((s.move.kind, s.move.targets) for s in node.guide.steps)
+            )
+            for child in node.children:
+                visit(child)
+
+        for node in tree.nodes:
+            visit(node)
+        return tuple(collected)
 
     return lines(first) == lines(second)
 
