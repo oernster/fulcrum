@@ -31,6 +31,8 @@ PREVIEW = QColor("#fbbf24")
 
 _AUTHORITY = QColor("#34d399")
 _NO_AUTHORITY = QColor("#f59e0b")
+# Contested ownership outranks the authority gradient: any contest reads red.
+_CONTESTED = QColor("#ef4444")
 _TEAM_FILL = QColor("#1a1e24")
 _DOMAIN_FILL = QColor("#222831")
 _TEXT = QColor("#e6e9ee")
@@ -87,7 +89,12 @@ def _blend(low: QColor, high: QColor, ratio: float) -> QColor:
 def _sublabel(node) -> str:
     people = count_noun(node.headcount, "person", "people")
     if node.kind == KIND_DOMAIN:
-        return f"{node.category} · {count_noun(node.team_count, 'team')} · {people}"
+        label = f"{node.category} · {count_noun(node.team_count, 'team')} · {people}"
+        if node.contested_count:
+            label = f"{label} · {node.contested_count} contested"
+        return label
+    if node.contested_count:
+        return f"contested · {people}"
     decides = "decides locally" if node.authority_ratio >= _FULL else "escalates"
     return f"{decides} · {people}"
 
@@ -121,7 +128,10 @@ def draw_node(scene: QGraphicsScene, node, top_left: QPointF) -> QRectF:
     path = QPainterPath()
     path.addRoundedRect(rect, CORNER, CORNER)
     fill = _DOMAIN_FILL if node.kind == KIND_DOMAIN else _TEAM_FILL
-    border = _blend(_NO_AUTHORITY, _AUTHORITY, node.authority_ratio)
+    if node.contested_count:
+        border = _CONTESTED
+    else:
+        border = _blend(_NO_AUTHORITY, _AUTHORITY, node.authority_ratio)
     scene.addPath(path, QPen(border, 2), QBrush(fill))
     _draw_person(scene, rect, border, node)
     name_font = node_font(bold=True)

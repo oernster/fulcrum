@@ -44,7 +44,9 @@ GUIDE_SHOT = "assets/screenshots/play-guide.png"
 BOOK_COVER_REL = "assets/books"
 LINK_TEXT = "View on Amazon UK"
 SITE_TAGLINE = "Organisational Decision Architecture Simulation Tool"
-PAGE_TITLE = f"{APP_NAME}: Decision Architecture Simulation Tool for Architects and CTOs"
+PAGE_TITLE = (
+    f"{APP_NAME}: Decision Architecture Simulation Tool for Architects and CTOs"
+)
 THEME_COLOR = "#0d0f12"
 SEO_KEYWORDS = (
     "Decision Architecture, organisational design, software architecture, "

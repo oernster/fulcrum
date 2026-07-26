@@ -1,7 +1,7 @@
 """Tests for human-readable move descriptions."""
 
 from fulcrum.application.move_text import describe_move, move_note
-from fulcrum.domain.models import Dependency, OrgState, Team
+from fulcrum.domain.models import AuthorityClaim, Dependency, Domain, OrgState, Team
 from fulcrum.domain.moves import Move, MoveKind
 
 
@@ -45,6 +45,47 @@ def test_describe_growth_kinds():
     assert (
         describe_move(org, Move(MoveKind.ADD_TEAM, ("b",)))
         == "Add a new owner beside Bravo"
+    )
+
+
+def _claimed_org():
+    return OrgState(
+        teams=(Team("a", "Alpha", True, 0.0), Team("b", "Bravo", True, 0.0)),
+        workload=1,
+        domains=(Domain("unit", "Platform Unit"),),
+        claims=(
+            AuthorityClaim("b", "a"),
+            AuthorityClaim("unit", "a"),
+            AuthorityClaim("Head of QA", "a"),
+        ),
+    )
+
+
+def test_describe_claim_kinds():
+    org = _claimed_org()
+    assert (
+        describe_move(org, Move(MoveKind.RESOLVE_AUTHORITY, ("a", "a")))
+        == "Resolve authority at Alpha in its favour"
+    )
+    assert (
+        describe_move(org, Move(MoveKind.RESOLVE_AUTHORITY, ("a", "b")))
+        == "Resolve authority at Alpha in favour of Bravo"
+    )
+    assert (
+        describe_move(org, Move(MoveKind.RESOLVE_AUTHORITY, ("a", "unit")))
+        == "Resolve authority at Alpha in favour of Platform Unit"
+    )
+    assert (
+        describe_move(org, Move(MoveKind.RESOLVE_AUTHORITY, ("a", "Head of QA")))
+        == "Resolve authority at Alpha in favour of Head of QA"
+    )
+    assert (
+        describe_move(org, Move(MoveKind.DOWNGRADE_CLAIM, ("unit", "a")))
+        == "Downgrade Platform Unit's claim on Alpha to consultation"
+    )
+    assert (
+        describe_move(org, Move(MoveKind.IMPOSE_MATRIX_OVERLAY))
+        == "Impose a matrix overlay"
     )
 
 

@@ -31,6 +31,7 @@ class SimulationParameters:
 
     base_capacity: float = 12.0
     authority_penalty: float = 0.45
+    contested_penalty: float = 0.35
     coupling_weight: float = 0.6
     incentive_weight: float = 0.8
     delay_arrival_weight: float = 0.25
@@ -41,6 +42,7 @@ class SimulationParameters:
     ideal_team_size: int = 3
     influence_weight: float = 0.08
     influence_tolerance: int = 1
+    contested_weight: float = 0.1
     max_score: float = 100.0
 
     def __post_init__(self) -> None:
@@ -48,6 +50,14 @@ class SimulationParameters:
             raise InvalidOrgStateError("base_capacity must be positive")
         if not _ZERO < self.authority_penalty <= _UNIT:
             raise InvalidOrgStateError("authority_penalty must be in (0, 1]")
+        # Contest may never be cheaper than clean escalation: an escalating
+        # team has a resolvable worldline, a contested one does not.
+        if not _ZERO < self.contested_penalty <= self.authority_penalty:
+            raise InvalidOrgStateError(
+                "contested_penalty must be in (0, authority_penalty]"
+            )
+        if self.contested_weight < _ZERO:
+            raise InvalidOrgStateError("contested_weight must not be negative")
         weight_sum = self.latency_weight + self.escalation_weight + self.rework_weight
         if abs(weight_sum - _UNIT) > _WEIGHT_SUM_TOLERANCE:
             raise InvalidOrgStateError("penalty weights must sum to 1.0")
@@ -112,6 +122,7 @@ class CouplingIndex:
     coupling: dict[str, int]
     incoming_delay: dict[str, float]
     depended_upon: dict[str, int]
+    claimants: dict[str, int]
 
 
 def dependency_index(org: OrgState) -> CouplingIndex:
@@ -120,16 +131,51 @@ def dependency_index(org: OrgState) -> CouplingIndex:
     delay_sum = {team.id: 0 for team in org.teams}
     delay_count = {team.id: 0 for team in org.teams}
     depended = {team.id: 0 for team in org.teams}
+    claimants = {team.id: 0 for team in org.teams}
     for dep in org.internal_dependencies():
         coupling[dep.upstream] += 1
         coupling[dep.downstream] += 1
         delay_sum[dep.downstream] += dep.propagation_delay
         delay_count[dep.downstream] += 1
         depended[dep.upstream] += 1
+    for claim in org.claims:
+        claimants[claim.subject] += 1
     incoming: dict[str, float] = {}
     for team_id, count in delay_count.items():
         incoming[team_id] = delay_sum[team_id] / count if count else _ZERO
-    return CouplingIndex(coupling, incoming, depended)
+    return CouplingIndex(coupling, incoming, depended, claimants)
+
+
+def external_claimants(
+    org: OrgState, team_id: str, index: CouplingIndex | None = None
+) -> int:
+    """How many external actors claim this team's decision class."""
+    if index is not None:
+        return index.claimants[team_id]
+    return sum(1 for claim in org.claims if claim.subject == team_id)
+
+
+def is_contested(org: OrgState, team: Team, index: CouplingIndex | None = None) -> bool:
+    """Whether this team's decision class carries a standing claim.
+
+    Every decision class already has a structural owner: the team itself when
+    it decides locally, or the line it escalates to when it does not. That
+    owner is claimant one, so any standing external claim makes two and the
+    meta-question of who decides must be settled before anything can be
+    decided. A claim is by definition unresolved: resolving one removes it.
+    """
+    return external_claimants(org, team.id, index) > 0
+
+
+def claim_load(org: OrgState, index: CouplingIndex | None = None) -> float:
+    """Total excess claimants across the org: one per standing claim.
+
+    The structural owner is always claimant one, so every standing claim is
+    one claimant beyond it. Zero when nothing is claimed, so an org without
+    contest pays nothing here.
+    """
+    load = sum(external_claimants(org, team.id, index) for team in org.teams)
+    return float(load)
 
 
 def coupling_of(org: OrgState, team_id: str, index: CouplingIndex | None = None) -> int:
@@ -163,7 +209,9 @@ def team_capacity(
 ) -> float:
     """Decisions a team can clear per turn, after structural penalties."""
     capacity = params.base_capacity
-    if not team.has_local_authority:
+    if is_contested(org, team, index):
+        capacity *= params.contested_penalty
+    elif not team.has_local_authority:
         capacity *= params.authority_penalty
     capacity /= _UNIT + params.coupling_weight * coupling_of(org, team.id, index)
     capacity /= _UNIT + params.incentive_weight * team.incentive_skew
@@ -239,7 +287,16 @@ def evaluate(
     total_arrivals = sum(team_arrivals(org, t, params, index) for t in org.teams)
     total_imbalance = sum(team_imbalance(org, t, params, index) for t in org.teams)
     latency = total_imbalance / total_arrivals
-    escalation = sum(1 for t in org.teams if not t.has_local_authority) / team_count
+    # A contested team cannot decide cleanly either: the meta-question of who
+    # decides escalates even when the team formally holds local authority.
+    escalation = (
+        sum(
+            1
+            for t in org.teams
+            if not t.has_local_authority or is_contested(org, t, index)
+        )
+        / team_count
+    )
     rework = sum(t.incentive_skew for t in org.teams) / team_count
     penalty = (
         params.latency_weight * latency
@@ -248,6 +305,7 @@ def evaluate(
     )
     value = params.max_score * (_UNIT - penalty)
     value /= _UNIT + params.influence_weight * influence_load(org, params, index)
+    value /= _UNIT + params.contested_weight * claim_load(org, index)
     return StructuralScore(
         value=max(_ZERO, min(params.max_score, value)),
         latency_penalty=latency,

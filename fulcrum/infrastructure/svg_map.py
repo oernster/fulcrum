@@ -25,6 +25,9 @@ _HALF = 2
 _FULL = 1.0
 _AUTHORITY = (52, 211, 153)
 _NO_AUTHORITY = (245, 158, 11)
+# Contested ownership outranks the authority gradient: a node carrying any
+# contest borders red, matching the on-screen map.
+_CONTESTED_STROKE = "#ef4444"
 _DOMAIN_FILL = "#222831"
 _TEAM_FILL = "#1a1e24"
 _TEXT = "#e6e9ee"
@@ -89,11 +92,18 @@ def _node_svg(node, pos) -> list[str]:
     fill = _DOMAIN_FILL if node.kind == _KIND_DOMAIN else _TEAM_FILL
     if node.kind == _KIND_DOMAIN:
         sub = count_noun(node.team_count, "team")
+        if node.contested_count:
+            sub = f"{sub}, {count_noun(node.contested_count, 'contested team')}"
+    elif node.contested_count:
+        sub = "contested"
     else:
         sub = "decides locally" if node.authority_ratio >= _FULL else "escalates"
+    stroke = (
+        _CONTESTED_STROKE if node.contested_count else _stroke(node.authority_ratio)
+    )
     parts = [
         f'<rect x="{x}" y="{y}" width="{_NODE_W}" height="{_NODE_H}" rx="10" '
-        f'fill="{fill}" stroke="{_stroke(node.authority_ratio)}" stroke-width="2"/>',
+        f'fill="{fill}" stroke="{stroke}" stroke-width="2"/>',
         f'<text x="{x + 12}" y="{y + 26}" fill="{_TEXT}" font-size="14" '
         f'font-weight="bold">{escape(node.label)}</text>',
         f'<text x="{x + 12}" y="{y + 46}" fill="{_MUTED}" '

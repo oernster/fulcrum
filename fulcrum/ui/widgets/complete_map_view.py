@@ -30,10 +30,12 @@ from fulcrum.domain.hierarchy import (
     teams_in_domain,
 )
 from fulcrum.domain.models import Domain, OrgState
+from fulcrum.domain.simulation import is_contested
 from fulcrum.shared.text import count_noun
 
 _AUTHORITY = QColor("#34d399")
 _NO_AUTHORITY = QColor("#f59e0b")
+_CONTESTED = QColor("#ef4444")
 _TEAM_FILL = QColor("#1a1e24")
 _DOMAIN_FILL = QColor("#222831")
 _TEXT = QColor("#e6e9ee")
@@ -261,13 +263,22 @@ class CompleteMapView(QGraphicsView):
         team = self._org.team(box.ident)
         path = QPainterPath()
         path.addRoundedRect(QRectF(x, y, box.w, box.h), _CORNER, _CORNER)
-        ratio = _FULL if team.has_local_authority else 0.0
-        border = _blend(_NO_AUTHORITY, _AUTHORITY, ratio)
+        contested = is_contested(self._org, team)
+        if contested:
+            border = _CONTESTED
+        else:
+            ratio = _FULL if team.has_local_authority else 0.0
+            border = _blend(_NO_AUTHORITY, _AUTHORITY, ratio)
         self._scene.addPath(path, QPen(border, _PEN_W), QBrush(_TEAM_FILL))
         name = self._scene.addSimpleText(team.name, _font(bold=True))
         name.setBrush(_TEXT)
         name.setPos(x + _PAD, y + _NAME_DY)
-        status = "decides locally" if team.has_local_authority else "escalates"
+        if contested:
+            status = "contested"
+        elif team.has_local_authority:
+            status = "decides locally"
+        else:
+            status = "escalates"
         sub_text = f"{status} · {count_noun(team.headcount, 'person', 'people')}"
         sub = self._scene.addSimpleText(sub_text, _font())
         sub.setBrush(_TEXT_MUTED)

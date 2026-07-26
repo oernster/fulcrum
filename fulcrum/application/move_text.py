@@ -11,10 +11,25 @@ from fulcrum.domain.moves import Move, MoveKind
 
 _STABILISE_TEXT = "Stabilise all interfaces"
 _APPROVAL_TEXT = "Add an approval layer"
+_OVERLAY_TEXT = "Impose a matrix overlay"
 
 
 def _named(org: OrgState, ids: tuple[str, ...]) -> str:
     return " + ".join(org.team(team_id).name for team_id in ids)
+
+
+def _actor_name(org: OrgState, actor_id: str) -> str:
+    """A claimant or winner's display name: team, unit or the raw label.
+
+    A claimant need not be a modelled node at all (a chapter, a functional
+    head), so anything unresolved renders as the label it was written as.
+    """
+    if org.has_team(actor_id):
+        return org.team(actor_id).name
+    for domain in org.domains:
+        if domain.id == actor_id:
+            return domain.name
+    return actor_id
 
 
 def describe_move(org: OrgState, move: Move) -> str:
@@ -30,6 +45,22 @@ def describe_move(org: OrgState, move: Move) -> str:
         return f"Split {_named(org, move.targets)} into two owners"
     if move.kind == MoveKind.ADD_TEAM:
         return f"Add a new owner beside {_named(org, move.targets)}"
+    if move.kind == MoveKind.RESOLVE_AUTHORITY:
+        subject, winner = move.targets
+        if winner == subject:
+            return f"Resolve authority at {_named(org, (subject,))} in its favour"
+        return (
+            f"Resolve authority at {_named(org, (subject,))} in favour of "
+            f"{_actor_name(org, winner)}"
+        )
+    if move.kind == MoveKind.DOWNGRADE_CLAIM:
+        claimant, subject = move.targets
+        return (
+            f"Downgrade {_actor_name(org, claimant)}'s claim on "
+            f"{_named(org, (subject,))} to consultation"
+        )
+    if move.kind == MoveKind.IMPOSE_MATRIX_OVERLAY:
+        return _OVERLAY_TEXT
     return _APPROVAL_TEXT
 
 
@@ -68,6 +99,21 @@ _MOVE_NOTES = {
     MoveKind.ADD_TEAM: (
         "Stands up a fresh accountable owner to take over part of an "
         "overloaded team's load."
+    ),
+    MoveKind.RESOLVE_AUTHORITY: (
+        "Collapses a contested decision class into a single accountable "
+        "owner, so who decides never has to be settled before deciding. The "
+        "great repair for matrix and dual-reporting contest."
+    ),
+    MoveKind.DOWNGRADE_CLAIM: (
+        "Turns a claimant into a consulted party: the claim becomes an "
+        "explicit dependency with a small delay, an interface rather than "
+        "shared control, so the overhead is priced instead of hidden."
+    ),
+    MoveKind.IMPOSE_MATRIX_OVERLAY: (
+        "Overlays a second claimant on every team, so every decision class "
+        "becomes contested at once. The contest twin of the approval layer: "
+        "dual reporting formalised as structure."
     ),
 }
 

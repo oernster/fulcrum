@@ -17,6 +17,7 @@ from fulcrum.domain.hierarchy import (
     teams_in_domain,
 )
 from fulcrum.domain.models import OrgState
+from fulcrum.domain.simulation import is_contested
 
 _KIND_DOMAIN = "domain"
 _KIND_TEAM = "team"
@@ -54,6 +55,7 @@ def build_level(
                 owner=domain.lead,
                 category=domain.category,
                 headcount=headcount_in_domain(org, domain.id),
+                contested_count=sum(1 for t in members if is_contested(org, t)),
             )
         )
     for team in direct_teams:
@@ -67,6 +69,7 @@ def build_level(
                 authority_ratio=_FULL if team.has_local_authority else _NONE,
                 owner=team.owner,
                 headcount=team.headcount,
+                contested_count=1 if is_contested(org, team) else 0,
             )
         )
     return tuple(nodes), _edges(org, node_of)

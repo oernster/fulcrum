@@ -1,12 +1,27 @@
-"""Structural moves: pure transformations from one org state to another."""
+"""Structural moves: pure transformations from one org state to another.
+
+The vocabulary (MoveKind, Move) lives in move_base and the claim moves in
+moves_claims; this module holds the structural handlers and the dispatch
+table, re-exporting the vocabulary so callers import everything from here.
+"""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from enum import Enum
-
 from fulcrum.domain.errors import InvalidMoveError, UnknownTeamError
-from fulcrum.domain.models import Dependency, OrgState, Team
+from fulcrum.domain.models import AuthorityClaim, Dependency, OrgState, Team
+from fulcrum.domain.move_base import (
+    Move,
+    MoveKind,
+    dep_sort_key,
+    repoint,
+    unique_prefixed_id,
+    unique_team_id,
+)
+from fulcrum.domain.moves_claims import (
+    downgrade_claim,
+    impose_matrix_overlay,
+    resolve_authority,
+)
 
 # Delay stamped on the dependencies created by an approval layer. A new gate
 # that every team must route through is the canonical blunder.
@@ -34,29 +49,12 @@ _SPLIT_SIBLING_NAME_SUFFIX: str = " (split)"
 _ADDED_OWNER_ID_SUFFIX: str = "_owner"
 _ADDED_OWNER_NAME_SUFFIX: str = " (new owner)"
 
-
-class MoveKind(str, Enum):
-    """The structural interventions a player can make."""
-
-    ADD_APPROVAL_LAYER = "add_approval_layer"
-    STABILISE_INTERFACES = "stabilise_interfaces"
-    DELEGATE_AUTHORITY = "delegate_authority"
-    REALIGN_INCENTIVES = "realign_incentives"
-    COLLAPSE_BOUNDARY = "collapse_boundary"
-    SPLIT_TEAM = "split_team"
-    ADD_TEAM = "add_team"
-
-
-@dataclass(frozen=True, slots=True)
-class Move:
-    """A structural move: a kind plus the team ids it acts on."""
-
-    kind: MoveKind
-    targets: tuple[str, ...] = ()
-    label: str = ""
-
-    def display_label(self) -> str:
-        return self.label or self.kind.value.replace("_", " ")
+# The claim moves carry a claimant in their targets, which may be a domain id
+# or a plain label rather than a team, so their handlers validate their own
+# targets instead of the team-id check the structural moves share.
+_SELF_VALIDATING_KINDS = frozenset(
+    {MoveKind.RESOLVE_AUTHORITY, MoveKind.DOWNGRADE_CLAIM}
+)
 
 
 def apply_move(org: OrgState, move: Move) -> OrgState:
@@ -68,16 +66,17 @@ def apply_move(org: OrgState, move: Move) -> OrgState:
     quadratic was what stalled the UI when playing or previewing a move at a
     high scope of a very large org.
     """
-    known_team_ids = {team.id for team in org.teams}
-    for team_id in move.targets:
-        if team_id not in known_team_ids:
-            raise UnknownTeamError(f"move targets unknown team: {team_id}")
+    if move.kind not in _SELF_VALIDATING_KINDS:
+        known_team_ids = {team.id for team in org.teams}
+        for team_id in move.targets:
+            if team_id not in known_team_ids:
+                raise UnknownTeamError(f"move targets unknown team: {team_id}")
     handler = _HANDLERS[move.kind]
     return handler(org, move)
 
 
 def _add_approval_layer(org: OrgState, move: Move) -> OrgState:
-    gate_id = _unique_gate_id(org)
+    gate_id = unique_prefixed_id(org, _APPROVAL_GATE_PREFIX)
     gate = Team(id=gate_id, name="Approval gate", has_local_authority=False)
     new_deps = tuple(Dependency(gate_id, t.id, _APPROVAL_GATE_DELAY) for t in org.teams)
     return OrgState(
@@ -86,6 +85,7 @@ def _add_approval_layer(org: OrgState, move: Move) -> OrgState:
         workload=org.workload,
         origin=org.origin,
         domains=org.domains,
+        claims=org.claims,
     )
 
 
@@ -94,7 +94,9 @@ def _stabilise_interfaces(org: OrgState, move: Move) -> OrgState:
         d.with_delay(int(d.propagation_delay * _STABILISE_RETENTION))
         for d in org.dependencies
     )
-    return OrgState(org.teams, new_deps, org.workload, org.origin, org.domains)
+    return OrgState(
+        org.teams, new_deps, org.workload, org.origin, org.domains, org.claims
+    )
 
 
 def _delegate_authority(org: OrgState, move: Move) -> OrgState:
@@ -104,7 +106,9 @@ def _delegate_authority(org: OrgState, move: Move) -> OrgState:
     new_teams = tuple(
         t.with_authority(True) if t.id in targets else t for t in org.teams
     )
-    return OrgState(new_teams, org.dependencies, org.workload, org.origin, org.domains)
+    return OrgState(
+        new_teams, org.dependencies, org.workload, org.origin, org.domains, org.claims
+    )
 
 
 def _realign_incentives(org: OrgState, move: Move) -> OrgState:
@@ -119,7 +123,9 @@ def _realign_incentives(org: OrgState, move: Move) -> OrgState:
         )
         for t in org.teams
     )
-    return OrgState(new_teams, org.dependencies, org.workload, org.origin, org.domains)
+    return OrgState(
+        new_teams, org.dependencies, org.workload, org.origin, org.domains, org.claims
+    )
 
 
 def _collapse_boundary(org: OrgState, move: Move) -> OrgState:
@@ -142,7 +148,10 @@ def _collapse_boundary(org: OrgState, move: Move) -> OrgState:
         merged if t.id == keep_id else t for t in org.teams if t.id != drop_id
     )
     new_deps = _remap_dependencies(org.dependencies, drop_id, keep_id)
-    return OrgState(new_teams, new_deps, org.workload, org.origin, org.domains)
+    new_claims = _remap_claims(org.claims, drop_id, keep_id)
+    return OrgState(
+        new_teams, new_deps, org.workload, org.origin, org.domains, new_claims
+    )
 
 
 def _remap_dependencies(
@@ -163,12 +172,31 @@ def _remap_dependencies(
     return tuple(remapped)
 
 
+def _remap_claims(
+    claims: tuple[AuthorityClaim, ...], drop_id: str, keep_id: str
+) -> tuple[AuthorityClaim, ...]:
+    """Claims after a merge: endpoints renamed, self-claims and dupes dropped."""
+    remapped: list[AuthorityClaim] = []
+    seen: set[tuple[str, str]] = set()
+    for claim in claims:
+        claimant = keep_id if claim.claimant == drop_id else claim.claimant
+        subject = keep_id if claim.subject == drop_id else claim.subject
+        if claimant == subject:
+            continue
+        key = (claimant, subject)
+        if key in seen:
+            continue
+        seen.add(key)
+        remapped.append(AuthorityClaim(claimant, subject))
+    return tuple(remapped)
+
+
 def _split_team(org: OrgState, move: Move) -> OrgState:
     if len(move.targets) != _GROWTH_TARGET_COUNT:
         raise InvalidMoveError("split_team needs exactly one target")
     (team_id,) = move.targets
     source = org.team(team_id)
-    sibling_id = _unique_team_id(org, f"{team_id}{_SPLIT_SIBLING_ID_SUFFIX}")
+    sibling_id = unique_team_id(org, f"{team_id}{_SPLIT_SIBLING_ID_SUFFIX}")
     sibling_size = max(_MIN_TEAM_SIZE, source.size // _SPLIT_OWNER_COUNT)
     source_size = max(_MIN_TEAM_SIZE, source.size - sibling_size)
     sibling_headcount = max(_MIN_HEADCOUNT, source.headcount // _SPLIT_OWNER_COUNT)
@@ -183,11 +211,13 @@ def _split_team(org: OrgState, move: Move) -> OrgState:
         owner=source.owner,
         headcount=sibling_headcount,
     )
-    touching = sorted((d for d in org.dependencies if d.touches(team_id)), key=_dep_key)
+    touching = sorted(
+        (d for d in org.dependencies if d.touches(team_id)), key=dep_sort_key
+    )
     untouched = tuple(d for d in org.dependencies if not d.touches(team_id))
     kept_count = len(touching) // _SPLIT_OWNER_COUNT
     kept = tuple(touching[:kept_count])
-    moved = tuple(_repoint(d, team_id, sibling_id) for d in touching[kept_count:])
+    moved = tuple(repoint(d, team_id, sibling_id) for d in touching[kept_count:])
     resized = tuple(
         (
             t.with_size(source_size).with_headcount(source_headcount)
@@ -202,6 +232,7 @@ def _split_team(org: OrgState, move: Move) -> OrgState:
         workload=org.workload,
         origin=org.origin,
         domains=org.domains,
+        claims=org.claims,
     )
 
 
@@ -210,17 +241,19 @@ def _add_team(org: OrgState, move: Move) -> OrgState:
         raise InvalidMoveError("add_team needs exactly one target")
     (team_id,) = move.targets
     source = org.team(team_id)
-    owner_id = _unique_team_id(org, f"{team_id}{_ADDED_OWNER_ID_SUFFIX}")
+    owner_id = unique_team_id(org, f"{team_id}{_ADDED_OWNER_ID_SUFFIX}")
     owner = Team(
         id=owner_id,
         name=f"{source.name}{_ADDED_OWNER_NAME_SUFFIX}",
         has_local_authority=True,
         domain_id=source.domain_id,
     )
-    touching = sorted((d for d in org.dependencies if d.touches(team_id)), key=_dep_key)
+    touching = sorted(
+        (d for d in org.dependencies if d.touches(team_id)), key=dep_sort_key
+    )
     untouched = tuple(d for d in org.dependencies if not d.touches(team_id))
     handed_over = tuple(
-        _repoint(d, team_id, owner_id) for d in touching[:_ADDED_OWNER_INTAKE]
+        repoint(d, team_id, owner_id) for d in touching[:_ADDED_OWNER_INTAKE]
     )
     retained = tuple(touching[_ADDED_OWNER_INTAKE:])
     return OrgState(
@@ -229,37 +262,8 @@ def _add_team(org: OrgState, move: Move) -> OrgState:
         workload=org.workload,
         origin=org.origin,
         domains=org.domains,
+        claims=org.claims,
     )
-
-
-def _dep_key(dep: Dependency) -> tuple[str, str, int]:
-    return (dep.upstream, dep.downstream, dep.propagation_delay)
-
-
-def _repoint(dep: Dependency, old_id: str, new_id: str) -> Dependency:
-    upstream = new_id if dep.upstream == old_id else dep.upstream
-    downstream = new_id if dep.downstream == old_id else dep.downstream
-    return Dependency(upstream, downstream, dep.propagation_delay)
-
-
-def _unique_team_id(org: OrgState, base: str) -> str:
-    existing = set(org.team_ids)
-    candidate = base
-    index = 1
-    while candidate in existing:
-        index += 1
-        candidate = f"{base}_{index}"
-    return candidate
-
-
-def _unique_gate_id(org: OrgState) -> str:
-    existing = set(org.team_ids)
-    index = 1
-    candidate = f"{_APPROVAL_GATE_PREFIX}_{index}"
-    while candidate in existing:
-        index += 1
-        candidate = f"{_APPROVAL_GATE_PREFIX}_{index}"
-    return candidate
 
 
 _HANDLERS = {
@@ -270,4 +274,7 @@ _HANDLERS = {
     MoveKind.COLLAPSE_BOUNDARY: _collapse_boundary,
     MoveKind.SPLIT_TEAM: _split_team,
     MoveKind.ADD_TEAM: _add_team,
+    MoveKind.RESOLVE_AUTHORITY: resolve_authority,
+    MoveKind.DOWNGRADE_CLAIM: downgrade_claim,
+    MoveKind.IMPOSE_MATRIX_OVERLAY: impose_matrix_overlay,
 }

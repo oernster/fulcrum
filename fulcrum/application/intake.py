@@ -9,8 +9,21 @@ previous edit) in the editor with nothing lost.
 
 from __future__ import annotations
 
-from fulcrum.application.dto import DependencySpec, DomainSpec, OrgBlueprint, TeamSpec
-from fulcrum.domain.models import Dependency, Domain, Origin, OrgState, Team
+from fulcrum.application.dto import (
+    ClaimSpec,
+    DependencySpec,
+    DomainSpec,
+    OrgBlueprint,
+    TeamSpec,
+)
+from fulcrum.domain.models import (
+    AuthorityClaim,
+    Dependency,
+    Domain,
+    Origin,
+    OrgState,
+    Team,
+)
 
 
 def build_org_state(blueprint: OrgBlueprint, origin: Origin) -> OrgState:
@@ -43,12 +56,16 @@ def build_org_state(blueprint: OrgBlueprint, origin: Origin) -> OrgState:
         )
         for spec in blueprint.domains
     )
+    claims = tuple(
+        AuthorityClaim(spec.claimant, spec.subject) for spec in blueprint.claims
+    )
     return OrgState(
         teams=teams,
         dependencies=dependencies,
         workload=blueprint.workload,
         origin=origin,
         domains=domains,
+        claims=claims,
     )
 
 
@@ -82,9 +99,11 @@ def org_to_blueprint(org: OrgState) -> OrgBlueprint:
         )
         for domain in org.domains
     )
+    claims = tuple(ClaimSpec(claim.claimant, claim.subject) for claim in org.claims)
     return OrgBlueprint(
         teams=teams,
         dependencies=dependencies,
         workload=org.workload,
         domains=domains,
+        claims=claims,
     )

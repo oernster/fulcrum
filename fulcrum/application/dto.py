@@ -33,6 +33,14 @@ class DependencySpec:
 
 
 @dataclass(frozen=True, slots=True)
+class ClaimSpec:
+    """A plain authority-claim description: claimant contests subject."""
+
+    claimant: str
+    subject: str
+
+
+@dataclass(frozen=True, slots=True)
 class DomainSpec:
     """A plain domain description, as collected by the editor or an importer."""
 
@@ -52,6 +60,7 @@ class OrgBlueprint:
     dependencies: tuple[DependencySpec, ...] = ()
     workload: int = 1
     domains: tuple[DomainSpec, ...] = ()
+    claims: tuple[ClaimSpec, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -123,6 +132,7 @@ class MapNode:
     owner: str = ""
     category: str = ""
     headcount: int = 0
+    contested_count: int = 0
 
 
 @dataclass(frozen=True, slots=True)

@@ -81,6 +81,12 @@
               <td>Engineering judgement</td>
             </tr>
             <tr>
+              <td><code>contested_penalty</code> = 0.35</td>
+              <td>Multiplies capacity for a team whose decisions carry a standing claim (matrix and dual reporting). Enforced to be at most <code>authority_penalty</code>, so contest is never cheaper than clean escalation.</td>
+              <td><i>Relativistic Decision Architecture</i>, Axiom 2 refinement (a worldline that cannot name its owner is broken; the meta-question is the cost)</td>
+              <td>Judgement; the ordering constraint is enforced in code</td>
+            </tr>
+            <tr>
               <td><code>coupling_weight</code> = 0.6</td>
               <td>Divides capacity by 1 + 0.6 &times; the dependencies touching the team.</td>
               <td><i>Decision Architecture</i> (latency accumulation); <i>The Move Space</i> (coordination overload)</td>
@@ -129,6 +135,12 @@
               <td>Engineering judgement (gentle by design)</td>
             </tr>
             <tr>
+              <td><code>contested_weight</code> = 0.1</td>
+              <td>Divides the whole score per standing claim: the structural owner is claimant one, so each claim is one claimant too many.</td>
+              <td><i>Decision Architecture Patterns</i> (decision semaphore, phantom authority); <i>Relativistic Decision Architecture</i> (authority fragmenting within a domain manufactures coordination load)</td>
+              <td>Engineering judgement (gentle by design)</td>
+            </tr>
+            <tr>
               <td><code>base_capacity</code> = 12.0</td>
               <td>Decisions a team can clear per turn before penalties; sets the scale that arrivals are measured against.</td>
               <td>Queueing framing (arrivals against capacity)</td>
@@ -141,8 +153,8 @@
               <td>Band edges are engineering judgement</td>
             </tr>
             <tr>
-              <td>Move constants: approval gate delay = 3; stabilise and realign retention = 0.4</td>
-              <td>Shape what each move does: a new approval gate arrives with delay on every team; stabilising interfaces and realigning incentives pull values toward zero without forcing them there.</td>
+              <td>Move constants: approval gate delay = 3; stabilise and realign retention = 0.4; consultation delay = 1</td>
+              <td>Shape what each move does: a new approval gate arrives with delay on every team; stabilising interfaces and realigning incentives pull values toward zero without forcing them there; downgrading a claim prices the consulted party as one turn of explicit waiting. The matrix overlay needs no constant: its damage is pure contest.</td>
               <td><i>The Move Space</i> (the blunder and good-move catalogues)</td>
               <td>Engineering judgement</td>
             </tr>
@@ -211,11 +223,12 @@
           coupling and often no hierarchy: most of the model's terms have no signal and the score
           collapses to workload against capacity plus skew. Below that size the tool is a toy, not
           a diagnostic.</li>
-        <li><b>Matrix and dual-reporting structures.</b> Authority in Fulcrum is one boolean per
-          team on one dependency graph. Two claimants to the same decision class cannot be drawn
-          at all, yet that discontinuity is exactly the pathology the books treat as most
-          interesting. Fulcrum cannot currently represent the disease it would most want to
-          price.</li>
+        <li><b>Contest is priced, not fully simulated.</b> Matrix and dual-reporting structures
+          are drawn as authority claims and priced through three channels (a capacity cut, the
+          escalation share and a whole-score divisor), but the reconciliation traffic between the
+          claimants themselves is not synthesised as edges. A claim is also binary: a courtesy
+          dotted line and a co-equal second boss weigh the same. Where claim strength varies
+          widely, the score is coarser than the organisation.</li>
         <li><b>Organisations where informal authority dominates.</b> The model reads the formal
           graph. Where the shadow structure makes the real decisions, the inputs are fiction and
           so is the score.</li>
@@ -272,16 +285,22 @@
         <a href="https://github.com/oernster/fulcrum/blob/main/sensitivity.py">sensitivity.py</a>,
         which scales every tunable coefficient by 0.8 and by 1.2 (the three composite penalty
         shares are renormalised to keep their enforced sum of 1.0), re-scores the ten shipped
-        archetypes under each of the 20 perturbed configurations and checks four qualitative
+        archetypes under each of the 24 perturbed configurations and checks five qualitative
         conclusions: the typical archetypes still collapse in order with scale, the well-designed
         archetypes keep their order, every well-designed archetype still outscores its typical
-        counterpart and adding an approval layer still lowers the score on every typical
-        archetype.</p>
-      <p><b>All four conclusions survive every perturbation.</b> The baseline scores below
-        reproduce the published archetype numbers exactly; under all 20 perturbed configurations
-        the orderings, the typical-versus-well-designed gap and the sign of the approval-layer
-        blunder are unchanged. The qualitative results come from the structure of the model, not
-        from the particular values of its coefficients.</p>
+        counterpart and both canonical blunders (the approval layer and the matrix overlay) still
+        lower the score on every typical archetype.</p>
+      <p><b>All five conclusions survive every perturbation.</b> The baseline scores below
+        reproduce the published archetype numbers exactly; under all 24 perturbed configurations
+        the orderings, the typical-versus-well-designed gap and the signs of both blunders are
+        unchanged. The qualitative results come from the structure of the model, not from the
+        particular values of its coefficients.</p>
+      <p>The sweep has already earned its keep once: the first cut of contested ownership
+        counted a team's own authority as its only structural claimant, and under that rule the
+        matrix overlay read <b>positive</b> on the escalation-heavy archetypes (it barely
+        contested anyone while diluting every penalty share). The sweep failed, the semantics
+        were corrected (the structural owner is always claimant one, so any standing claim is
+        contest) and the failure is recorded here rather than erased.</p>
       <div class="table-scroll">
         <table class="weights">
           <thead>
@@ -313,7 +332,7 @@
   <div class="container footer-inner">
     <div>
       <strong>Fulcrum</strong>: Organisational Decision Architecture Simulation Tool<br>
-      (c) Oliver Ernster · Local-first · GPL-3.0 + LGPL-3.0 · v<!--VERSION-->2.0.0<!--/VERSION-->
+      (c) Oliver Ernster · Local-first · GPL-3.0 + LGPL-3.0 · v<!--VERSION-->2.1.0<!--/VERSION-->
     </div>
     <div class="footer-links">
       <a href="https://github.com/oernster/fulcrum/releases">Releases</a>

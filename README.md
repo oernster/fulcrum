@@ -2,9 +2,10 @@
 
 Fulcrum turns the Decision Architecture model into an engine you operate. You fix a
 failing organisation by choosing structural moves (delegate authority, stabilise
-interfaces, realign incentives or collapse a boundary) and a deterministic model
-scores the result from 0 to 100. You can play generated levels, model your own
-organisation or ask for a guide to a stronger structure.
+interfaces, realign incentives, collapse a boundary or resolve contested
+ownership to a single accountable owner) and a deterministic model scores the
+result from 0 to 100. You can play generated levels, model your own organisation
+or ask for a guide to a stronger structure.
 
 It is a local-first desktop app: everything runs on your machine and nothing
 leaves it.
@@ -45,6 +46,13 @@ A short tour and the books behind it are at <https://oernster.github.io/fulcrum/
   whichever frame shows both its endpoints as nodes: it merges into the
   drilled map's arrows and the aggregate scores while the flat team-level
   score stays honest.
+- Matrix and dual-reporting structure, drawn honestly: an authority claim
+  records another actor (a team, a unit or an unmodelled label such as a
+  chapter lead) asserting the right to decide for a team. A claimed team is
+  contested, reads red on the maps, carries its own watched signal and opens
+  its own repair moves: resolve the class to a single owner, or downgrade a
+  claimant to an explicitly priced consulted dependency. Claims live in the
+  editor beside the dependency table and round-trip through JSON.
 - Every level of the map is playable, the top level included: "Play this
   level" scores the top-level units as one actor each, so dependencies
   between them are priced, then "Score the whole org" returns to the flat
@@ -61,9 +69,9 @@ A short tour and the books behind it are at <https://oernster.github.io/fulcrum/
   descriptive context and never changes the structural score.
 - Two example org sets under `examples/`: a debt ladder that worsens with scale
   and a well-designed reference set that stays healthy.
-- Signals to watch (handoff queue age, escalations, rework and influence without
-  authority), each carrying its own definition: hover for a gloss, click for the
-  full meaning.
+- Signals to watch (handoff queue age, escalations, rework, influence without
+  authority and contested ownership), each carrying its own definition: hover
+  for a gloss, click for the full meaning.
 - Structural moves scored from blunder to great. A Guide plans a move-by-move
   path from the current org to a stronger one (optionally letting the org grow),
   and you can play a move straight from the guide.

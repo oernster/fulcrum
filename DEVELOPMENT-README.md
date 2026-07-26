@@ -152,6 +152,19 @@ it from the `main` branch `/docs` folder. The play-by-play screenshots in
 `docs/assets/screenshots/` are captured from the running app and committed
 alongside.
 
+### Sensitivity sweep
+
+```
+python sensitivity.py
+```
+
+Re-scores the ten example archetypes with every scoring coefficient perturbed
+by 0.8 and 1.2 (the three composite penalty shares renormalised to keep their
+enforced sum) and checks that the published qualitative conclusions still
+hold, both canonical blunders staying negative included. Deterministic, no
+randomness; exits non-zero if any conclusion fails. The site's model page
+(`docs/model.html`) publishes its result.
+
 ## Conventions
 
 - No magic numbers: domain values come from data, configuration or named

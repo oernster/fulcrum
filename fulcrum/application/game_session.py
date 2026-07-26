@@ -18,7 +18,7 @@ from fulcrum.domain.hierarchy import (
     top_level_section,
     translate_focused_move,
 )
-from fulcrum.domain.models import OrgState
+from fulcrum.domain.models import OrgState, Team
 from fulcrum.domain.moves import Move, MoveKind, apply_move
 from fulcrum.domain.signals import SignalReading, compute_signals
 from fulcrum.domain.simulation import coupling_of
@@ -46,7 +46,9 @@ def enumerate_moves(org: OrgState, allow_growth: bool = False) -> tuple[Move, ..
     """
     moves: list[Move] = []
     for team in org.teams:
-        if not team.has_local_authority:
+        if org.claims_on(team.id):
+            _append_claim_moves(org, team, moves)
+        elif not team.has_local_authority:
             moves.append(Move(MoveKind.DELEGATE_AUTHORITY, (team.id,)))
         if team.incentive_skew > 0:
             moves.append(Move(MoveKind.REALIGN_INCENTIVES, (team.id,)))
@@ -58,9 +60,30 @@ def enumerate_moves(org: OrgState, allow_growth: bool = False) -> tuple[Move, ..
     for dep in internal:
         moves.append(Move(MoveKind.COLLAPSE_BOUNDARY, (dep.upstream, dep.downstream)))
     moves.append(Move(MoveKind.ADD_APPROVAL_LAYER))
+    moves.append(Move(MoveKind.IMPOSE_MATRIX_OVERLAY))
     if allow_growth:
         _append_growth_moves(org, moves)
     return tuple(moves)
+
+
+def _append_claim_moves(org: OrgState, team: Team, moves: list[Move]) -> None:
+    """The moves a claimed team opens: resolve the contest, downgrade a claim.
+
+    Any standing claim is contest (the structural owner is already claimant
+    one), so a claimed team never gets a plain delegate move: granting
+    authority without settling the claims would add a claimant, not remove
+    one. Resolution offers every ending: the team takes the class, or a
+    claimant does. Downgrade is only offered for modelled claimants; an
+    unmodelled label is dealt with by resolving instead.
+    """
+    claims = org.claims_on(team.id)
+    winners = [team.id] + [claim.claimant for claim in claims]
+    for winner in winners:
+        moves.append(Move(MoveKind.RESOLVE_AUTHORITY, (team.id, winner)))
+    known = set(org.team_ids) | {d.id for d in org.domains}
+    for claim in claims:
+        if claim.claimant in known:
+            moves.append(Move(MoveKind.DOWNGRADE_CLAIM, (claim.claimant, team.id)))
 
 
 def _append_growth_moves(org: OrgState, moves: list[Move]) -> None:

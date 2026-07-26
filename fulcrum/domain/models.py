@@ -166,6 +166,30 @@ class Dependency:
 
 
 @dataclass(frozen=True, slots=True)
+class AuthorityClaim:
+    """A claim on a team's decision class by another actor.
+
+    claimant may be a team id, a domain id or a plain label for an actor that
+    is not modelled at all (a chapter, a functional head): a matrix claimant
+    need not sit on the delivery graph to contest a decision class. A team's
+    own authority is never expressed as a self-claim; has_local_authority is
+    the single source of truth for it, so a subject with local authority plus
+    one external claim already has two claimants and is contested.
+    """
+
+    claimant: str
+    subject: str
+
+    def __post_init__(self) -> None:
+        if not self.claimant or not self.subject:
+            raise InvalidOrgStateError("claim endpoints must be non-empty")
+        if self.claimant == self.subject:
+            raise InvalidOrgStateError(
+                "a team cannot claim itself; use has_local_authority"
+            )
+
+
+@dataclass(frozen=True, slots=True)
 class Domain:
     """A bounded context grouping teams (and sub-domains) within the org.
 
@@ -201,6 +225,7 @@ class OrgState:
     workload: int = 1
     origin: Origin = Origin.GENERATED
     domains: tuple[Domain, ...] = ()
+    claims: tuple[AuthorityClaim, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.teams:
@@ -218,7 +243,25 @@ class OrgState:
                 raise InvalidOrgStateError("dependency references an unknown node")
         if self.workload <= 0:
             raise InvalidOrgStateError("workload must be a positive integer")
+        self._validate_claims(set(ids))
         self._validate_domains()
+
+    def _validate_claims(self, team_ids: set[str]) -> None:
+        # The subject must be a real team (a decision class lives at a leaf).
+        # The claimant is deliberately unchecked against the node set: a
+        # matrix claimant may be a role that is not modelled at all.
+        seen: set[tuple[str, str]] = set()
+        for claim in self.claims:
+            if claim.subject not in team_ids:
+                raise InvalidOrgStateError("claim subject must be a known team")
+            key = (claim.claimant, claim.subject)
+            if key in seen:
+                raise InvalidOrgStateError("duplicate authority claim")
+            seen.add(key)
+
+    def claims_on(self, team_id: str) -> tuple[AuthorityClaim, ...]:
+        """The external claims on one team's decision class."""
+        return tuple(c for c in self.claims if c.subject == team_id)
 
     def _validate_domains(self) -> None:
         domain_ids = [d.id for d in self.domains]

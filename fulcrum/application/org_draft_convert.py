@@ -61,6 +61,9 @@ class DraftConversions:
             for dep in self.dependencies
             if node.id not in (dep.upstream, dep.downstream)
         )
+        # A unit has no decision class of its own, so claims on the former
+        # team go; claims it makes on other teams survive the conversion.
+        self.claims = tuple(c for c in self.claims if c.subject != node.id)
         return container
 
     def convert_to_team(self, node_id: str):

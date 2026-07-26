@@ -2,8 +2,9 @@
 
 import pytest
 
-from fulcrum.domain.models import Dependency, OrgState, Team
+from fulcrum.domain.models import AuthorityClaim, Dependency, OrgState, Team
 from fulcrum.domain.signals import (
+    CONTESTED,
     ESCALATIONS,
     INFLUENCE,
     QUEUE_AGE,
@@ -27,7 +28,7 @@ def _t(team_id, authority=True, skew=0.0):
 
 def test_definition_lookup():
     assert definition(QUEUE_AGE).label == "Handoff queue age"
-    assert len(SIGNAL_DEFINITIONS) == 4
+    assert len(SIGNAL_DEFINITIONS) == 5
 
 
 def test_compute_signals_values_and_order():
@@ -38,12 +39,13 @@ def test_compute_signals_values_and_order():
     )
     readings = compute_signals(org)
     keys = tuple(r.definition.key for r in readings)
-    assert keys == (QUEUE_AGE, ESCALATIONS, REWORK_RATE, INFLUENCE)
+    assert keys == (QUEUE_AGE, ESCALATIONS, REWORK_RATE, INFLUENCE, CONTESTED)
     by_key = {r.definition.key: r.value for r in readings}
     assert by_key[ESCALATIONS] == 1.0
     assert by_key[REWORK_RATE] == pytest.approx((0.4 + 0.6) / 2 * 100)
     assert by_key[QUEUE_AGE] >= 0.0
     assert by_key[INFLUENCE] >= 0.0
+    assert by_key[CONTESTED] == 0.0
 
 
 def _reading(key: str, value: float) -> SignalReading:
@@ -67,3 +69,15 @@ def test_influence_signal_reads_the_load_for_an_authority_less_hub():
     )
     by_key = {r.definition.key: r.value for r in compute_signals(org)}
     assert by_key[INFLUENCE] == 1.0
+
+
+def test_contested_signal_counts_teams_with_standing_claims():
+    org = OrgState(
+        teams=(_t("a"), _t("b", False), _t("c")),
+        claims=(AuthorityClaim("chapter", "a"), AuthorityClaim("chapter", "b")),
+        workload=1,
+    )
+    by_key = {r.definition.key: r.value for r in compute_signals(org)}
+    # Any standing claim contests its subject, decider and escalator alike.
+    assert by_key[CONTESTED] == 2.0
+    assert format_reading_value(_reading(CONTESTED, 2.0)) == "2"

@@ -10,6 +10,7 @@ from __future__ import annotations
 from fulcrum.domain.models import (
     DEFAULT_CATEGORY,
     DEFAULT_HEADCOUNT,
+    AuthorityClaim,
     Dependency,
     Domain,
     Origin,
@@ -54,6 +55,10 @@ def _dependency_to_dict(dep: Dependency) -> dict:
     }
 
 
+def _claim_to_dict(claim: AuthorityClaim) -> dict:
+    return {"claimant": claim.claimant, "subject": claim.subject}
+
+
 def org_to_dict(org: OrgState) -> dict:
     return {
         "teams": [_team_to_dict(t) for t in org.teams],
@@ -61,6 +66,7 @@ def org_to_dict(org: OrgState) -> dict:
         "workload": org.workload,
         "origin": org.origin.value,
         "domains": [_domain_to_dict(d) for d in org.domains],
+        "claims": [_claim_to_dict(c) for c in org.claims],
     }
 
 
@@ -101,12 +107,16 @@ def org_from_dict(data: dict) -> OrgState:
         )
         for d in data.get("domains", ())
     )
+    claims = tuple(
+        AuthorityClaim(c["claimant"], c["subject"]) for c in data.get("claims", ())
+    )
     return OrgState(
         teams=teams,
         dependencies=dependencies,
         workload=data["workload"],
         origin=Origin(data["origin"]),
         domains=domains,
+        claims=claims,
     )
 
 

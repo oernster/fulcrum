@@ -15,7 +15,13 @@ from dataclasses import dataclass
 from fulcrum.application.move_text import move_note
 from fulcrum.domain.moves import MoveKind
 from fulcrum.domain.simulation import DEFAULT_THRESHOLDS as _THRESHOLDS
-from fulcrum.domain.signals import ESCALATIONS, INFLUENCE, QUEUE_AGE, REWORK_RATE
+from fulcrum.domain.signals import (
+    CONTESTED,
+    ESCALATIONS,
+    INFLUENCE,
+    QUEUE_AGE,
+    REWORK_RATE,
+)
 from fulcrum.domain.signals import SIGNAL_DEFINITIONS
 
 _MOVES_HEADING = "Moves"
@@ -32,6 +38,7 @@ TERM_TEAM_SIZE = "team_size"
 TERM_STRUCTURAL_HEALTH = "structural_health"
 TERM_MOVE_CLASSIFICATION = "move_classification"
 TERM_WORKLOAD = "workload"
+TERM_AUTHORITY_CLAIM = "authority_claim"
 
 
 @dataclass(frozen=True, slots=True)
@@ -185,6 +192,25 @@ _CONCEPTS: tuple[ConceptEntry, ...] = (
         ),
     ),
     ConceptEntry(
+        key=TERM_AUTHORITY_CLAIM,
+        term="Authority claim and contested ownership",
+        definition=(
+            "A claim is another actor asserting the right to decide for a "
+            "team: a second reporting line, a functional chapter, a matrix "
+            "overlay. Every decision class already has a structural owner "
+            "(the team itself, or the line it escalates to), so any standing "
+            "claim makes the team contested: who decides must be settled "
+            "before anything can be decided, which is slower than clean "
+            "escalation and produces conflicting decisions."
+        ),
+        short_help=(
+            "Another actor asserting the right to decide for this team. The "
+            "structural owner is already one claimant, so any standing claim "
+            "is a contest and every decision starts with an argument about "
+            "who decides."
+        ),
+    ),
+    ConceptEntry(
         key=TERM_WORKLOAD,
         term="Workload",
         definition=(
@@ -223,6 +249,11 @@ _SIGNAL_SHORT_HELP: dict[str, str] = {
         "Load on teams that many others depend on but that cannot decide "
         "locally. A platform team everyone waits on but that cannot approve "
         "its own changes carries this load and it burns people out."
+    ),
+    CONTESTED: (
+        "Teams whose decisions have more than one claimant, the matrix "
+        "disease. A team answering to both a line manager and a chapter "
+        "lead settles who decides before it can decide anything."
     ),
 }
 

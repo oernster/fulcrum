@@ -14,6 +14,7 @@ from fulcrum.domain.simulation import (
     SimulationParameters,
     dependency_index,
     influence_load,
+    is_contested,
     team_capacity,
     team_imbalance,
 )
@@ -27,6 +28,7 @@ QUEUE_AGE = "handoff_queue_age"
 ESCALATIONS = "escalations_per_release"
 REWORK_RATE = "rework_rate"
 INFLUENCE = "influence_without_authority"
+CONTESTED = "contested_ownership"
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,6 +92,20 @@ SIGNAL_DEFINITIONS: tuple[SignalDefinition, ...] = (
         ),
         maps_to="the decision shadow and phantom authority",
     ),
+    SignalDefinition(
+        key=CONTESTED,
+        label="Contested ownership",
+        gloss=(
+            "Teams whose decisions carry a standing claim from another "
+            "actor. The structural owner is already one claimant, so any "
+            "claim makes two and who decides must be settled before "
+            "anything can be decided. The matrix and dual-reporting disease."
+        ),
+        measures="Teams with a standing claim on their decisions",
+        unit="teams",
+        reads_high_when="authority worldlines are split between claimants",
+        maps_to="the decision semaphore and broken authority worldlines",
+    ),
 )
 
 _DEFINITION_BY_KEY = {d.key: d for d in SIGNAL_DEFINITIONS}
@@ -123,7 +139,7 @@ def format_reading_value(reading: SignalReading) -> str:
     key = reading.definition.key
     if key == QUEUE_AGE:
         return f"{value:.{_TURNS_DECIMALS}f} turns"
-    if key == ESCALATIONS:
+    if key in (ESCALATIONS, CONTESTED):
         return f"{round(value):,}"
     if key == REWORK_RATE:
         return f"{round(value)}%"
@@ -147,11 +163,13 @@ def compute_signals(
     escalations = float(sum(1 for t in org.teams if not t.has_local_authority))
     rework = (sum(t.incentive_skew for t in org.teams) / team_count) * _PERCENT
     influence = influence_load(org, params, index)
+    contested = float(sum(1 for t in org.teams if is_contested(org, t, index)))
     values = {
         QUEUE_AGE: queue_age,
         ESCALATIONS: escalations,
         REWORK_RATE: rework,
         INFLUENCE: influence,
+        CONTESTED: contested,
     }
     return tuple(
         SignalReading(definition=d, value=values[d.key]) for d in SIGNAL_DEFINITIONS

@@ -51,6 +51,7 @@ class DraftSerialisation:
             siblings = parent.children if parent is not None else draft.roots
             siblings.append(team)
         draft.dependencies = blueprint.dependencies
+        draft.claims = blueprint.claims
         draft._container_count = len(blueprint.domains)
         draft._team_count = len(blueprint.teams)
         return draft
@@ -96,9 +97,14 @@ class DraftSerialisation:
             for dep in self.dependencies
             if dep.upstream in node_ids and dep.downstream in node_ids
         )
+        # A claimant may be an unmodelled label (an imported chapter or role),
+        # so only the subject is checked; removals prune node claimants live.
+        team_ids = {team.id for team in teams}
+        claims = tuple(claim for claim in self.claims if claim.subject in team_ids)
         return OrgBlueprint(
             teams=tuple(teams),
             dependencies=dependencies,
             workload=self.workload,
             domains=tuple(domains),
+            claims=claims,
         )

@@ -10,8 +10,9 @@ from org_draft_io and org_draft_convert.
 
 from __future__ import annotations
 
-from fulcrum.application.dto import DependencySpec
+from fulcrum.application.dto import ClaimSpec, DependencySpec
 from fulcrum.application.name_pool import NamePicker
+from fulcrum.application.org_draft_claims import DraftClaims
 from fulcrum.application.org_draft_convert import DraftConversions
 from fulcrum.application.org_draft_io import DraftSerialisation
 from fulcrum.application.org_draft_nodes import (
@@ -34,12 +35,13 @@ _CONTAINER_PREFIX = "domain"
 _DUPLICATE_SUFFIX = " copy"
 
 
-class OrgDraft(DraftConversions, DraftSerialisation):
+class OrgDraft(DraftClaims, DraftConversions, DraftSerialisation):
     """A mutable org structure with the operations the editor exposes."""
 
     def __init__(self, names: NamePicker, workload: int = DEFAULT_WORKLOAD) -> None:
         self.roots: list = []
         self.dependencies: tuple[DependencySpec, ...] = ()
+        self.claims: tuple[ClaimSpec, ...] = ()
         self.workload = workload
         self._names = names
         self._seq = 0
@@ -94,6 +96,11 @@ class OrgDraft(DraftConversions, DraftSerialisation):
             dep
             for dep in self.dependencies
             if dep.upstream not in removed and dep.downstream not in removed
+        )
+        self.claims = tuple(
+            claim
+            for claim in self.claims
+            if claim.claimant not in removed and claim.subject not in removed
         )
 
     def removal_summary(self, node_id: str) -> RemovalSummary:

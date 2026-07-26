@@ -1,6 +1,6 @@
 """Tests for the standalone SVG overview renderer."""
 
-from fulcrum.domain.models import Dependency, Domain, OrgState, Team
+from fulcrum.domain.models import AuthorityClaim, Dependency, Domain, OrgState, Team
 from fulcrum.infrastructure.svg_map import render_overview_svg
 
 
@@ -41,3 +41,19 @@ def test_overview_svg_for_a_flat_org():
     )
     svg = render_overview_svg(org)
     assert "decides locally" in svg and "escalates" in svg
+
+
+def test_overview_svg_marks_contested_nodes_in_red():
+    org = OrgState(
+        teams=(
+            Team("x", "X", True),
+            Team("y", "Y", True, domain_id="unit"),
+        ),
+        workload=1,
+        domains=(Domain("unit", "Unit"),),
+        claims=(AuthorityClaim("y", "x"), AuthorityClaim("x", "y")),
+    )
+    svg = render_overview_svg(org)
+    assert "contested" in svg
+    assert "1 contested team" in svg
+    assert "#ef4444" in svg

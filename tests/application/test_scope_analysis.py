@@ -38,7 +38,7 @@ def test_analyze_whole_small_org_is_playable():
     result = analyze_scope(org, None, _SIM)
     assert result.playable is True
     assert result.score == _SIM.score(org).value
-    assert len(result.signals) == 4
+    assert len(result.signals) == 5
     assert len(result.valuations) == len(enumerate_moves(org))
 
 

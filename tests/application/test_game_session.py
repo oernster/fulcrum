@@ -7,7 +7,7 @@ from fulcrum.application.game_session import (
     enumerate_moves,
 )
 from fulcrum.domain.hierarchy import AGGREGATE_MOVE_KINDS, TOP_LEVEL_FOCUS
-from fulcrum.domain.models import Dependency, Domain, OrgState, Team
+from fulcrum.domain.models import AuthorityClaim, Dependency, Domain, OrgState, Team
 from fulcrum.domain.moves import Move, MoveKind
 from fulcrum.domain.simulation import MoveClassification, StructuralScore
 
@@ -41,7 +41,54 @@ def test_enumerate_moves_offers_each_kind():
 
 def test_enumerate_moves_without_dependencies():
     org = OrgState(teams=(Team("a", "A", True, 0.0),), workload=1)
-    assert tuple(m.kind for m in enumerate_moves(org)) == (MoveKind.ADD_APPROVAL_LAYER,)
+    assert tuple(m.kind for m in enumerate_moves(org)) == (
+        MoveKind.ADD_APPROVAL_LAYER,
+        MoveKind.IMPOSE_MATRIX_OVERLAY,
+    )
+
+
+def test_enumerate_moves_always_offers_both_blunders():
+    kinds = tuple(m.kind for m in enumerate_moves(_org()))
+    assert MoveKind.ADD_APPROVAL_LAYER in kinds
+    assert MoveKind.IMPOSE_MATRIX_OVERLAY in kinds
+
+
+def test_a_contested_team_gets_resolve_moves_instead_of_delegate():
+    org = OrgState(
+        teams=(Team("a", "A", True, 0.0), Team("b", "B", True, 0.0)),
+        workload=1,
+        domains=(Domain("unit", "Unit"),),
+        claims=(
+            AuthorityClaim("b", "a"),
+            AuthorityClaim("unit", "a"),
+            AuthorityClaim("Head of QA", "a"),
+        ),
+    )
+    moves = enumerate_moves(org)
+    resolve = {m.targets for m in moves if m.kind == MoveKind.RESOLVE_AUTHORITY}
+    downgrade = {m.targets for m in moves if m.kind == MoveKind.DOWNGRADE_CLAIM}
+    assert resolve == {
+        ("a", "a"),
+        ("a", "b"),
+        ("a", "unit"),
+        ("a", "Head of QA"),
+    }
+    # Downgrade is only offered for modelled claimants; the unmodelled label
+    # is dealt with by resolving instead.
+    assert downgrade == {("b", "a"), ("unit", "a")}
+    assert MoveKind.DELEGATE_AUTHORITY not in {m.kind for m in moves}
+
+
+def test_a_single_claim_team_gets_resolve_moves_for_both_endings():
+    org = OrgState(
+        teams=(Team("a", "A", False, 0.0), Team("b", "B", True, 0.0)),
+        workload=1,
+        claims=(AuthorityClaim("b", "a"),),
+    )
+    moves = enumerate_moves(org)
+    resolve = {m.targets for m in moves if m.kind == MoveKind.RESOLVE_AUTHORITY}
+    assert resolve == {("a", "a"), ("a", "b")}
+    assert MoveKind.DELEGATE_AUTHORITY not in {m.kind for m in moves}
 
 
 def test_enumerate_moves_growth_is_opt_in():
@@ -72,7 +119,7 @@ def test_session_exposes_its_simulator():
 def test_game_session_flow():
     session = GameSession(_org(), _FakeSimulator())
     assert session.score() == 50.0
-    assert len(session.signals()) == 4
+    assert len(session.signals()) == 5
     assert len(session.candidate_valuations()) == len(enumerate_moves(_org()))
     session.play(Move(MoveKind.DELEGATE_AUTHORITY, ("b",)))
     assert session.org.team("b").has_local_authority is True
@@ -107,7 +154,7 @@ def test_focus_scores_only_the_section():
     session.focus("d1")
     assert session.focused_on == "d1"
     assert len(session.candidate_valuations()) < full_moves
-    assert len(session.signals()) == 4
+    assert len(session.signals()) == 5
     assert session.score() == 50.0
 
 

@@ -30,6 +30,7 @@ from fulcrum.application.name_pool import NamePicker
 from fulcrum.application.org_draft import OrgDraft
 from fulcrum.shared.text import count_noun
 from fulcrum.ui import ui_scale
+from fulcrum.ui.widgets.claim_editor import ClaimEditor
 from fulcrum.ui.widgets.dependency_editor import DependencyEditor
 from fulcrum.ui.widgets.glossary_dialog import GlossaryDialog
 from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
@@ -116,9 +117,24 @@ class OrgEditorDialog(NeutralDialog):
         )
         deps_layout.addWidget(self._deps)
 
+        self._claims = ClaimEditor(can_claim=self._draft.can_claim)
+        self._claims.set_options(self._draft.dependency_options(), self._draft.teams())
+        self._claims.set_claims(self._draft.claims)
+        claims_box = QWidget()
+        claims_layout = QVBoxLayout(claims_box)
+        claims_layout.setContentsMargins(0, 0, 0, 0)
+        claims_layout.addWidget(
+            labelled(QLabel("Authority claims (who else claims a team's decisions)"))
+        )
+        claims_layout.addWidget(self._claims)
+
+        tables = QSplitter(Qt.Orientation.Horizontal)
+        tables.addWidget(deps_box)
+        tables.addWidget(claims_box)
+
         body = QSplitter(Qt.Orientation.Vertical)
         body.addWidget(panes)
-        body.addWidget(deps_box)
+        body.addWidget(tables)
         body.setStretchFactor(0, _STRUCTURE_SHARE)
         body.setStretchFactor(1, _DEPS_SHARE)
         body.setSizes([ui_scale.px(_STRUCTURE_ROW_H), ui_scale.px(_DEPS_ROW_H)])
@@ -184,13 +200,13 @@ class OrgEditorDialog(NeutralDialog):
     # ---------------------------------------------------------------- events
 
     def _structure_changed(self) -> None:
-        self._deps.set_options(self._draft.dependency_options())
+        self._refresh_tables()
         self._inspector.set_node(self._tree.selected_id())
         self._refresh_footer()
 
     def _node_edited(self, _node_id: str) -> None:
         self._tree.update_labels()
-        self._deps.set_options(self._draft.dependency_options())
+        self._refresh_tables()
         self._refresh_footer()
 
     def _kind_changed(self, node_id: str) -> None:
@@ -198,8 +214,12 @@ class OrgEditorDialog(NeutralDialog):
         self._tree.rebuild()
         self._tree.select_node(node_id)
         self._inspector.set_node(node_id)
-        self._deps.set_options(self._draft.dependency_options())
+        self._refresh_tables()
         self._refresh_footer()
+
+    def _refresh_tables(self) -> None:
+        self._deps.set_options(self._draft.dependency_options())
+        self._claims.set_options(self._draft.dependency_options(), self._draft.teams())
 
     def _open_glossary(self) -> None:
         GlossaryDialog(self).exec()
@@ -221,4 +241,5 @@ class OrgEditorDialog(NeutralDialog):
     def to_blueprint(self) -> OrgBlueprint:
         self._draft.workload = self._workload.value()
         self._draft.dependencies = self._deps.dependencies()
+        self._draft.claims = self._claims.claims()
         return self._draft.to_blueprint()

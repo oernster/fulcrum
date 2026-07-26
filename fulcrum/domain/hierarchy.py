@@ -177,8 +177,17 @@ def focused_suborg(org: OrgState, domain_id: str) -> OrgState:
     deps = tuple(
         d for d in org.dependencies if d.upstream in inside and d.downstream in inside
     )
+    # Contest follows its subject: a team claimed from outside the section is
+    # still contested inside it, so claims project wherever their subject
+    # stands as a node. Aggregate frames roll teams into synthetic units, so
+    # they carry no claims.
+    claims = tuple(c for c in org.claims if c.subject in inside)
     return OrgState(
-        teams=teams, dependencies=deps, workload=org.workload, origin=org.origin
+        teams=teams,
+        dependencies=deps,
+        workload=org.workload,
+        origin=org.origin,
+        claims=claims,
     )
 
 

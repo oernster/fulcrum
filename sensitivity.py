@@ -11,7 +11,9 @@ reports whether the qualitative conclusions survive:
   2. the well-designed archetypes keep the same rank order;
   3. every well-designed archetype still outscores its typical counterpart;
   4. adding an approval layer still lowers the score on every typical
-     archetype (the canonical blunder stays negative).
+     archetype (the canonical blunder stays negative);
+  5. imposing a matrix overlay still lowers the score on every typical
+     archetype (the contest blunder stays negative).
 
 The three composite penalty weights (latency, escalation, rework) must sum to
 1.0 by construction, so each is perturbed and the trio renormalised rather
@@ -76,17 +78,20 @@ WELL_DESIGNED_FILES = (
 INDEPENDENT_COEFFICIENTS = (
     "base_capacity",
     "authority_penalty",
+    "contested_penalty",
     "coupling_weight",
     "incentive_weight",
     "delay_arrival_weight",
     "cognitive_load_weight",
     "influence_weight",
+    "contested_weight",
 )
 # The composite penalty weights are constrained to sum to 1.0, so a
 # perturbation to one is followed by renormalising all three.
 COMPOSITE_WEIGHTS = ("latency_weight", "escalation_weight", "rework_weight")
 
 _APPROVAL_MOVE = Move(MoveKind.ADD_APPROVAL_LAYER)
+_OVERLAY_MOVE = Move(MoveKind.IMPOSE_MATRIX_OVERLAY)
 
 
 def load_org(path: Path) -> OrgState:
@@ -150,6 +155,11 @@ def check(
         - evaluate(org, params).value
         for org in typical
     )
+    overlay_deltas = tuple(
+        evaluate(apply_move(org, _OVERLAY_MOVE), params).value
+        - evaluate(org, params).value
+        for org in typical
+    )
     return {
         "typical": typical_scores,
         "well": well_scores,
@@ -157,6 +167,7 @@ def check(
         "well_order": strictly_decreasing(well_scores),
         "pairwise": all(w > t for w, t in zip(well_scores, typical_scores)),
         "approval_negative": all(delta < 0 for delta in approval_deltas),
+        "overlay_negative": all(delta < 0 for delta in overlay_deltas),
         "worst_approval_delta": max(approval_deltas),
     }
 
@@ -178,7 +189,7 @@ def main() -> int:
 
     header = (
         f"{'coefficient':<24}{'factor':>8}{'typical order':>15}"
-        f"{'well order':>12}{'well>typical':>14}{'approval<0':>12}"
+        f"{'well order':>12}{'well>typical':>14}{'approval<0':>12}{'overlay<0':>11}"
     )
     print(
         f"Perturbation sweep (each coefficient scaled by {FACTORS[0]:.1f} "
@@ -194,6 +205,7 @@ def main() -> int:
                 and result["well_order"]
                 and result["pairwise"]
                 and result["approval_negative"]
+                and result["overlay_negative"]
             )
             all_hold = all_hold and holds
             print(
@@ -202,10 +214,11 @@ def main() -> int:
                 f"{flag(result['well_order']):>12}"
                 f"{flag(result['pairwise']):>14}"
                 f"{flag(result['approval_negative']):>12}"
+                f"{flag(result['overlay_negative']):>11}"
             )
     print()
     verdict = (
-        "All four qualitative conclusions survive every perturbation."
+        "All five qualitative conclusions survive every perturbation."
         if all_hold
         else "At least one qualitative conclusion FAILED under perturbation."
     )
