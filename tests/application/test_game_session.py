@@ -275,6 +275,18 @@ def test_try_play_applies_a_valid_move():
     assert session.can_take_back is True
 
 
+def test_try_play_in_frame_translates_against_the_named_frame():
+    # The session stays unfocused; the move still translates against the
+    # explicit frame, which is how the hierarchy guide plays a unit's row.
+    session = GameSession(_nested_org(), _FakeSimulator())
+    assert session.focused_on is None
+    assert session.try_play_in_frame(Move(MoveKind.DELEGATE_AUTHORITY, ("d1",)), "root")
+    assert session.org.team("a").has_local_authority is True
+    assert session.org.team("b").has_local_authority is True
+    # d2's team is untouched: the move named d1 only.
+    assert session.org.team("c") == _nested_org().team("c")
+
+
 def test_try_play_rejects_a_move_with_an_unknown_target():
     session = GameSession(_org(), _FakeSimulator())
     assert session.try_play(Move(MoveKind.DELEGATE_AUTHORITY, ("ghost",))) is False

@@ -9,7 +9,7 @@ and played on its own, which is how the CTO drills into a domain to decide.
 from __future__ import annotations
 
 from fulcrum.domain.models import Dependency, Domain, OrgState, Team
-from fulcrum.domain.moves import Move, MoveKind
+from fulcrum.domain.move_base import Move, MoveKind
 
 _SKEW_DECIMALS = 2
 
@@ -67,6 +67,18 @@ def domain_has_teams(org: OrgState, domain_id: str) -> bool:
     """Whether a domain's subtree contains at least one team to focus on."""
     ids = domain_subtree_ids(org, domain_id)
     return any(t.domain_id in ids for t in org.teams)
+
+
+def has_aggregate_children(org: OrgState, domain_id: str) -> bool:
+    """Whether a domain rolls up as an aggregate frame: a child holds teams.
+
+    A unit whose child units are all teamless plays as a leaf; aggregating
+    it would roll up zero nodes. This is the single rule for aggregate-ness,
+    shared by the frame builder and the move filters so they cannot drift.
+    """
+    return any(
+        domain_has_teams(org, child.id) for child in child_domains(org, domain_id)
+    )
 
 
 def _has_majority_authority(teams: tuple[Team, ...]) -> bool:
@@ -162,10 +174,11 @@ def focused_suborg(org: OrgState, domain_id: str) -> OrgState:
 
     A non-leaf domain is scored as its immediate children rolled up into one
     decision-node each, so structural moves appear at every level. A leaf domain
-    is its own teams, flattened with only their internal dependencies. Either way
-    the slice scores and plays in isolation.
+    is its own teams, flattened with only their internal dependencies; a domain
+    whose child units are all teamless is a leaf too, since aggregating it
+    would roll up nothing. Either way the slice scores and plays in isolation.
     """
-    if child_domains(org, domain_id):
+    if has_aggregate_children(org, domain_id):
         return _aggregate_section(org, domain_id)
     ids = domain_subtree_ids(org, domain_id)
     teams = tuple(
@@ -205,6 +218,11 @@ def translate_focused_move(org: OrgState, focus_id: str | None, move: Move) -> M
     if focus_id != TOP_LEVEL_FOCUS and not child_domains(org, focus_id):
         return move
     if not move.targets:
+        return move
+    # A scoped stabilise names frame nodes, not actors: its handler resolves
+    # each node's own scope (a unit covers its subtree), so expanding a unit
+    # to its teams here would wrongly re-point the thinning at team edges.
+    if move.kind == MoveKind.STABILISE_INTERFACES:
         return move
     team_ids: list[str] = []
     for target in move.targets:

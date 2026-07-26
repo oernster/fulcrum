@@ -19,8 +19,8 @@ from fulcrum.application.interfaces import Simulator
 from fulcrum.domain.hierarchy import (
     AGGREGATE_MOVE_KINDS,
     TOP_LEVEL_FOCUS,
-    child_domains,
     focused_suborg,
+    has_aggregate_children,
     top_level_section,
 )
 from fulcrum.domain.models import OrgState
@@ -60,7 +60,7 @@ def scope_moves(org: OrgState, focus_id: str | None, active: OrgState):
     that translate cleanly down to its teams."""
     moves = enumerate_moves(active)
     aggregate = focus_id == TOP_LEVEL_FOCUS or (
-        focus_id is not None and child_domains(org, focus_id)
+        focus_id is not None and has_aggregate_children(org, focus_id)
     )
     if aggregate:
         return tuple(m for m in moves if m.kind in AGGREGATE_MOVE_KINDS)

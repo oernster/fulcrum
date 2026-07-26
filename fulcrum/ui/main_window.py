@@ -17,25 +17,20 @@ from PySide6.QtWidgets import (
 
 from fulcrum.application.game_session import GameSession
 from fulcrum.application.interfaces import Clock, OrgStore, PlanExporter, Simulator
-from fulcrum.application.planner import ImprovementPlanner
-from fulcrum.domain.hierarchy import (
-    AGGREGATE_MOVE_KINDS,
-    TOP_LEVEL_FOCUS,
-    child_domains,
-    focused_suborg,
-    top_level_section,
-)
+from fulcrum.application.org_guide import build_org_guide
 from fulcrum.domain.org_size import DEFAULT_BAND
 from fulcrum.shared.resources import find_model_licence, find_ui_licence
+from fulcrum.ui.guide_thread import OrgGuideThread
 from fulcrum.ui.org_intake import OrgIntakeController
 from fulcrum.ui.plan_files import PlanFileActions
 from fulcrum.ui.widgets.about_dialog import AboutDialog, LicenceDialog
 from fulcrum.ui.widgets.board_view import BoardView
 from fulcrum.ui.widgets.book_background_dialog import BookBackgroundDialog
+from fulcrum.ui.widgets.busy_dialog import BusyDialog
 from fulcrum.ui.widgets import disabled_cue
 from fulcrum.ui.widgets.glossary_dialog import GlossaryDialog
-from fulcrum.ui.widgets.guide_dialog import GuideDialog
 from fulcrum.ui.widgets.keyboard_nav import KeyboardNavigator
+from fulcrum.ui.widgets.org_guide_dialog import OrgGuideDialog
 from fulcrum.ui.widgets.org_overview_dialog import OrgOverviewDialog
 from fulcrum.version import APP_NAME, APP_TAGLINE
 
@@ -215,49 +210,38 @@ class MainWindow(QMainWindow):
             self._org_store.save(self._session.org)
 
     def _show_guide(self) -> None:
+        """Plan every level off-thread, then open the hierarchy guide."""
         if self._session is None:
             return
-        if not self._session.is_active_scope_playable():
-            self._inform(
-                "Guide",
-                "This scope is too large to plan. Drill into a section on the "
-                "map first, then open the guide there.",
-            )
-            return
-        fixed, grown = self._plan_guides()
-        GuideDialog(fixed, grown, self._simulator, self._play_from_guide, self).exec()
+        self._guide_busy = BusyDialog("Planning every level...", self)
+        self._guide_busy.show()
+        self._guide_thread = OrgGuideThread(self._session.org, self._simulator)
+        self._guide_thread.built.connect(self._on_guides_built)
+        self._guide_thread.finished.connect(self._guide_thread.deleteLater)
+        self._guide_thread.start()
 
-    def _plan_guides(self):
-        org = self._session.org
-        focused = self._session.focused_on
-        if focused == TOP_LEVEL_FOCUS:
-            section = top_level_section(org)
-            aggregate = True
-        elif focused is not None:
-            section = focused_suborg(org, focused)
-            aggregate = bool(child_domains(org, focused))
-        else:
-            section = org
-            aggregate = False
-        kinds = AGGREGATE_MOVE_KINDS if aggregate else None
-        fixed = ImprovementPlanner(self._simulator).plan(section, kinds)
-        grown = ImprovementPlanner(self._simulator, allow_growth=True).plan(
-            section, kinds
-        )
-        return fixed, grown
+    def _on_guides_built(self, guides) -> None:
+        self._guide_busy.close()
+        fixed, grown = guides
+        OrgGuideDialog(
+            fixed, grown, self._simulator, self._play_from_guide, self
+        ).exec()
 
-    def _play_from_guide(self, move):
-        """Play a guide move live; return the refreshed plan, or None if blocked."""
+    def _play_from_guide(self, move, frame_id):
+        """Play a guide move live; return refreshed guides, or None if blocked."""
         if self._session is None:
             return None
-        if not self._session.try_play(move):
+        if not self._session.try_play_in_frame(move, frame_id):
             self._inform(
                 "Cannot play this move yet",
                 "This move builds on earlier moves in the path; play those first.",
             )
             return None
         self._board.refresh()
-        return self._plan_guides()
+        org = self._session.org
+        fixed = build_org_guide(org, self._simulator)
+        grown = build_org_guide(org, self._simulator, allow_growth=True)
+        return fixed, grown
 
     def _glossary(self) -> None:
         GlossaryDialog(self).exec()

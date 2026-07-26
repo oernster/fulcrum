@@ -12,9 +12,9 @@ from fulcrum.domain.errors import FulcrumError
 from fulcrum.domain.hierarchy import (
     AGGREGATE_MOVE_KINDS,
     TOP_LEVEL_FOCUS,
-    child_domains,
     domain_has_teams,
     focused_suborg,
+    has_aggregate_children,
     top_level_section,
     translate_focused_move,
 )
@@ -54,9 +54,11 @@ def enumerate_moves(org: OrgState, allow_growth: bool = False) -> tuple[Move, ..
             moves.append(Move(MoveKind.REALIGN_INCENTIVES, (team.id,)))
     # Only the frame's own edges yield moves here: a unit-level dependency
     # is enumerated in the aggregate frame where its endpoints are nodes.
+    # Stabilise carries the frame's node ids, so playing it thins exactly
+    # the edges this frame prices rather than every dependency in the org.
     internal = org.internal_dependencies()
     if internal:
-        moves.append(Move(MoveKind.STABILISE_INTERFACES))
+        moves.append(Move(MoveKind.STABILISE_INTERFACES, tuple(org.team_ids)))
     for dep in internal:
         moves.append(Move(MoveKind.COLLAPSE_BOUNDARY, (dep.upstream, dep.downstream)))
     moves.append(Move(MoveKind.ADD_APPROVAL_LAYER))
@@ -173,7 +175,8 @@ class GameSession:
             return ()
         moves = enumerate_moves(active)
         aggregate = self._focus_id == TOP_LEVEL_FOCUS or (
-            self._focus_id is not None and child_domains(self._org, self._focus_id)
+            self._focus_id is not None
+            and has_aggregate_children(self._org, self._focus_id)
         )
         if aggregate:
             moves = tuple(m for m in moves if m.kind in AGGREGATE_MOVE_KINDS)
@@ -215,7 +218,17 @@ class GameSession:
         fail, so this attempts the pure transform first and commits only when it
         succeeds, leaving the session unchanged otherwise.
         """
-        real = translate_focused_move(self._org, self._focus_id, move)
+        return self.try_play_in_frame(move, self._focus_id)
+
+    def try_play_in_frame(self, move: Move, frame_id: str | None) -> bool:
+        """try_play, but translated against an explicit frame.
+
+        The hierarchy guide plays moves from frames other than the session's
+        current focus (a drilled unit's row, the top-level row), so the
+        translation must follow the row's frame rather than whatever the
+        board happens to be focused on.
+        """
+        real = translate_focused_move(self._org, frame_id, move)
         try:
             new_org = apply_move(self._org, real)
         except FulcrumError:

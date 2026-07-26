@@ -8,6 +8,7 @@ table, re-exporting the vocabulary so callers import everything from here.
 from __future__ import annotations
 
 from fulcrum.domain.errors import InvalidMoveError, UnknownTeamError
+from fulcrum.domain.hierarchy import domain_subtree_ids
 from fulcrum.domain.models import AuthorityClaim, Dependency, OrgState, Team
 from fulcrum.domain.move_base import (
     Move,
@@ -49,11 +50,16 @@ _SPLIT_SIBLING_NAME_SUFFIX: str = " (split)"
 _ADDED_OWNER_ID_SUFFIX: str = "_owner"
 _ADDED_OWNER_NAME_SUFFIX: str = " (new owner)"
 
-# The claim moves carry a claimant in their targets, which may be a domain id
-# or a plain label rather than a team, so their handlers validate their own
-# targets instead of the team-id check the structural moves share.
+# These kinds carry targets that are not plain team ids (a claimant may be a
+# domain or a label; a scoped stabilise names frame nodes, units included), so
+# their handlers validate their own targets instead of the team-id check the
+# other structural moves share.
 _SELF_VALIDATING_KINDS = frozenset(
-    {MoveKind.RESOLVE_AUTHORITY, MoveKind.DOWNGRADE_CLAIM}
+    {
+        MoveKind.RESOLVE_AUTHORITY,
+        MoveKind.DOWNGRADE_CLAIM,
+        MoveKind.STABILISE_INTERFACES,
+    }
 )
 
 
@@ -90,13 +96,52 @@ def _add_approval_layer(org: OrgState, move: Move) -> OrgState:
 
 
 def _stabilise_interfaces(org: OrgState, move: Move) -> OrgState:
-    new_deps = tuple(
-        d.with_delay(int(d.propagation_delay * _STABILISE_RETENTION))
-        for d in org.dependencies
-    )
+    """Thin the interfaces of one frame, or of everything when untargeted.
+
+    Targets are the frame's node ids (teams, or whole units standing as the
+    frame's actors); only a dependency crossing between two distinct targeted
+    scopes is thinned, exactly the edges that frame prices. An untargeted
+    move keeps the legacy meaning (every dependency), so saved plans replay
+    unchanged.
+    """
+    if move.targets:
+        new_deps = _stabilise_scoped(org, move.targets)
+    else:
+        new_deps = tuple(
+            d.with_delay(int(d.propagation_delay * _STABILISE_RETENTION))
+            for d in org.dependencies
+        )
     return OrgState(
         org.teams, new_deps, org.workload, org.origin, org.domains, org.claims
     )
+
+
+def _stabilise_scoped(org: OrgState, targets: tuple[str, ...]) -> tuple:
+    domain_ids = {d.id for d in org.domains}
+    owner: dict[str, str] = {}
+    for node_id in targets:
+        if org.has_team(node_id):
+            owner[node_id] = node_id
+        elif node_id in domain_ids:
+            ids = domain_subtree_ids(org, node_id)
+            for covered in ids:
+                owner[covered] = node_id
+            for team in org.teams:
+                if team.domain_id in ids:
+                    owner[team.id] = node_id
+        else:
+            raise UnknownTeamError(f"move targets unknown node: {node_id}")
+    thinned = []
+    for dep in org.dependencies:
+        up = owner.get(dep.upstream)
+        down = owner.get(dep.downstream)
+        if up is not None and down is not None and up != down:
+            thinned.append(
+                dep.with_delay(int(dep.propagation_delay * _STABILISE_RETENTION))
+            )
+        else:
+            thinned.append(dep)
+    return tuple(thinned)
 
 
 def _delegate_authority(org: OrgState, move: Move) -> OrgState:

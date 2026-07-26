@@ -39,7 +39,7 @@ buildinstaller.py) use.
 ```
 fulcrum/
   domain/          pure model: org state, moves, scoring, frames, signals, books
-  application/     simulator seam, session, org draft, planner, plan, glossary
+  application/     simulator seam, session, org draft, planner, org guide, plan, glossary
   infrastructure/  JSON serialization, plan export, HTML and SVG renderers
   ui/              PySide6 board, map, editor and dialogs
   shared/          asset discovery and text helpers (no Qt)
