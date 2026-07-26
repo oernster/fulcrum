@@ -8,7 +8,7 @@ and played on its own, which is how the CTO drills into a domain to decide.
 
 from __future__ import annotations
 
-from fulcrum.domain.models import Dependency, Domain, OrgState, Team
+from fulcrum.domain.models import AuthorityClaim, Dependency, Domain, OrgState, Team
 from fulcrum.domain.move_base import Move, MoveKind
 
 _SKEW_DECIMALS = 2
@@ -112,7 +112,11 @@ def _aggregate_deps(org: OrgState, node_of: dict[str, str]) -> tuple[Dependency,
 def _rolled_children(
     org: OrgState, parent_id: str | None
 ) -> tuple[list[Team], dict[str, str]]:
-    """Each child domain as one rolled-up node, plus the endpoint mapping."""
+    """Each child domain as one rolled-up node, the parent's own teams as
+    themselves, plus the endpoint mapping. A mixed unit holds teams directly
+    beside child units that hold teams; dropping the direct teams would lose
+    them from the frame entirely, so they stand as nodes at this altitude
+    exactly as a loose team stands at the top level (parent None)."""
     nodes: list[Team] = []
     node_of: dict[str, str] = {}
     for child in child_domains(org, parent_id):
@@ -125,7 +129,32 @@ def _rolled_children(
             node_of[domain_id] = child.id
         skew = round(sum(t.incentive_skew for t in teams) / len(teams), _SKEW_DECIMALS)
         nodes.append(Team(child.id, child.name, _has_majority_authority(teams), skew))
+    for team in org.teams:
+        if team.domain_id == parent_id:
+            node_of[team.id] = team.id
+            nodes.append(
+                Team(team.id, team.name, team.has_local_authority, team.incentive_skew)
+            )
     return nodes, node_of
+
+
+def has_direct_teams(org: OrgState, parent_id: str | None) -> bool:
+    """Whether any team sits directly in the parent; None = loose top-level."""
+    return any(t.domain_id == parent_id for t in org.teams)
+
+
+def _direct_team_claims(
+    org: OrgState, parent_id: str | None
+) -> tuple[AuthorityClaim, ...]:
+    """Claims on the parent's own teams: the nodes standing as themselves.
+
+    Contest follows its subject into any frame where the subject is a node,
+    so a claimed direct team is contested here too and is never offered a
+    plain delegate that would bypass its claims. Rolled unit nodes stay
+    claimless: they are synthetic and carry no decision class of their own.
+    """
+    direct = {t.id for t in org.teams if t.domain_id == parent_id}
+    return tuple(c for c in org.claims if c.subject in direct)
 
 
 def _aggregate_section(org: OrgState, parent_id: str) -> OrgState:
@@ -135,6 +164,8 @@ def _aggregate_section(org: OrgState, parent_id: str) -> OrgState:
     authority and mean incentive skew, with dependencies aggregated between the
     children, so a structural move at this level (empower a department, realign a
     division) carries the proportional weight a team move has inside a leaf.
+    Teams held directly by the domain stand beside the rolled nodes as
+    themselves, keeping a mixed unit's own teams in its frame.
     """
     nodes, node_of = _rolled_children(org, parent_id)
     return OrgState(
@@ -142,6 +173,7 @@ def _aggregate_section(org: OrgState, parent_id: str) -> OrgState:
         dependencies=_aggregate_deps(org, node_of),
         workload=org.workload,
         origin=org.origin,
+        claims=_direct_team_claims(org, parent_id),
     )
 
 
@@ -155,17 +187,40 @@ def top_level_section(org: OrgState) -> OrgState:
     team-level truth.
     """
     nodes, node_of = _rolled_children(org, None)
-    for team in org.teams:
-        if team.domain_id is None:
-            node_of[team.id] = team.id
-            nodes.append(
-                Team(team.id, team.name, team.has_local_authority, team.incentive_skew)
-            )
     return OrgState(
         teams=tuple(nodes),
         dependencies=_aggregate_deps(org, node_of),
         workload=org.workload,
         origin=org.origin,
+        claims=_direct_team_claims(org, None),
+    )
+
+
+def direct_teams_section(org: OrgState, parent_id: str | None) -> OrgState:
+    """The parent's own teams as a standalone leaf frame; None = loose teams.
+
+    A mixed unit's aggregate frame shows its direct teams as nodes; an
+    aggregate line is never composed, so this is the leaf frame where those
+    teams' own repairs are planned and priced. It mirrors the leaf branch of
+    focused_suborg: the teams stand as themselves with only their internal
+    dependencies and their claims project with them. Callers guard that at
+    least one direct team exists (has_direct_teams).
+    """
+    teams = tuple(
+        Team(t.id, t.name, t.has_local_authority, t.incentive_skew)
+        for t in org.teams
+        if t.domain_id == parent_id
+    )
+    inside = {t.id for t in teams}
+    deps = tuple(
+        d for d in org.dependencies if d.upstream in inside and d.downstream in inside
+    )
+    return OrgState(
+        teams=teams,
+        dependencies=deps,
+        workload=org.workload,
+        origin=org.origin,
+        claims=tuple(c for c in org.claims if c.subject in inside),
     )
 
 
@@ -192,8 +247,8 @@ def focused_suborg(org: OrgState, domain_id: str) -> OrgState:
     )
     # Contest follows its subject: a team claimed from outside the section is
     # still contested inside it, so claims project wherever their subject
-    # stands as a node. Aggregate frames roll teams into synthetic units, so
-    # they carry no claims.
+    # stands as a node (an aggregate frame keeps only its direct teams'
+    # claims, since its rolled unit nodes are synthetic).
     claims = tuple(c for c in org.claims if c.subject in inside)
     return OrgState(
         teams=teams,
@@ -207,11 +262,12 @@ def focused_suborg(org: OrgState, domain_id: str) -> OrgState:
 def translate_focused_move(org: OrgState, focus_id: str | None, move: Move) -> Move:
     """Map a move played at an aggregate scope onto the real teams beneath it.
 
-    At a non-leaf scope (a focused unit, or the top-level frame) a target may
-    be a child-domain id, expanded to every team in its subtree, or a real
-    team id (a loose team standing as itself at the top level), kept as is.
-    A whole-org or leaf scope already targets real teams, so the move is
-    returned unchanged.
+    At a non-leaf scope (a focused unit or the top-level frame) a
+    child-domain target expands to every team in its subtree; a real-team
+    target (a loose team at the top level or a mixed unit's direct team
+    standing as itself) is kept as is. A focus with no child units already
+    targets real teams (a leaf unit or a guide leaf frame's synthetic id),
+    so the move is returned unchanged, as it is for the whole org.
     """
     if focus_id is None:
         return move

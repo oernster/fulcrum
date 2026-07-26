@@ -1,7 +1,7 @@
 """Tests for the domain-hierarchy queries and focused sub-org views."""
 
 from fulcrum.domain import hierarchy
-from fulcrum.domain.models import Dependency, Domain, OrgState, Team
+from fulcrum.domain.models import AuthorityClaim, Dependency, Domain, OrgState, Team
 from fulcrum.domain.moves import Move, MoveKind
 
 
@@ -238,6 +238,73 @@ def test_top_level_section_rolls_roots_and_keeps_loose_teams():
     assert Dependency("r1", "free", 2) in top.dependencies
     assert top.team("free").incentive_skew == 0.2
     assert top.team("r2").has_local_authority is False
+
+
+def _mixed_org():
+    """A mixed unit: a team directly in the parent beside a teamful child unit."""
+    return OrgState(
+        teams=(
+            Team("direct", "Direct", False, 0.6, domain_id="mix"),
+            Team("s1", "S1", True, 0.2, domain_id="sub"),
+            Team("out", "Out", True, 0.0),
+        ),
+        dependencies=(Dependency("direct", "s1", 4), Dependency("direct", "out", 2)),
+        workload=2,
+        domains=(Domain("mix", "Mixed"), Domain("sub", "Sub", parent_id="mix")),
+        claims=(AuthorityClaim("boss", "direct"), AuthorityClaim("boss", "out")),
+    )
+
+
+def test_aggregate_frame_keeps_the_parents_direct_teams():
+    focus = hierarchy.focused_suborg(_mixed_org(), "mix")
+    nodes = {t.id: t for t in focus.teams}
+    assert set(nodes) == {"sub", "direct"}
+    assert nodes["direct"].has_local_authority is False
+    assert nodes["direct"].incentive_skew == 0.6
+    assert nodes["direct"].domain_id is None
+    assert focus.dependencies == (Dependency("direct", "sub", 4),)
+
+
+def test_aggregate_frame_projects_only_direct_team_claims():
+    focus = hierarchy.focused_suborg(_mixed_org(), "mix")
+    assert focus.claims == (AuthorityClaim("boss", "direct"),)
+
+
+def test_top_level_section_projects_loose_team_claims():
+    top = hierarchy.top_level_section(_mixed_org())
+    assert top.claims == (AuthorityClaim("boss", "out"),)
+
+
+def test_direct_teams_section_is_a_leaf_frame_of_the_parents_own_teams():
+    org = _mixed_org()
+    section = hierarchy.direct_teams_section(org, "mix")
+    assert tuple(t.id for t in section.teams) == ("direct",)
+    assert section.teams[0].domain_id is None
+    assert section.dependencies == ()
+    assert section.claims == (AuthorityClaim("boss", "direct"),)
+    loose = hierarchy.direct_teams_section(org, None)
+    assert tuple(t.id for t in loose.teams) == ("out",)
+    assert loose.claims == (AuthorityClaim("boss", "out"),)
+
+
+def test_has_direct_teams():
+    org = _mixed_org()
+    assert hierarchy.has_direct_teams(org, "mix") is True
+    assert hierarchy.has_direct_teams(org, "sub") is True
+    assert hierarchy.has_direct_teams(org, None) is True
+    bare = OrgState(
+        teams=(Team("a", "A", True, 0.0, domain_id="x"),),
+        domains=(Domain("x", "X"), Domain("y", "Y")),
+    )
+    assert hierarchy.has_direct_teams(bare, "y") is False
+    assert hierarchy.has_direct_teams(bare, None) is False
+
+
+def test_translate_keeps_direct_teams_and_expands_units_at_a_mixed_focus():
+    real = hierarchy.translate_focused_move(
+        _mixed_org(), "mix", Move(MoveKind.DELEGATE_AUTHORITY, ("sub", "direct"))
+    )
+    assert real.targets == ("s1", "direct")
 
 
 def test_translate_top_level_expands_units_and_keeps_loose_teams():

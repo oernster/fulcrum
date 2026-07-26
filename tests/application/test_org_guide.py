@@ -5,12 +5,15 @@ import pytest
 from fulcrum.application.game_session import MAX_PLAYABLE_TEAMS
 from fulcrum.application.org_guide import (
     GROWTH_FRAME_LABEL,
+    LOOSE_TEAMS_FRAME,
+    LOOSE_TEAMS_LABEL,
     TOP_FRAME_LABEL,
     WHOLE_ORG_LABEL,
     GuideNode,
     OrgGuide,
     build_org_guide,
     compose_leaf_lines,
+    direct_teams_frame,
 )
 from fulcrum.application.planner import Guide, GuideStep
 from fulcrum.application.simulator import DeterministicSimulator
@@ -263,6 +266,62 @@ def test_progress_counts_the_growth_pass_when_growing():
     # Five sections plus the whole-org growth pass.
     assert seen[0] == (1, 6)
     assert seen[-1] == (6, 6)
+
+
+def _mixed_org():
+    """A mixed unit (a direct team beside a teamful child unit) plus a loose team."""
+    return OrgState(
+        teams=(
+            _t("direct", domain_id="mix"),
+            _t("s1", domain_id="sub"),
+            _t("s2", authority=True, skew=0.0, domain_id="sub"),
+            _t("loose"),
+        ),
+        dependencies=(Dependency("s1", "s2", 4),),
+        workload=2,
+        domains=(Domain("mix", "Mixed"), Domain("sub", "Sub", parent_id="mix")),
+    )
+
+
+def test_a_mixed_unit_gets_a_composable_direct_teams_row():
+    guide = build_org_guide(_mixed_org(), _SIM)
+    mixed = next(n for n in guide.nodes if n.label == "Mixed")
+    assert mixed.is_leaf is False
+    direct = mixed.children[0]
+    assert direct.label == "Teams directly in Mixed"
+    assert direct.frame_id == direct_teams_frame("mix")
+    assert direct.is_leaf and direct.playable
+    assert direct.org_delta > 0
+    targets = {t for s in direct.guide.steps for t in s.move.targets}
+    assert "direct" in targets
+    assert direct in guide.leaf_nodes()
+
+
+def test_loose_top_level_teams_get_a_composable_row():
+    guide = build_org_guide(_mixed_org(), _SIM)
+    loose = guide.nodes[1]
+    assert loose.label == LOOSE_TEAMS_LABEL
+    assert loose.frame_id == LOOSE_TEAMS_FRAME
+    assert loose.is_leaf and loose.org_delta > 0
+    targets = {t for s in loose.guide.steps for t in s.move.targets}
+    assert targets == {"loose"}
+
+
+def test_direct_and_loose_repairs_reach_the_composed_headline():
+    org = _mixed_org()
+    guide = build_org_guide(org, _SIM)
+    composed = compose_leaf_lines(org, guide)
+    assert composed.team("direct").has_local_authority is True
+    assert composed.team("loose").has_local_authority is True
+
+
+def test_progress_counts_direct_and_loose_rows():
+    seen = []
+    build_org_guide(
+        _mixed_org(), _SIM, progress=lambda done, total: seen.append((done, total))
+    )
+    # Top frame, loose row, Mixed, its direct row, Sub: five sections.
+    assert seen == [(1, 5), (2, 5), (3, 5), (4, 5), (5, 5)]
 
 
 def test_compose_stops_a_line_that_cannot_replay_and_keeps_the_rest():

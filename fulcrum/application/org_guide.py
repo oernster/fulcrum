@@ -12,93 +12,59 @@ Sibling leaf frames are disjoint team sets and their moves act on real teams
 applying every leaf line to the real organisation gives an honest whole-org
 before and after, which is the tree's headline. Aggregate lines are shown but
 never composed; they overlap the leaf repairs beneath them by construction.
+A mixed unit (teams held directly beside child units that hold teams) gets an
+extra leaf row for its direct teams, as does the top level for loose teams,
+so every team sits in exactly one leaf frame and no repair is dropped from
+the headline.
 
 Growth (splitting a team, adding an owner) is a whole-org act: a frame cannot
 price it, since a leaf drops the cross-boundary edges a split relieves and an
 aggregate frame rolls teams into synthetic units. With growth allowed, one
 extra line is planned against the real organisation after the leaf repairs
 compose and appended as the tree's last leaf row, so it composes too.
+
+The result model (GuideNode, OrgGuide) and the row vocabulary live in
+org_guide_model and are re-exported here, so callers import everything from
+this module.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Callable
 
 from fulcrum.application.game_session import MAX_PLAYABLE_TEAMS
 from fulcrum.application.interfaces import Simulator
+from fulcrum.application.org_guide_model import (
+    GROWTH_FRAME_LABEL,
+    LOOSE_TEAMS_FRAME,
+    LOOSE_TEAMS_LABEL,
+    TOP_FRAME_LABEL,
+    WHOLE_ORG_LABEL,
+    GuideNode,
+    OrgGuide,
+    direct_teams_frame,
+)
 from fulcrum.application.planner import Guide, ImprovementPlanner
 from fulcrum.domain.errors import FulcrumError
 from fulcrum.domain.hierarchy import (
     AGGREGATE_MOVE_KINDS,
     TOP_LEVEL_FOCUS,
     child_domains,
+    direct_teams_section,
     domain_has_teams,
     focused_suborg,
     has_aggregate_children,
+    has_direct_teams,
     top_level_section,
 )
 from fulcrum.domain.models import Domain, OrgState
 from fulcrum.domain.moves import Move, MoveKind, apply_move
 
-TOP_FRAME_LABEL = "Top level (units as actors)"
-WHOLE_ORG_LABEL = "Whole organisation"
-GROWTH_FRAME_LABEL = "Growth (whole organisation)"
 _GROWTH_MOVE_KINDS = (MoveKind.SPLIT_TEAM, MoveKind.ADD_TEAM)
 _EMPTY_SCORE = 0.0
 
 # A progress callback receives (sections planned so far, total sections).
 ProgressCallback = Callable[[int, int], None]
-
-
-@dataclass(frozen=True, slots=True)
-class GuideNode:
-    """One frame's row in the hierarchy guide.
-
-    frame_id is what a play translates against: None for the flat whole-org
-    row, TOP_LEVEL_FOCUS for the top-level frame and a domain id for a unit.
-    org_delta is a leaf line's worth in whole-org points (its line applied
-    alone to the real organisation), the honest number a row advertises; a
-    frame's own climb is on its 0..100 scale and would overstate it.
-    Aggregate rows carry no org_delta: they are views, never composed.
-    grown_line marks the whole-org growth row, whose line is planned from
-    the position after every leaf line, so its org_delta is growth's worth
-    on top of the other lines rather than applied alone.
-    """
-
-    frame_id: str | None
-    label: str
-    category: str
-    is_leaf: bool
-    playable: bool
-    guide: Guide
-    org_delta: float = 0.0
-    children: tuple[GuideNode, ...] = ()
-    grown_line: bool = False
-
-
-@dataclass(frozen=True, slots=True)
-class OrgGuide:
-    """Every frame's line, plus the honest composed whole-org headline."""
-
-    nodes: tuple[GuideNode, ...]
-    flat_before: float
-    flat_after: float
-    grown: bool
-
-    def leaf_nodes(self) -> tuple[GuideNode, ...]:
-        """The leaf-frame rows in tree order: the lines that compose."""
-        collected: list[GuideNode] = []
-
-        def visit(node: GuideNode) -> None:
-            if node.is_leaf:
-                collected.append(node)
-            for child in node.children:
-                visit(child)
-
-        for node in self.nodes:
-            visit(node)
-        return tuple(collected)
 
 
 def _is_leaf_frame(org: OrgState, domain: Domain) -> bool:
@@ -112,10 +78,21 @@ def _plannable_domains(org: OrgState, parent_id: str | None) -> tuple[Domain, ..
     )
 
 
+def _needs_direct_row(org: OrgState, domain: Domain) -> bool:
+    """Whether a unit is mixed: an aggregate frame holding teams directly.
+
+    Its direct teams sit in no child unit's frame, so without a leaf row of
+    their own their repairs would never compose into the headline.
+    """
+    return not _is_leaf_frame(org, domain) and has_direct_teams(org, domain.id)
+
+
 def _count_sections(org: OrgState, parent_id: str | None) -> int:
     total = 0
     for domain in _plannable_domains(org, parent_id):
         total += 1 + _count_sections(org, domain.id)
+        if _needs_direct_row(org, domain):
+            total += 1
     return total
 
 
@@ -164,9 +141,15 @@ class _Builder:
             flat_after = self._simulator.score(composed).value
             return OrgGuide(nodes, self._flat_before, flat_after, self._grown)
         extra = 1 if self._grown else 0
-        self._total = 1 + _count_sections(self._org, None) + extra
+        loose = 1 if has_direct_teams(self._org, None) else 0
+        self._total = 1 + loose + _count_sections(self._org, None) + extra
         top = self._top_frame_node()
-        nodes = (top,) + tuple(self._unit_node(d) for d in roots)
+        nodes = (top,)
+        if loose:
+            nodes = nodes + (
+                self._direct_node(None, LOOSE_TEAMS_LABEL, LOOSE_TEAMS_FRAME),
+            )
+        nodes = nodes + tuple(self._unit_node(d) for d in roots)
         composed = compose_leaf_lines(self._org, OrgGuide(nodes, 0.0, 0.0, self._grown))
         flat_after = self._simulator.score(composed).value
         if self._grown:
@@ -271,11 +254,41 @@ class _Builder:
             guide=guide,
         )
 
+    def _direct_node(
+        self, parent_id: str | None, label: str, frame_id: str
+    ) -> GuideNode:
+        """A leaf row for the teams a mixed parent holds directly.
+
+        Those teams stand in the parent's aggregate frame; aggregate
+        lines never compose, so this row is where their repairs count.
+        """
+        playable, guide = self._plan(
+            direct_teams_section(self._org, parent_id), aggregate=False
+        )
+        return GuideNode(
+            frame_id=frame_id,
+            label=label,
+            category="",
+            is_leaf=True,
+            playable=playable,
+            guide=guide,
+            org_delta=self._org_delta(guide) if playable else 0.0,
+        )
+
     def _unit_node(self, domain: Domain) -> GuideNode:
         leaf = _is_leaf_frame(self._org, domain)
         section = focused_suborg(self._org, domain.id)
         playable, guide = self._plan(section, aggregate=not leaf)
-        children = tuple(
+        children: tuple[GuideNode, ...] = ()
+        if _needs_direct_row(self._org, domain):
+            children = (
+                self._direct_node(
+                    domain.id,
+                    f"Teams directly in {domain.name}",
+                    direct_teams_frame(domain.id),
+                ),
+            )
+        children = children + tuple(
             self._unit_node(child) for child in _plannable_domains(self._org, domain.id)
         )
         return GuideNode(
