@@ -32,6 +32,11 @@ from fulcrum.domain.hierarchy import (
 from fulcrum.domain.models import Domain, OrgState
 from fulcrum.domain.simulation import is_contested
 from fulcrum.shared.text import count_noun
+from fulcrum.ui.widgets.complete_map_edges import (
+    direct_is_clear,
+    lane_arrow,
+    lane_path,
+)
 
 _AUTHORITY = QColor("#34d399")
 _NO_AUTHORITY = QColor("#f59e0b")
@@ -70,6 +75,11 @@ _FULL = 1.0
 # Padding around the scene so edge nodes are not flush against the viewport edge
 # when the full-size map is dragged to its limits.
 _VIEW_MARGIN = 40.0
+# Routed edges run down lanes to the right of the whole diagram: the first
+# lane sits this far beyond the widest box and each further edge steps out.
+_LANE_BASE = 36.0
+_LANE_STEP = 22.0
+_EDGE_PEN_W = 1.5
 
 # Above this many teams the complete picture stops at the Division tier, drawing
 # each division as one summary box (its people and team totals) instead of its
@@ -208,29 +218,52 @@ class CompleteMapView(QGraphicsView):
             if team.domain_id is None
         ]
         placed, _, _ = _flow(roots, _ROOT_COLUMNS)
-        centers: dict[str, QPointF] = {}
+        rects: dict[str, QRectF] = {}
         domains: list[tuple[float, float, _Box]] = []
         teams: list[tuple[float, float, _Box]] = []
         for rx, ry, box in placed:
-            self._collect(box, rx, ry, centers, domains, teams)
+            self._collect(box, rx, ry, rects, domains, teams)
         for x, y, box in domains:
             self._draw_domain(x, y, box)
         for x, y, box in teams:
             self._draw_team(x, y, box)
-        for dep in self._org.dependencies:
-            if dep.upstream in centers and dep.downstream in centers:
-                self._draw_edge(centers[dep.upstream], centers[dep.downstream])
+        self._draw_edges(rects)
 
-    def _collect(self, box, x, y, centers, domains, teams) -> None:
-        # Domains register a centre too, so an authored unit-level
+    def _draw_edges(self, rects: dict[str, QRectF]) -> None:
+        """Straight lines where nothing is in the way; lanes otherwise.
+
+        A routed edge leaves its source's right side, runs down its own lane
+        beyond the widest box and enters its target's right side, so no
+        dependency is ever drawn through a box it has nothing to do with.
+        """
+        if not rects:
+            return
+        diagram_right = max(rect.right() for rect in rects.values())
+        routed = 0
+        for dep in self._org.dependencies:
+            if dep.upstream not in rects or dep.downstream not in rects:
+                continue
+            source, target = rects[dep.upstream], rects[dep.downstream]
+            if direct_is_clear(source.center(), target.center(), rects):
+                self._draw_edge(source.center(), target.center())
+                continue
+            lane_x = diagram_right + _LANE_BASE + routed * _LANE_STEP
+            routed += 1
+            self._scene.addPath(
+                lane_path(source, target, lane_x), QPen(_EDGE, _EDGE_PEN_W)
+            )
+            self._scene.addPolygon(lane_arrow(target), QPen(_EDGE), QBrush(_EDGE))
+
+    def _collect(self, box, x, y, rects, domains, teams) -> None:
+        # Domains register a rectangle too, so an authored unit-level
         # dependency draws between the unit rectangles themselves.
-        centers[box.ident] = QPointF(x + box.w / _HALF, y + box.h / _HALF)
+        rects[box.ident] = QRectF(x, y, box.w, box.h)
         if box.kind == _KIND_TEAM:
             teams.append((x, y, box))
             return
         domains.append((x, y, box))
         for rx, ry, child in box.children:
-            self._collect(child, x + rx, y + ry, centers, domains, teams)
+            self._collect(child, x + rx, y + ry, rects, domains, teams)
 
     def _domain(self, ident: str) -> Domain:
         return next(domain for domain in self._org.domains if domain.id == ident)
@@ -285,7 +318,9 @@ class CompleteMapView(QGraphicsView):
         sub.setPos(x + _PAD, y + _SUB_DY)
 
     def _draw_edge(self, start: QPointF, end: QPointF) -> None:
-        self._scene.addLine(start.x(), start.y(), end.x(), end.y(), QPen(_EDGE, 1.5))
+        self._scene.addLine(
+            start.x(), start.y(), end.x(), end.y(), QPen(_EDGE, _EDGE_PEN_W)
+        )
         angle = math.atan2(end.y() - start.y(), end.x() - start.x())
         tip = QPointF(
             end.x() - _TEAM_H / _HALF * math.cos(angle),
