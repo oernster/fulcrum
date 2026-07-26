@@ -239,7 +239,7 @@ class CompleteMapView(QGraphicsView):
         if not rects:
             return
         diagram_right = max(rect.right() for rect in rects.values())
-        routed = 0
+        routes: list[tuple[QRectF, QRectF, float]] = []
         for dep in self._org.dependencies:
             if dep.upstream not in rects or dep.downstream not in rects:
                 continue
@@ -247,10 +247,18 @@ class CompleteMapView(QGraphicsView):
             if direct_is_clear(source.center(), target.center(), rects):
                 self._draw_edge(source.center(), target.center())
                 continue
-            lane_x = diagram_right + _LANE_BASE + routed * _LANE_STEP
-            routed += 1
+            lane_x = diagram_right + _LANE_BASE + len(routes) * _LANE_STEP
+            routes.append((source, target, lane_x))
+        # Every lane is known before any path is drawn, so each horizontal
+        # run can hop the other edges' verticals with a semicircle.
+        verticals = tuple(
+            (lane_x, *sorted((s.center().y(), t.center().y())))
+            for s, t, lane_x in routes
+        )
+        for source, target, lane_x in routes:
+            others = tuple(v for v in verticals if v[0] != lane_x)
             self._scene.addPath(
-                lane_path(source, target, lane_x), QPen(_EDGE, _EDGE_PEN_W)
+                lane_path(source, target, lane_x, others), QPen(_EDGE, _EDGE_PEN_W)
             )
             self._scene.addPolygon(lane_arrow(target), QPen(_EDGE), QBrush(_EDGE))
 

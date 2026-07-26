@@ -15,6 +15,14 @@ from PySide6.QtGui import QPainterPath, QPolygonF
 _HALF = 2.0
 _ARROW = 9.0
 _ARROW_HALF_SPAN = 5.4
+# Where a horizontal run crosses another edge's vertical lane, the
+# horizontal hops over it with a small semicircle, the circuit-diagram
+# convention for "these wires do not meet". Verticals stay plain.
+_HOP_R = 4.0
+_TOP_HALF_START = 180.0
+_TOP_HALF_SWEEP = -180.0
+_TOP_HALF_START_BACK = 0.0
+_TOP_HALF_SWEEP_BACK = 180.0
 
 
 def _crosses(segment: QLineF, rect: QRectF) -> bool:
@@ -50,15 +58,57 @@ def direct_is_clear(start: QPointF, end: QPointF, rects: dict[str, QRectF]) -> b
     return True
 
 
-def lane_path(source: QRectF, target: QRectF, lane_x: float) -> QPainterPath:
+def _hop_crossings(
+    y: float,
+    x_from: float,
+    x_to: float,
+    verticals: tuple[tuple[float, float, float], ...],
+) -> list[float]:
+    """The x positions where this horizontal run crosses another lane,
+    ordered along the direction of travel; endpoint touches are junctions
+    of the same route family, not crossings, so only strict interiors count."""
+    low, high = min(x_from, x_to), max(x_from, x_to)
+    crossed = [
+        x for (x, y_low, y_high) in verticals if low < x < high and y_low < y < y_high
+    ]
+    return sorted(crossed, reverse=x_from > x_to)
+
+
+def _horizontal_run(
+    path: QPainterPath,
+    x_to: float,
+    verticals: tuple[tuple[float, float, float], ...],
+) -> None:
+    """Extend the path horizontally, hopping over any crossed lane."""
+    x_from = path.currentPosition().x()
+    y = path.currentPosition().y()
+    going_right = x_to > x_from
+    for cx in _hop_crossings(y, x_from, x_to, verticals):
+        path.lineTo(cx - _HOP_R if going_right else cx + _HOP_R, y)
+        bump = QRectF(cx - _HOP_R, y - _HOP_R, _HOP_R * _HALF, _HOP_R * _HALF)
+        if going_right:
+            path.arcTo(bump, _TOP_HALF_START, _TOP_HALF_SWEEP)
+        else:
+            path.arcTo(bump, _TOP_HALF_START_BACK, _TOP_HALF_SWEEP_BACK)
+    path.lineTo(x_to, y)
+
+
+def lane_path(
+    source: QRectF,
+    target: QRectF,
+    lane_x: float,
+    verticals: tuple[tuple[float, float, float], ...] = (),
+) -> QPainterPath:
     """Right-angled route: out of the source's side, down the lane, into the
-    target's side, stopping where the arrow head takes over."""
+    target's side, stopping where the arrow head takes over. verticals are
+    the OTHER routed edges' lanes as (x, y_low, y_high); the horizontal runs
+    hop over any of them they cross."""
     source_y = source.center().y()
     target_y = target.center().y()
     path = QPainterPath(QPointF(source.right(), source_y))
-    path.lineTo(lane_x, source_y)
+    _horizontal_run(path, lane_x, verticals)
     path.lineTo(lane_x, target_y)
-    path.lineTo(target.right() + _ARROW, target_y)
+    _horizontal_run(path, target.right() + _ARROW, verticals)
     return path
 
 
