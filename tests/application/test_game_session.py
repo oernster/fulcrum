@@ -370,3 +370,12 @@ def test_restore_session_falls_back_when_a_move_cannot_replay():
     assert restored.org == _org()
     assert restored.history == ()
     assert restored.prior_history_count == 0
+
+
+def test_played_moves_are_named_for_the_record():
+    session = GameSession(_org(), _FakeSimulator())
+    session.play(Move(MoveKind.DELEGATE_AUTHORITY, ("b",)))
+    assert session.history[0].label == "Delegate authority to B"
+    already = Move(MoveKind.REALIGN_INCENTIVES, ("b",), "Custom label")
+    session.play(already)
+    assert session.history[1].label == "Custom label"

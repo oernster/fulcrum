@@ -330,8 +330,11 @@ class BoardView(QWidget):
             self._play(valuation)
 
     def _set_last_move_note(self) -> None:
+        # The note names the move it explains: with history persisting
+        # across runs, the last move is not necessarily one just played.
         if self._session is not None and self._session.history:
-            self._move_note.set_text(move_note(self._session.history[-1].kind))
+            last = self._session.history[-1]
+            self._move_note.set_text(f"{last.display_label()}. {move_note(last.kind)}")
         else:
             self._move_note.set_text("")
 

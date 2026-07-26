@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from fulcrum.application.dto import MoveValuation, SessionSnapshot
 from fulcrum.application.interfaces import Simulator
+from fulcrum.application.move_text import describe_move
 from fulcrum.domain.errors import FulcrumError
 from fulcrum.domain.hierarchy import (
     AGGREGATE_MOVE_KINDS,
@@ -196,16 +197,28 @@ class GameSession:
             moves = tuple(m for m in moves if m.kind in AGGREGATE_MOVE_KINDS)
         return self._simulator.valuate_moves(active, moves)
 
+    def _labelled(self, move: Move, org: OrgState) -> Move:
+        """The move named against the org it acts on, for the record.
+
+        History outlives the position it was played in (it persists across
+        runs and a collapse renames its targets), so the description is
+        captured at play time, when the names are still there to read.
+        """
+        if move.label:
+            return move
+        return Move(move.kind, move.targets, describe_move(org, move))
+
     def play(self, move: Move) -> None:
         # Apply before snapshotting so a move that cannot apply leaves the
         # session untouched (no orphaned undo snapshot). Store the translated
         # move so the history replays cleanly from the start org; a focused
         # move's raw target can be a domain rather than a real team.
         real = translate_focused_move(self._org, self._focus_id, move)
+        labelled = self._labelled(real, self._org)
         new_org = apply_move(self._org, real)
         self._past.append(self._org)
         self._org = new_org
-        self._history.append(real)
+        self._history.append(labelled)
 
     @property
     def can_take_back(self) -> bool:
@@ -250,9 +263,10 @@ class GameSession:
             new_org = apply_move(self._org, real)
         except FulcrumError:
             return False
+        labelled = self._labelled(real, self._org)
         self._past.append(self._org)
         self._org = new_org
-        self._history.append(real)
+        self._history.append(labelled)
         return True
 
     def preview(self, move: Move) -> OrgState:
