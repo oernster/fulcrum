@@ -1,4 +1,22 @@
 [flake8]
 max-line-length = 88
 extend-ignore = E203, W503
-exclude = .git, __pycache__, venv, build, dist
+# Excludes mirror the gitignored build outputs, so a bare "flake8 ." never
+# walks into the Nuitka payload, the installer bundle or the Flatpak and
+# DMG staging trees.
+exclude =
+    .git,
+    __pycache__,
+    venv,
+    build,
+    dist,
+    dist-installer,
+    installer/payload,
+    *.build,
+    *.dist,
+    *.onefile-build,
+    .flatpak-build,
+    .flatpak-builder,
+    .flatpak-wheels,
+    packaging,
+    _dmg_staging
