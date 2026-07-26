@@ -149,7 +149,7 @@ class MainWindow(QMainWindow):
         )
 
     def _install_keyboard_nav(self, buttons) -> None:
-        undo_button, level_button, map_view, moves_group, signals_group = (
+        undo_button, map_view, level_button, moves_group, signals_group = (
             self._board.nav_targets()
         )
         self._undo_button = undo_button
@@ -157,7 +157,7 @@ class MainWindow(QMainWindow):
             self,
             self.menuBar(),
             self.menuBar().actions(),
-            (*buttons, undo_button, level_button, map_view),
+            (*buttons, undo_button, map_view, level_button),
             (moves_group, signals_group),
             map_view,
         )

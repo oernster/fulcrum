@@ -101,20 +101,10 @@ class BoardView(QWidget):
         self._build()
 
     def _build(self) -> None:
+        # The splitter owns the whole board, so the side pane runs the full
+        # height: the score header lives in the map pane and the moves list
+        # starts at the top of its own column, under Play this level.
         layout = QVBoxLayout(self)
-
-        health = QLabel("Organisational structural health")
-        health.setObjectName("Muted")
-        layout.addWidget(health)
-        layout.addWidget(self._score_label)
-        layout.addWidget(self._origin_label)
-        layout.addWidget(self._headcount_label)
-        layout.addWidget(self._scope.focus_label)
-        controls = QHBoxLayout()
-        controls.addWidget(self._undo_button)
-        controls.addStretch()
-        layout.addLayout(controls)
-
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.addWidget(self._build_map_pane())
         splitter.addWidget(self._build_side_pane())
@@ -127,10 +117,20 @@ class BoardView(QWidget):
         pane = QWidget()
         column = QVBoxLayout(pane)
         column.setContentsMargins(0, 0, 0, 0)
+        health = QLabel("Organisational structural health")
+        health.setObjectName("Muted")
+        column.addWidget(health)
+        column.addWidget(self._score_label)
+        column.addWidget(self._origin_label)
+        column.addWidget(self._headcount_label)
+        column.addWidget(self._scope.focus_label)
+        controls = QHBoxLayout()
+        controls.addWidget(self._undo_button)
+        controls.addStretch()
+        column.addLayout(controls)
         caption_row = QHBoxLayout()
         caption_row.addWidget(self._scope.map_caption)
         caption_row.addStretch()
-        caption_row.addWidget(self._scope.level_button)
         column.addLayout(caption_row)
         column.addWidget(self._map, 1)
         column.addWidget(self._move_note)
@@ -141,6 +141,10 @@ class BoardView(QWidget):
         pane.setMinimumWidth(ui_scale.px(_RIGHT_PANE_MIN))
         column = QVBoxLayout(pane)
         column.setContentsMargins(0, 0, 0, 0)
+        level_row = QHBoxLayout()
+        level_row.addWidget(self._scope.level_button)
+        level_row.addStretch()
+        column.addLayout(level_row)
         moves_caption = QLabel("Available moves within current scope")
         moves_caption.setObjectName("Muted")
         moves_caption.setToolTip(_MOVES_TOOLTIP)
@@ -228,8 +232,8 @@ class BoardView(QWidget):
         """The board's keyboard-nav stops, in reading order."""
         return (
             self._undo_button,
-            self._scope.level_button,
             self._map,
+            self._scope.level_button,
             self._moves_holder,
             self._signals_holder,
         )
