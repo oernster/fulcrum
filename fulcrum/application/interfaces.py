@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from fulcrum.application.dto import MoveValuation, Plan, PlanReport
+from fulcrum.application.dto import MoveValuation, Plan, PlanReport, SessionSnapshot
 from fulcrum.domain.models import OrgState
 from fulcrum.domain.moves import Move
 from fulcrum.domain.simulation import StructuralScore
@@ -31,11 +31,11 @@ class Clock(Protocol):
 
 
 class OrgStore(Protocol):
-    """Persists the current org so it survives closing the app."""
+    """Persists the session (org plus move history) across app runs."""
 
-    def save(self, org: OrgState) -> None: ...
+    def save(self, snapshot: SessionSnapshot) -> None: ...
 
-    def load(self) -> OrgState | None: ...
+    def load(self) -> SessionSnapshot | None: ...
 
 
 class PlanExporter(Protocol):

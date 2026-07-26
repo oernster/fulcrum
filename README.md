@@ -83,10 +83,14 @@ A short tour and the books behind it are at <https://oernster.github.io/fulcrum/
   as its last composable row, frames whose real teams carry the load may
   split them or add owners and a frame growth cannot improve says so. Every
   step shows its before and after score and previews and plays in place.
-- Take a move back: an undo stack steps the organisation back through the moves
-  you have played, from the board or with Ctrl+Z.
-- Plan export as a self-contained HTML report or as JSON you can re-import to
-  resume the organisation and the moves played on it.
+- Move history that survives closing the app: the session autosaves the
+  starting org and every move, the next launch restores it by replay and
+  Take a move back steps through earlier runs' moves too, from the board or
+  with Ctrl+Z, all the way to the original organisation.
+- Plan export as a self-contained HTML report written straight to your
+  Downloads folder, covering the whole record with earlier runs visually
+  separated from the current one, or as JSON you can re-import to resume
+  the organisation and the moves played on it.
 - Full keyboard navigation: the whole interface sits on one explicit focus ring,
   so every control is reachable without a mouse.
 - Help built in: a decision glossary and a background page on the Decision

@@ -6,7 +6,7 @@ pure domain (apply_move, signals) with an injected simulator.
 
 from __future__ import annotations
 
-from fulcrum.application.dto import MoveValuation
+from fulcrum.application.dto import MoveValuation, SessionSnapshot
 from fulcrum.application.interfaces import Simulator
 from fulcrum.domain.errors import FulcrumError
 from fulcrum.domain.hierarchy import (
@@ -107,6 +107,7 @@ class GameSession:
         self._history: list[Move] = []
         self._past: list[OrgState] = []
         self._focus_id: str | None = None
+        self._prior_count = 0
 
     @property
     def org(self) -> OrgState:
@@ -123,6 +124,19 @@ class GameSession:
     @property
     def history(self) -> tuple[Move, ...]:
         return tuple(self._history)
+
+    @property
+    def prior_history_count(self) -> int:
+        """How many history moves came from earlier runs (or an import)."""
+        return self._prior_count
+
+    def mark_history_as_prior(self) -> None:
+        """Everything played so far becomes the record of earlier runs."""
+        self._prior_count = len(self._history)
+
+    def snapshot(self) -> SessionSnapshot:
+        """The session as persisted: start org, every move and the result."""
+        return SessionSnapshot(self._initial_org, self.history, self._org)
 
     @property
     def focused_on(self) -> str | None:
@@ -199,16 +213,19 @@ class GameSession:
         return bool(self._past)
 
     def take_back(self) -> None:
-        """Undo the last move played this session, restoring the prior org.
+        """Undo the last move played, restoring the prior org.
 
-        Each play snapshots the org it replaced, so repeated calls walk the
-        position back to where the session started. A session restored from a
-        saved game carries no snapshots, so its pre-load moves are not undone.
+        Each play snapshots the org it replaced and a restored session is
+        rebuilt by replay, so repeated calls walk the position back through
+        earlier runs too, all the way to the original organisation. Undoing
+        into the record rewrites it: an undone historic move is no longer
+        part of any run, so the prior mark clamps down with the history.
         """
         if not self._past:
             return
         self._org = self._past.pop()
         self._history.pop()
+        self._prior_count = min(self._prior_count, len(self._history))
 
     def try_play(self, move: Move) -> bool:
         """Play a move if it applies to the current org; report whether it did.
@@ -241,3 +258,22 @@ class GameSession:
     def preview(self, move: Move) -> OrgState:
         real = translate_focused_move(self._org, self._focus_id, move)
         return apply_move(self._org, real)
+
+
+def restore_session(snapshot: SessionSnapshot, simulator: Simulator) -> GameSession:
+    """Rebuild a persisted session by replaying its moves from the start.
+
+    The replay refills the undo stack, so taking a move back works across
+    runs. The replayed moves become the prior record (they belong to earlier
+    runs). A snapshot whose moves no longer replay (say the file was edited)
+    falls back to its stored current org with an empty history, which is
+    what the pre-history autosave restored.
+    """
+    session = GameSession(snapshot.initial_org, simulator)
+    for move in snapshot.moves:
+        try:
+            session.play(move)
+        except FulcrumError:
+            return GameSession(snapshot.org, simulator)
+    session.mark_history_as_prior()
+    return session

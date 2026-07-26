@@ -23,13 +23,21 @@ _EPS = 1e-6
 
 
 def build_plan_report(
-    initial_org: OrgState, moves: tuple[Move, ...], simulator: Simulator
+    initial_org: OrgState,
+    moves: tuple[Move, ...],
+    simulator: Simulator,
+    prior_moves: int = 0,
 ) -> PlanReport:
-    """Score and justify each move from the start org, grouped by domain."""
+    """Score and justify each move from the start org, grouped by domain.
+
+    The first prior_moves entries are the record of earlier runs and their
+    steps are marked historic, so the report can separate them visually
+    from the current run's work.
+    """
     start_score = simulator.score(initial_org).value
     current = initial_org
     steps: list[PlanStep] = []
-    for move in moves:
+    for index, move in enumerate(moves):
         before = simulator.score(current).value
         after_org = apply_move(current, move)
         after = simulator.score(after_org).value
@@ -54,6 +62,7 @@ def build_plan_report(
                 domain_label=label,
                 lead=lead,
                 rationale=rationale,
+                historic=index < prior_moves,
             )
         )
         current = after_org

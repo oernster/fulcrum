@@ -76,3 +76,14 @@ def test_empty_plan_reports_the_start_score_only():
     assert report.steps == ()
     assert report.recommendations == ()
     assert report.final_score == report.start_score
+
+
+def test_prior_moves_mark_the_record_as_historic():
+    moves = (
+        Move(MoveKind.DELEGATE_AUTHORITY, ("a",)),
+        Move(MoveKind.DELEGATE_AUTHORITY, ("b",)),
+    )
+    report = build_plan_report(_org(), moves, DeterministicSimulator(), prior_moves=1)
+    assert [step.historic for step in report.steps] == [True, False]
+    plain = build_plan_report(_org(), moves, DeterministicSimulator())
+    assert all(step.historic is False for step in plain.steps)

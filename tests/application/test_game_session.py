@@ -1,10 +1,11 @@
 """Tests for the game session coordinator, using Protocol fakes."""
 
-from fulcrum.application.dto import MoveValuation
+from fulcrum.application.dto import MoveValuation, SessionSnapshot
 from fulcrum.application.game_session import (
     MAX_PLAYABLE_TEAMS,
     GameSession,
     enumerate_moves,
+    restore_session,
 )
 from fulcrum.domain.hierarchy import AGGREGATE_MOVE_KINDS, TOP_LEVEL_FOCUS
 from fulcrum.domain.models import AuthorityClaim, Dependency, Domain, OrgState, Team
@@ -321,3 +322,51 @@ def test_focus_top_level_falls_back_to_flat_without_domains():
     session = GameSession(_org(), _FakeSimulator())
     session.focus(TOP_LEVEL_FOCUS)
     assert session.focused_on is None
+
+
+def test_snapshot_captures_start_moves_and_result():
+    session = GameSession(_org(), _FakeSimulator())
+    session.play(Move(MoveKind.DELEGATE_AUTHORITY, ("b",)))
+    snapshot = session.snapshot()
+    assert snapshot.initial_org == _org()
+    assert snapshot.moves == session.history
+    assert snapshot.org == session.org
+
+
+def test_mark_history_as_prior_counts_and_take_back_clamps():
+    session = GameSession(_org(), _FakeSimulator())
+    session.play(Move(MoveKind.DELEGATE_AUTHORITY, ("b",)))
+    session.mark_history_as_prior()
+    assert session.prior_history_count == 1
+    session.play(Move(MoveKind.REALIGN_INCENTIVES, ("b",)))
+    assert session.prior_history_count == 1
+    session.take_back()
+    assert session.prior_history_count == 1
+    session.take_back()
+    assert session.prior_history_count == 0
+    assert session.history == ()
+
+
+def test_restore_session_replays_and_rebuilds_the_undo_stack():
+    original = GameSession(_org(), _FakeSimulator())
+    original.play(Move(MoveKind.DELEGATE_AUTHORITY, ("b",)))
+    original.play(Move(MoveKind.REALIGN_INCENTIVES, ("b",)))
+    restored = restore_session(original.snapshot(), _FakeSimulator())
+    assert restored.org == original.org
+    assert restored.history == original.history
+    assert restored.prior_history_count == 2
+    assert restored.can_take_back
+    restored.take_back()
+    restored.take_back()
+    assert restored.org == _org()
+    assert not restored.can_take_back
+
+
+def test_restore_session_falls_back_when_a_move_cannot_replay():
+    snapshot = SessionSnapshot(
+        _org(), (Move(MoveKind.DELEGATE_AUTHORITY, ("ghost",)),), _org()
+    )
+    restored = restore_session(snapshot, _FakeSimulator())
+    assert restored.org == _org()
+    assert restored.history == ()
+    assert restored.prior_history_count == 0

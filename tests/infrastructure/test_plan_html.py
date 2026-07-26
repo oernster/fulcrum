@@ -42,3 +42,22 @@ def test_html_is_self_contained_and_addressed_per_domain():
     assert "R&amp;D (for the domain lead)" in html
     assert "Organisation-wide moves (held by the CTO)" in html
     assert "Structural health" in html
+    # A single-history report keeps the plain look: no record to separate.
+    assert 'class="historic"' not in html
+    assert 'class="current"' not in html
+    assert "moves from earlier runs" not in html
+
+
+def test_html_separates_earlier_runs_from_this_run():
+    org = _org()
+    moves = (
+        Move(MoveKind.DELEGATE_AUTHORITY, ("a",)),
+        Move(MoveKind.DELEGATE_AUTHORITY, ("b",)),
+    )
+    report = build_plan_report(org, moves, DeterministicSimulator(), prior_moves=1)
+    html = render_plan_html(report, org, _final(org, moves), "2026-06-18T10:00:00")
+    assert html.count('<li class="historic">') == 1
+    assert html.count('<li class="current">') == 1
+    assert "moves from earlier runs" in html
+    assert "moves from this run" in html
+    assert "1 move from earlier runs, 1 move this run." in html

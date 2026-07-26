@@ -32,12 +32,7 @@ from fulcrum.domain.hierarchy import (
 from fulcrum.domain.models import Domain, OrgState
 from fulcrum.domain.simulation import is_contested
 from fulcrum.shared.text import count_noun
-from fulcrum.ui.widgets.complete_map_edges import (
-    direct_is_clear,
-    fan_anchors,
-    lane_arrow,
-    lane_path,
-)
+from fulcrum.ui.widgets.complete_map_edges import direct_is_clear, route_edges
 
 _AUTHORITY = QColor("#34d399")
 _NO_AUTHORITY = QColor("#f59e0b")
@@ -76,11 +71,10 @@ _FULL = 1.0
 # Padding around the scene so edge nodes are not flush against the viewport edge
 # when the full-size map is dragged to its limits.
 _VIEW_MARGIN = 40.0
-# Routed edges run down lanes to the right of the whole diagram: the first
-# lane sits this far beyond the widest box and each further edge steps out.
-_LANE_BASE = 36.0
-_LANE_STEP = 22.0
 _EDGE_PEN_W = 1.5
+# A hub's counted trunk draws slightly heavier than a single edge, so the
+# merge reads as "many wires" at a glance.
+_TRUNK_PEN_W = 2.5
 
 # Above this many teams the complete picture stops at the Division tier, drawing
 # each division as one summary box (its people and team totals) instead of its
@@ -231,42 +225,35 @@ class CompleteMapView(QGraphicsView):
         self._draw_edges(rects)
 
     def _draw_edges(self, rects: dict[str, QRectF]) -> None:
-        """Straight lines where nothing is in the way; lanes otherwise.
+        """Straight lines where nothing is in the way; routed lanes otherwise.
 
-        A routed edge leaves its source's right side, runs down its own lane
-        beyond the widest box and enters its target's right side, so no
-        dependency is ever drawn through a box it has nothing to do with.
+        The router fans each box's connections, hops crossings and merges a
+        hub's edges into one counted trunk per direction, so no dependency
+        is ever drawn through a box it has nothing to do with and no box
+        drowns in lines.
         """
         if not rects:
             return
         diagram_right = max(rect.right() for rect in rects.values())
-        routes: list[tuple[str, str, float]] = []
+        routed: list[tuple[str, str]] = []
         for dep in self._org.dependencies:
             if dep.upstream not in rects or dep.downstream not in rects:
                 continue
             source, target = rects[dep.upstream], rects[dep.downstream]
-            if direct_is_clear(source.center(), target.center(), rects):
+            if direct_is_clear(source, target, rects):
                 self._draw_edge(source.center(), target.center())
                 continue
-            lane_x = diagram_right + _LANE_BASE + len(routes) * _LANE_STEP
-            routes.append((dep.upstream, dep.downstream, lane_x))
-        # Anchors fan each box's connections apart and every lane is known
-        # before any path is drawn, so no two runs overlap and each
-        # horizontal can hop the other edges' verticals with a semicircle.
-        pairs = tuple((up, down) for up, down, _ in routes)
-        anchors = fan_anchors(pairs, rects)
-        verticals = tuple(
-            (lane_x, *sorted(anchor)) for (_, _, lane_x), anchor in zip(routes, anchors)
-        )
-        for (up, down, lane_x), (source_y, target_y) in zip(routes, anchors):
-            others = tuple(v for v in verticals if v[0] != lane_x)
-            self._scene.addPath(
-                lane_path(rects[up], rects[down], lane_x, source_y, target_y, others),
-                QPen(_EDGE, _EDGE_PEN_W),
-            )
-            self._scene.addPolygon(
-                lane_arrow(rects[down], target_y), QPen(_EDGE), QBrush(_EDGE)
-            )
+            routed.append((dep.upstream, dep.downstream))
+        drawing = route_edges(tuple(routed), rects, diagram_right)
+        for path, is_trunk in drawing.paths:
+            width = _TRUNK_PEN_W if is_trunk else _EDGE_PEN_W
+            self._scene.addPath(path, QPen(_EDGE, width))
+        for arrow in drawing.arrows:
+            self._scene.addPolygon(arrow, QPen(_EDGE), QBrush(_EDGE))
+        for text, position in drawing.labels:
+            label = self._scene.addSimpleText(text, _font(bold=True))
+            label.setBrush(_TEXT_MUTED)
+            label.setPos(position)
 
     def _collect(self, box, x, y, rects, domains, teams) -> None:
         # Domains register a rectangle too, so an authored unit-level

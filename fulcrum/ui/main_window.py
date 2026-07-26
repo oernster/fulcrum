@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from fulcrum.application.game_session import GameSession
+from fulcrum.application.game_session import GameSession, restore_session
 from fulcrum.application.interfaces import Clock, OrgStore, PlanExporter, Simulator
 from fulcrum.application.org_guide import build_org_guide
 from fulcrum.domain.org_size import DEFAULT_BAND
@@ -77,9 +77,14 @@ class MainWindow(QMainWindow):
         self._board = BoardView()
         self._build_menu()
         self._build_central()
+        # Every play and take-back lands in the autosave immediately, so
+        # the move record survives however the app ends.
+        self._board.historyChanged.connect(lambda _can: self._autosave())
         restored = org_store.load() if org_store is not None else None
         if restored is not None:
-            self._set_session(GameSession(restored, self._simulator))
+            # Replay rebuilds the undo stack, so the whole record (this
+            # run's predecessor included) can be taken back move by move.
+            self._set_session(restore_session(restored, self._simulator))
         else:
             self._intake.generate(DEFAULT_BAND)
 
@@ -207,7 +212,7 @@ class MainWindow(QMainWindow):
 
     def _autosave(self) -> None:
         if self._org_store is not None and self._session is not None:
-            self._org_store.save(self._session.org)
+            self._org_store.save(self._session.snapshot())
 
     def _show_guide(self) -> None:
         """Plan every level off-thread, then open the hierarchy guide."""

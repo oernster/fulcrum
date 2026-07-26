@@ -17,7 +17,6 @@ from fulcrum.application.interfaces import Clock, PlanExporter, Simulator
 from fulcrum.application.plan import build_plan_report
 from fulcrum.domain.errors import FulcrumError
 
-_HTML_FILTER = "Presentation (*.html);;All files (*)"
 _PLAN_FILTER = "Plan JSON (*.json);;All files (*)"
 _DEFAULT_HTML_EXPORT = "fulcrum-presentation.html"
 _DEFAULT_JSON_EXPORT = "fulcrum-plan.json"
@@ -36,6 +35,19 @@ def downloads_dir() -> str:
 def _download_path(filename: str) -> str:
     """A default save path for filename inside the Downloads folder."""
     return str(Path(downloads_dir()) / filename)
+
+
+def _unique_download_path(filename: str) -> Path:
+    """A Downloads path that never overwrites an existing export."""
+    base = Path(downloads_dir()) / filename
+    if not base.exists():
+        return base
+    counter = 2
+    while True:
+        candidate = base.with_name(f"{base.stem}-{counter}{base.suffix}")
+        if not candidate.exists():
+            return candidate
+        counter += 1
 
 
 class PlanFileActions:
@@ -71,31 +83,36 @@ class PlanFileActions:
         session = GameSession(plan.initial_org, self._simulator)
         for move in plan.moves:
             session.play(move)
+        # An imported plan's moves are the record it arrived with, kept
+        # apart from whatever this run plays next.
+        session.mark_history_as_prior()
         self._set_session(session)
 
     def export_html(self) -> None:
+        """Write the presentation straight into Downloads, never a dialog.
+
+        The report carries the whole record (earlier runs included), so the
+        export needs no save-as conversation; a fresh unique name in the
+        Downloads folder means nothing is ever overwritten.
+        """
         session = self._session_of()
         if session is None:
             return
-        path, _ = QFileDialog.getSaveFileName(
-            self._window,
-            "Create presentation",
-            _download_path(_DEFAULT_HTML_EXPORT),
-            _HTML_FILTER,
-        )
-        if not path:
-            return
+        path = _unique_download_path(_DEFAULT_HTML_EXPORT)
         created = self._clock.timestamp()
         report = build_plan_report(
-            session.initial_org, session.history, self._simulator
+            session.initial_org,
+            session.history,
+            self._simulator,
+            session.prior_history_count,
         )
         self._plan_exporter.export_html(
-            path, report, session.initial_org, session.org, created
+            str(path), report, session.initial_org, session.org, created
         )
         QMessageBox.information(
             self._window,
             "Presentation created",
-            "Wrote the HTML presentation you can share.",
+            f"Wrote the presentation to your Downloads folder:\n{path.name}",
         )
 
     def export_json(self) -> None:

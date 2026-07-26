@@ -87,8 +87,25 @@ class Plan:
 
 
 @dataclass(frozen=True, slots=True)
+class SessionSnapshot:
+    """A session as persisted: replaying moves from initial_org yields org.
+
+    org is stored too so a reader that cannot replay (an older build, or a
+    replay that no longer applies) still has the current organisation.
+    """
+
+    initial_org: OrgState
+    moves: tuple[Move, ...]
+    org: OrgState
+
+
+@dataclass(frozen=True, slots=True)
 class PlanStep:
-    """One move in a plan, with its effect, attribution and justification."""
+    """One move in a plan, with its effect, attribution and justification.
+
+    historic marks a move carried over from an earlier run of the app, so
+    the report can separate the current run's work from the record.
+    """
 
     description: str
     classification: MoveClassification
@@ -98,6 +115,7 @@ class PlanStep:
     domain_label: str
     lead: str
     rationale: str
+    historic: bool = False
 
 
 @dataclass(frozen=True, slots=True)

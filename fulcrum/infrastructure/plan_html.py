@@ -41,6 +41,22 @@ _STYLE = (
     ".score{color:#9aa3af;margin-left:8px}"
     ".rationale{color:#9aa3af;margin-top:4px}"
     ".score-line{font-size:18px}"
+    # Earlier runs read as the record: muted text behind a grey rail; the
+    # current run keeps full colour behind an amber rail.
+    "li.historic{border-left:3px solid #2c333d;padding-left:10px}"
+    "li.historic b,li.historic .badge{opacity:0.55}"
+    "li.current{border-left:3px solid #f59e0b;padding-left:10px}"
+    ".legend{color:#9aa3af}"
+    ".legend .rail{display:inline-block;width:10px;height:10px;"
+    "border-radius:2px;margin-right:6px}"
+)
+
+_LEGEND = (
+    '<p class="legend">'
+    '<span class="rail" style="background:#2c333d"></span>'
+    "moves from earlier runs&nbsp;&nbsp;&nbsp;"
+    '<span class="rail" style="background:#f59e0b"></span>'
+    "moves from this run</p>"
 )
 
 
@@ -61,7 +77,10 @@ def render_plan_html(
         _summary_html(report, initial_org, final_org),
         "<h2>Recommendations by domain</h2>",
     ]
-    parts.extend(_recommendation_html(rec) for rec in report.recommendations)
+    # The rails only appear when there is a record to separate: a report
+    # with no earlier runs keeps the plain single-history look.
+    split = any(step.historic for step in report.steps)
+    parts.extend(_recommendation_html(rec, split) for rec in report.recommendations)
     parts.append("</div></body></html>")
     return "".join(parts)
 
@@ -70,12 +89,21 @@ def _summary_html(
     report: PlanReport, initial_org: OrgState, final_org: OrgState
 ) -> str:
     delta = report.final_score - report.start_score
+    historic = sum(1 for step in report.steps if step.historic)
+    breakdown = ""
+    if historic:
+        current = len(report.steps) - historic
+        breakdown = (
+            f'<p class="muted">{count_noun(historic, "move")} from earlier '
+            f'runs, {count_noun(current, "move")} this run.</p>{_LEGEND}'
+        )
     return "".join(
         [
             '<div class="card">',
             '<p class="score-line">Structural health: ',
             f"<b>{report.start_score:.1f}</b> &rarr; <b>{report.final_score:.1f}</b> ",
             f"({delta:+.1f}) over {count_noun(len(report.steps), 'move')}.</p>",
+            breakdown,
             '<div class="maps">',
             f"<figure><figcaption>Before</figcaption>"
             f"{render_overview_svg(initial_org)}</figure>",
@@ -86,21 +114,24 @@ def _summary_html(
     )
 
 
-def _recommendation_html(rec: DomainRecommendation) -> str:
+def _recommendation_html(rec: DomainRecommendation, split: bool) -> str:
     if rec.domain_id is None:
         heading = "Organisation-wide moves (held by the CTO)"
     else:
         who = escape(rec.lead) if rec.lead else "the domain lead"
         heading = f"{escape(rec.label)} (for {who})"
-    steps = "".join(_step_html(step) for step in rec.steps)
+    steps = "".join(_step_html(step, split) for step in rec.steps)
     return f'<section class="rec"><h3>{heading}</h3><ol>{steps}</ol></section>'
 
 
-def _step_html(step: PlanStep) -> str:
+def _step_html(step: PlanStep, split: bool) -> str:
     colour = _BADGE.get(step.classification.value, _BADGE_DEFAULT)
+    css = ""
+    if split:
+        css = ' class="historic"' if step.historic else ' class="current"'
     return "".join(
         [
-            "<li>",
+            f"<li{css}>",
             f'<span class="badge" style="background:{colour}">',
             f"{escape(step.classification.value)}</span> ",
             f"<b>{escape(step.description)}</b> ",
