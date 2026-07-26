@@ -49,6 +49,10 @@ class GuideNode:
 
     frame_id is what a play translates against: None for the flat whole-org
     row, TOP_LEVEL_FOCUS for the top-level frame and a domain id for a unit.
+    org_delta is a leaf line's worth in whole-org points (its line applied
+    alone to the real organisation), the honest number a row advertises; a
+    frame's own climb is on its 0..100 scale and would overstate it.
+    Aggregate rows carry no org_delta: they are views, never composed.
     """
 
     frame_id: str | None
@@ -57,6 +61,7 @@ class GuideNode:
     is_leaf: bool
     playable: bool
     guide: Guide
+    org_delta: float = 0.0
     children: tuple[GuideNode, ...] = ()
 
 
@@ -131,9 +136,10 @@ class _Builder:
         self._grown = allow_growth
         self._done = 0
         self._total = 0
+        self._flat_before = 0.0
 
     def build(self) -> OrgGuide:
-        flat_before = self._simulator.score(self._org).value
+        self._flat_before = self._simulator.score(self._org).value
         roots = _plannable_domains(self._org, None)
         if not roots:
             self._total = 1
@@ -145,7 +151,12 @@ class _Builder:
             nodes = (top,) + tuple(self._unit_node(d) for d in roots)
         composed = compose_leaf_lines(self._org, OrgGuide(nodes, 0.0, 0.0, self._grown))
         flat_after = self._simulator.score(composed).value
-        return OrgGuide(nodes, flat_before, flat_after, self._grown)
+        return OrgGuide(nodes, self._flat_before, flat_after, self._grown)
+
+    def _org_delta(self, guide: Guide) -> float:
+        """A leaf line's worth in whole-org points, applied alone."""
+        replayed = _replay_line(self._org, guide)
+        return self._simulator.score(replayed).value - self._flat_before
 
     def _tick(self) -> None:
         self._done += 1
@@ -171,6 +182,7 @@ class _Builder:
             is_leaf=True,
             playable=playable,
             guide=guide,
+            org_delta=self._org_delta(guide) if playable else 0.0,
         )
 
     def _top_frame_node(self) -> GuideNode:
@@ -198,8 +210,24 @@ class _Builder:
             is_leaf=leaf,
             playable=playable,
             guide=guide,
+            org_delta=self._org_delta(guide) if leaf and playable else 0.0,
             children=children,
         )
+
+
+def _replay_line(org: OrgState, guide: Guide) -> OrgState:
+    """org with one line applied; a step that cannot replay stops the line.
+
+    A grown team's frame-derived id can land differently on the real org, so
+    the replay errs conservative (stops that line) rather than failing.
+    """
+    current = org
+    for step in guide.steps:
+        try:
+            current = apply_move(current, step.move)
+        except FulcrumError:
+            break
+    return current
 
 
 def compose_leaf_lines(org: OrgState, guide_tree: OrgGuide) -> OrgState:
@@ -207,16 +235,9 @@ def compose_leaf_lines(org: OrgState, guide_tree: OrgGuide) -> OrgState:
 
     Leaf moves act on real teams and a scoped stabilise thins only its own
     frame's edges, so disjoint leaf lines compose without stepping on each
-    other. A step that cannot replay on the real org (a grown team's
-    frame-derived id landing differently there) stops that node's line and
-    the rest still compose, so the headline errs conservative rather than
-    failing.
+    other.
     """
     current = org
     for node in guide_tree.leaf_nodes():
-        for step in node.guide.steps:
-            try:
-                current = apply_move(current, step.move)
-            except FulcrumError:
-                break
+        current = _replay_line(current, node.guide)
     return current

@@ -1,5 +1,7 @@
 """Tests for the whole-hierarchy guide builder."""
 
+import pytest
+
 from fulcrum.application.game_session import MAX_PLAYABLE_TEAMS
 from fulcrum.application.org_guide import (
     TOP_FRAME_LABEL,
@@ -93,6 +95,26 @@ def test_leaf_lines_compose_to_a_stronger_flat_score():
     guide = build_org_guide(_hierarchical_org(), _SIM)
     assert guide.flat_before == _SIM.score(_hierarchical_org()).value
     assert guide.flat_after > guide.flat_before
+
+
+def test_leaf_rows_carry_their_worth_in_org_points():
+    guide = build_org_guide(_hierarchical_org(), _SIM)
+    leaves = guide.leaf_nodes()
+    assert leaves
+    # Every leaf line with steps is worth real whole-org points; aggregate
+    # rows advertise none, since they are views rather than repairs.
+    for leaf in leaves:
+        if leaf.guide.steps:
+            assert leaf.org_delta > 0
+    for node in guide.nodes:
+        if not node.is_leaf:
+            assert node.org_delta == 0.0
+
+
+def test_a_flat_org_delta_matches_its_own_line():
+    guide = build_org_guide(_flat_org(), _SIM)
+    node = guide.nodes[0]
+    assert node.org_delta == pytest.approx(guide.flat_after - guide.flat_before)
 
 
 def test_a_unit_whose_children_hold_no_teams_plays_as_a_leaf():

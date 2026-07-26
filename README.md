@@ -73,12 +73,12 @@ A short tour and the books behind it are at <https://oernster.github.io/fulcrum/
   authority and contested ownership), each carrying its own definition: hover
   for a gloss, click for the full meaning.
 - Structural moves scored from blunder to great. The Guide plans every level
-  of the organisation at once: a tree of frames where each unit climbs in its
-  own frame, the leaf lines compose into an honest whole-org before and after
-  and an aggregate row is labelled as the view from that altitude (its gains
-  overlap the leaf repairs beneath it). A toggle lets the org grow (split or
-  add teams) per leaf and you can preview and play any step straight from the
-  guide.
+  of the organisation at once: a tree of frames where each leaf line is
+  priced in whole-org points (the badges sum to the headline), the leaf
+  lines compose into an honest whole-org before and after and an aggregate
+  row is labelled as the view from that altitude (its gains overlap the leaf
+  repairs beneath it). A toggle lets the org grow (split or add teams) per
+  leaf and you can preview and play any step straight from the guide.
 - Take a move back: an undo stack steps the organisation back through the moves
   you have played, from the board or with Ctrl+Z.
 - Plan export as a self-contained HTML report or as JSON you can re-import to

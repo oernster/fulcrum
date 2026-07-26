@@ -58,10 +58,16 @@ class ImprovementPlanner:
         current = org
         current_score = start
         steps: list[GuideStep] = []
+        played: set[tuple[MoveKind, tuple[str, ...]]] = set()
         for _ in range(self.max_steps):
             moves = enumerate_moves(current, allow_growth=self.allow_growth)
             if allowed_kinds is not None:
                 moves = tuple(m for m in moves if m.kind in allowed_kinds)
+            # Never repeat an identical move within one line: replaying a
+            # partial repair (realign, stabilise) converges with diminishing
+            # gains, and a guide that names the same move three times reads
+            # as noise rather than a plan. Each repair appears once.
+            moves = tuple(m for m in moves if (m.kind, m.targets) not in played)
             if not moves:
                 break
             best = max(
@@ -70,6 +76,7 @@ class ImprovementPlanner:
             )
             if best.delta < self.min_gain:
                 break
+            played.add((best.move.kind, best.move.targets))
             label = describe_move(current, best.move)
             before = current
             score_before = current_score

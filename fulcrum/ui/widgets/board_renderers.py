@@ -25,11 +25,18 @@ _PREVIEW_BTN_W = 44
 
 
 def clear_layout(layout: QLayout) -> None:
-    """Remove and delete every widget held by a layout, leaving it empty."""
+    """Remove and delete every widget held by a layout, leaving it empty.
+
+    Widgets are hidden and detached from their parent immediately: deletion
+    itself is deferred and a pending widget still paints at its old
+    geometry, which shows up as stale rows layered under a re-render.
+    """
     while layout.count():
         item = layout.takeAt(0)
         widget = item.widget()
         if widget is not None:
+            widget.hide()
+            widget.setParent(None)
             widget.deleteLater()
 
 

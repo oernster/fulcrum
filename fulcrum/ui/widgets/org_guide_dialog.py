@@ -75,15 +75,43 @@ def _step_text(index: int, step: GuideStep) -> str:
     )
 
 
-def _climb(node: GuideNode) -> str:
+def _gain(node: GuideNode) -> str:
+    """The row badge: a leaf's honest worth in whole-org points.
+
+    A frame's own climb is on its private 0..100 scale, which reads as a
+    promise the whole org cannot keep, so it never appears in the tree;
+    aggregate rows are views and carry no number at all.
+    """
     if not node.playable:
         return "too large"
+    if not node.is_leaf:
+        return "view"
+    if not node.guide.steps:
+        return "healthy"
+    return f"{node.org_delta:+.{_SCORE_DECIMALS}f} org points"
+
+
+def _frame_climb(node: GuideNode) -> str:
     guide = node.guide
-    if not guide.steps:
-        return f"{guide.start_score:.{_SCORE_DECIMALS}f}"
     return (
         f"{guide.start_score:.{_SCORE_DECIMALS}f} → "
         f"{guide.final_score:.{_SCORE_DECIMALS}f}"
+    )
+
+
+def _frame_note_text(node: GuideNode) -> str:
+    """The explanatory line under the title: frame scale, stated plainly."""
+    if not node.playable or not node.guide.steps:
+        return ""
+    if node.is_leaf:
+        return (
+            f"This line scores {_frame_climb(node)} on this level's own "
+            "0 to 100 scale; its worth to the whole organisation is the "
+            "org points above."
+        )
+    return (
+        f"In this frame: {_frame_climb(node)}, on its own 0 to 100 scale. "
+        f"{_AGGREGATE_NOTE}"
     )
 
 
@@ -222,7 +250,7 @@ class OrgGuideDialog(NeutralDialog):
 
         def add(node: GuideNode, parent) -> None:
             label = node.label if not node.category else f"{node.label}"
-            item = QTreeWidgetItem([label, _climb(node)])
+            item = QTreeWidgetItem([label, _gain(node)])
             item.setData(0, _NODE_ROLE, node)
             if parent is None:
                 self._tree.addTopLevelItem(item)
@@ -256,9 +284,9 @@ class OrgGuideDialog(NeutralDialog):
             return
         self._selected_frame = node.frame_id
         title = node.label if not node.category else f"{node.category}: {node.label}"
-        self._frame_title.setText(f"{title}   {_climb(node)}")
-        self._frame_note.setText("" if node.is_leaf else _AGGREGATE_NOTE)
-        self._frame_note.setVisible(not node.is_leaf)
+        self._frame_title.setText(f"{title}   {_gain(node)}")
+        self._frame_note.setText(_frame_note_text(node))
+        self._frame_note.setVisible(bool(self._frame_note.text()))
         if not node.playable:
             self._add_note(_TOO_LARGE)
             return

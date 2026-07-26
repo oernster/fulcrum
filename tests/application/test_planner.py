@@ -88,6 +88,18 @@ def test_plan_with_no_allowed_kinds_yields_no_steps():
     assert guide.steps == ()
 
 
+def test_plan_never_repeats_an_identical_move():
+    # Realign converges with diminishing gains; a line that names the same
+    # repair three times is noise, so each (kind, targets) appears once.
+    org = OrgState(
+        teams=(Team("a", "A", True, 1.0), Team("b", "B", True, 1.0)),
+        workload=1,
+    )
+    guide = ImprovementPlanner(DeterministicSimulator(), min_gain=0.01).plan(org)
+    signatures = [(step.move.kind, step.move.targets) for step in guide.steps]
+    assert len(signatures) == len(set(signatures))
+
+
 def test_plan_labels_each_step_with_a_description():
     guide = ImprovementPlanner(DeterministicSimulator()).plan(_broken())
     assert guide.steps
