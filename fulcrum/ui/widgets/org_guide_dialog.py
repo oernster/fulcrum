@@ -40,6 +40,22 @@ from fulcrum.ui.widgets.dialog_focus_ring import (
 )
 from fulcrum.ui.widgets.move_preview_dialog import MovePreviewDialog
 from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
+from fulcrum.ui.widgets.org_guide_text import (
+    ALREADY_GOOD,
+    GROW_TOGGLE_TEXT,
+    GROWTH_SAME_FRAME_NOTE,
+    GROWTH_SAME_NOTE,
+    GROWTH_TOO_LARGE,
+    HINT,
+    SCORE_DECIMALS,
+    TOO_LARGE,
+    find_frame,
+    frame_note_text,
+    gain,
+    line_of,
+    same_lines,
+    step_text,
+)
 
 _MIN_WIDTH = 980
 _MIN_HEIGHT = 560
@@ -52,97 +68,7 @@ _STEPS_PANE_W = 640
 # horizontal scrolling.
 _PARENT_FILL = 0.85
 _SCREEN_FILL = 0.80
-_SCORE_DECIMALS = 1
 _NODE_ROLE = Qt.ItemDataRole.UserRole
-_GROW_TOGGLE_TEXT = "Allow the organisation to grow (split or add teams)"
-_GROWTH_SAME_NOTE = "Growth does not improve any line from this position."
-_HINT = "Up and Down move between moves; click a move or 🔍 to preview it."
-_ALREADY_GOOD = (
-    "This level is already in good shape; no single move improves it much " "from here."
-)
-_AGGREGATE_NOTE = (
-    "The view from this altitude: its gains overlap the leaf lines beneath "
-    "it, so only leaf lines count toward the headline."
-)
-_TOO_LARGE = "This section is too large to plan live; drill into its units."
-_GROWTH_TOO_LARGE = "The organisation is too large to plan growth live."
-
-
-def _step_text(index: int, step: GuideStep) -> str:
-    return (
-        f"{index + 1}. {step.move.display_label()}   "
-        f"[{step.classification.value}]   "
-        f"{step.score_before:.{_SCORE_DECIMALS}f} "
-        f"→ {step.score_after:.{_SCORE_DECIMALS}f}"
-    )
-
-
-def _gain(node: GuideNode) -> str:
-    """The row badge: a leaf's honest worth in whole-org points.
-
-    A frame's own climb is on its private 0..100 scale, which reads as a
-    promise the whole org cannot keep, so it never appears in the tree;
-    aggregate rows are views and carry no number at all.
-    """
-    if not node.playable:
-        return "too large"
-    if not node.is_leaf:
-        return "view"
-    if not node.guide.steps:
-        return "healthy"
-    return f"{node.org_delta:+.{_SCORE_DECIMALS}f} org points"
-
-
-def _frame_climb(node: GuideNode) -> str:
-    guide = node.guide
-    return (
-        f"{guide.start_score:.{_SCORE_DECIMALS}f} → "
-        f"{guide.final_score:.{_SCORE_DECIMALS}f}"
-    )
-
-
-def _frame_note_text(node: GuideNode) -> str:
-    """The explanatory line under the title: frame scale, stated plainly."""
-    if not node.playable or not node.guide.steps:
-        return ""
-    if node.grown_line:
-        return (
-            f"Planned from the position after every leaf line: "
-            f"{_frame_climb(node)} on the whole organisation's scale. The "
-            "org points above are growth's worth on top of the other lines."
-        )
-    if node.is_leaf:
-        return (
-            f"This line scores {_frame_climb(node)} on this level's own "
-            "0 to 100 scale; its worth to the whole organisation is the "
-            "org points above."
-        )
-    return (
-        f"In this frame: {_frame_climb(node)}, on its own 0 to 100 scale. "
-        f"{_AGGREGATE_NOTE}"
-    )
-
-
-def _same_lines(first: OrgGuide, second: OrgGuide) -> bool:
-    """Whether every frame's line matches, aggregate rows included: growth
-    may change an aggregate line only (a split priced at the top level), and
-    that must still count as growth improving a line."""
-
-    def lines(tree: OrgGuide):
-        collected = []
-
-        def visit(node: GuideNode) -> None:
-            collected.append(
-                tuple((s.move.kind, s.move.targets) for s in node.guide.steps)
-            )
-            for child in node.children:
-                visit(child)
-
-        for node in tree.nodes:
-            visit(node)
-        return tuple(collected)
-
-    return lines(first) == lines(second)
 
 
 class OrgGuideDialog(NeutralDialog):
@@ -175,7 +101,7 @@ class OrgGuideDialog(NeutralDialog):
         self._summary.setObjectName("Muted")
         self._summary.setWordWrap(True)
         layout.addWidget(self._summary)
-        self._toggle = QCheckBox(_GROW_TOGGLE_TEXT)
+        self._toggle = QCheckBox(GROW_TOGGLE_TEXT)
         self._toggle.toggled.connect(self._render_current)
         layout.addWidget(self._toggle)
 
@@ -253,12 +179,12 @@ class OrgGuideDialog(NeutralDialog):
     def _render_current(self) -> None:
         active = self._active()
         note = ""
-        if self._toggle.isChecked() and _same_lines(self._guide, self._growth_guide):
-            note = f"   {_GROWTH_SAME_NOTE}"
+        if self._toggle.isChecked() and same_lines(self._guide, self._growth_guide):
+            note = f"   {GROWTH_SAME_NOTE}"
         self._summary.setText(
             "Whole organisation, playing every leaf line: "
-            f"{active.flat_before:.{_SCORE_DECIMALS}f} → "
-            f"{active.flat_after:.{_SCORE_DECIMALS}f}{note}"
+            f"{active.flat_before:.{SCORE_DECIMALS}f} → "
+            f"{active.flat_after:.{SCORE_DECIMALS}f}{note}"
         )
         self._rebuild_tree(active)
 
@@ -270,7 +196,7 @@ class OrgGuideDialog(NeutralDialog):
 
         def add(node: GuideNode, parent) -> None:
             label = node.label if not node.category else f"{node.label}"
-            item = QTreeWidgetItem([label, _gain(node)])
+            item = QTreeWidgetItem([label, gain(node)])
             item.setData(0, _NODE_ROLE, node)
             if parent is None:
                 self._tree.addTopLevelItem(item)
@@ -304,22 +230,39 @@ class OrgGuideDialog(NeutralDialog):
             return
         self._selected_frame = node.frame_id
         title = node.label if not node.category else f"{node.category}: {node.label}"
-        self._frame_title.setText(f"{title}   {_gain(node)}")
-        self._frame_note.setText(_frame_note_text(node))
+        self._frame_title.setText(f"{title}   {gain(node)}")
+        note = frame_note_text(node)
+        suffix = self._growth_unchanged_note(node)
+        if suffix:
+            note = f"{note} {suffix}" if note else suffix
+        self._frame_note.setText(note)
         self._frame_note.setVisible(bool(self._frame_note.text()))
         if not node.playable:
-            self._add_note(_GROWTH_TOO_LARGE if node.grown_line else _TOO_LARGE)
+            self._add_note(GROWTH_TOO_LARGE if node.grown_line else TOO_LARGE)
             return
         if not node.guide.steps:
-            self._add_note(_ALREADY_GOOD)
+            self._add_note(ALREADY_GOOD)
             return
-        hint = QLabel(_HINT)
+        hint = QLabel(HINT)
         hint.setObjectName("Muted")
         hint.setWordWrap(True)
         self._rows.addWidget(hint)
         for index, step in enumerate(node.guide.steps):
             self._rows.addWidget(self._step_row(node, index, step))
         self._rows.addStretch()
+
+    def _growth_unchanged_note(self, node: GuideNode) -> str:
+        """With growth on, say in place when it changes nothing for a frame.
+
+        A frame with no dependency load looks like a dead toggle otherwise;
+        the growth row itself and unplayable frames say their own thing.
+        """
+        if not self._toggle.isChecked() or node.grown_line or not node.playable:
+            return ""
+        fixed = find_frame(self._guide, node.frame_id)
+        if fixed is None or line_of(fixed) != line_of(node):
+            return ""
+        return GROWTH_SAME_FRAME_NOTE
 
     def _add_note(self, text: str) -> None:
         note = QLabel(text)
@@ -329,7 +272,7 @@ class OrgGuideDialog(NeutralDialog):
         self._rows.addStretch()
 
     def _step_row(self, node: GuideNode, index: int, step: GuideStep) -> QWidget:
-        text = _step_text(index, step)
+        text = step_text(index, step)
         move = QPushButton(text)
         move.setObjectName("MoveButton")
         # A long move label compresses rather than forcing the pane to
