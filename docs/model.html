@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What grounds the score: the model behind Fulcrum's number</title>
+<meta name="description" content="Where Fulcrum's scoring weights come from: a hand-tuned evaluation function with every coefficient published, what determinism does and does not buy, the assumptions the model rests on, where it is expected to be wrong and the external test that would falsify it.">
+<meta name="author" content="Oliver Ernster">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#0d0f12">
+<link rel="canonical" href="https://ernster.dev/fulcrum/model.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Fulcrum">
+<meta property="og:title" content="What grounds the score: the model behind Fulcrum's number">
+<meta property="og:description" content="Every coefficient in Fulcrum's scoring function, published with its provenance: what is theory-derived, what is engineering judgement, what would falsify the model and how robust the results are to the exact weights.">
+<meta property="og:url" content="https://ernster.dev/fulcrum/model.html">
+<meta property="og:image" content="https://ernster.dev/fulcrum/assets/screenshots/play-board.png">
+<meta property="og:image:alt" content="The Fulcrum board scoring an organisation&#x27;s structure">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="What grounds the score: the model behind Fulcrum's number">
+<meta name="twitter:description" content="Every coefficient in Fulcrum's scoring function, published with its provenance: what is theory-derived, what is engineering judgement and what would falsify the model.">
+<meta name="twitter:image" content="https://ernster.dev/fulcrum/assets/screenshots/play-board.png">
+<link rel="icon" type="image/png" href="assets/fulcrum.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="nav">
+  <div class="container nav-inner">
+    <a class="brand" href="index.html">
+      <img src="assets/fulcrum.png" alt="Fulcrum icon">Fulcrum</a>
+    <nav class="nav-links">
+      <a href="tool.html">The tool</a>
+      <a href="why.html">Why</a>
+      <a href="model.html">The model</a>
+      <a href="why.html#books">The books</a>
+      <a href="download.html">Download</a>
+      <a href="https://github.com/oernster/fulcrum">GitHub</a>
+    </nav>
+  </div>
+</header>
+<main>
+  <section id="kind">
+    <div class="container prose">
+      <div class="eyebrow">The claim</div>
+      <h2 class="section-title">What kind of model this is</h2>
+      <p>Fulcrum implements a hand-tuned evaluation function: an expert prior encoded as
+        arithmetic, derived from the Decision Architecture series and 28 years of practice across
+        defence, fintech, telecoms and startups. It is not a statistical model fitted to
+        organisational outcome data and it does not claim to be. There is no training set, no
+        regression and no learned parameter anywhere in the engine.</p>
+      <p>The right comparison is a chess engine's classical evaluation. Stockfish's evaluation
+        function was hand-tuned by strong players and engineers for years; nobody called it
+        illegitimate, because the weights were published and could be argued with. That is the
+        standard this page is built to meet. Every coefficient in Fulcrum's scoring function is
+        published below with where it came from, so the argument can be had against the actual
+        numbers rather than against an impression of them.</p>
+    </div>
+  </section>
+  <section id="weights" class="alt">
+    <div class="container prose">
+      <div class="eyebrow">Provenance</div>
+      <h2 class="section-title">Where the weights come from</h2>
+      <p>The scoring function lives in one module,
+        <a href="https://github.com/oernster/fulcrum/blob/main/fulcrum/domain/simulation.py">fulcrum/domain/simulation.py</a>,
+        and every coefficient lives in one frozen dataclass, <code>SimulationParameters</code>.
+        There are no hidden constants: the table below is the complete set. The honest split is
+        this: the <b>mechanisms</b> (what is penalised and why) come from the books; the
+        <b>magnitudes</b> (the specific numbers) are engineering judgement, constrained where the
+        code enforces a structural rule. A table claiming every number was derived from theory
+        would not be believed and would not be true.</p>
+      <div class="table-scroll">
+        <table class="weights">
+          <thead>
+            <tr><th>Signal / weight</th><th>What it does</th><th>Mechanism source</th><th>Magnitude</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>authority_penalty</code> = 0.45</td>
+              <td>Multiplies a team's decision capacity when it lacks local authority.</td>
+              <td><i>Decision Architecture</i> (authority before accountability); <i>Relativistic Decision Architecture</i>, Axiom 2 (authority worldlines)</td>
+              <td>Engineering judgement</td>
+            </tr>
+            <tr>
+              <td><code>coupling_weight</code> = 0.6</td>
+              <td>Divides capacity by 1 + 0.6 &times; the dependencies touching the team.</td>
+              <td><i>Decision Architecture</i> (latency accumulation); <i>The Move Space</i> (coordination overload)</td>
+              <td>Engineering judgement</td>
+            </tr>
+            <tr>
+              <td><code>incentive_weight</code> = 0.8</td>
+              <td>Divides capacity as the team's incentive skew rises.</td>
+              <td><i>Relativistic Decision Architecture</i>, Axiom 5 (incentive-induced curvature)</td>
+              <td>Engineering judgement</td>
+            </tr>
+            <tr>
+              <td><code>delay_arrival_weight</code> = 0.25</td>
+              <td>Inflates a team's effective arrivals per unit of incoming propagation delay.</td>
+              <td><i>Relativistic Decision Architecture</i>, Axiom 4 (causal propagation)</td>
+              <td>Engineering judgement</td>
+            </tr>
+            <tr>
+              <td><code>cognitive_load_weight</code> = 0.6<br><code>ideal_team_size</code> = 3</td>
+              <td>Divides capacity per unit of team size beyond the comfortable band; zero for teams at or below it.</td>
+              <td>Engineering judgement (deliberately gentle: zero in the benign case, so it never disturbs an existing position)</td>
+              <td>Engineering judgement</td>
+            </tr>
+            <tr>
+              <td><code>latency_weight</code> = 0.5</td>
+              <td>Share of the composite penalty carried by backlog at boundaries.</td>
+              <td><i>Decision Architecture</i> ("decision latency is the first scaling bottleneck") justifies this being the largest share</td>
+              <td>Judgement; the three shares must sum to 1.0, enforced in code</td>
+            </tr>
+            <tr>
+              <td><code>escalation_weight</code> = 0.3</td>
+              <td>Share carried by the fraction of teams that cannot decide locally.</td>
+              <td><i>Decision Architecture</i> (escalation as the signal of missing authority)</td>
+              <td>Judgement; same sum-to-one constraint</td>
+            </tr>
+            <tr>
+              <td><code>rework_weight</code> = 0.2</td>
+              <td>Share carried by mean incentive skew across the teams.</td>
+              <td><i>Relativistic Decision Architecture</i>, Axiom 5 (skewed incentives surface later as rework)</td>
+              <td>Judgement; same sum-to-one constraint</td>
+            </tr>
+            <tr>
+              <td><code>influence_weight</code> = 0.08<br><code>influence_tolerance</code> = 1</td>
+              <td>Divides the whole score per point of influence-without-authority load: excess inbound dependence on teams that cannot decide locally.</td>
+              <td><i>Decision Architecture</i> (delegation without authority); <i>Decision Architecture Patterns</i> (decision shadow, phantom authority)</td>
+              <td>Engineering judgement (gentle by design)</td>
+            </tr>
+            <tr>
+              <td><code>base_capacity</code> = 12.0</td>
+              <td>Decisions a team can clear per turn before penalties; sets the scale that arrivals are measured against.</td>
+              <td>Queueing framing (arrivals against capacity)</td>
+              <td>Engineering judgement</td>
+            </tr>
+            <tr>
+              <td>Classification bands: great &ge; +9, good &ge; +3, blunder &le; &minus;1</td>
+              <td>Turn a move's score delta into a grade from blunder to great.</td>
+              <td><i>The Move Space</i> (the move taxonomy itself)</td>
+              <td>Band edges are engineering judgement</td>
+            </tr>
+            <tr>
+              <td>Move constants: approval gate delay = 3; stabilise and realign retention = 0.4</td>
+              <td>Shape what each move does: a new approval gate arrives with delay on every team; stabilising interfaces and realigning incentives pull values toward zero without forcing them there.</td>
+              <td><i>The Move Space</i> (the blunder and good-move catalogues)</td>
+              <td>Engineering judgement</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- TODO(oliver): magnitude provenance taken as engineering judgement by default; confirm none of the coefficients was derived from a stated computation or a specific chapter -->
+      <p class="todo">TODO: every magnitude above is labelled engineering judgement because no
+        derivation is documented in the source. If any coefficient was in fact derived from a
+        stated computation or a specific chapter, name it here.</p>
+    </div>
+  </section>
+  <section id="determinism">
+    <div class="container prose">
+      <div class="eyebrow">The distinction</div>
+      <h2 class="section-title">What determinism buys, and what it does not</h2>
+      <p>Determinism buys three things. Reproducibility: two people with the same model get the
+        same number, so a disagreement about structure becomes something you can examine rather
+        than adjudicate. Inspectability: every score decomposes into its named penalties and every
+        coefficient sits in one published dataclass, so there is nowhere for a fudge factor to
+        hide. Diffability: two candidate structures for the same organisation can be scored and
+        compared move by move.</p>
+      <p>It does not buy validity. A deterministic function is exactly as right or wrong every
+        time you run it. Whether the number tracks anything true about real organisations is a
+        separate question; nothing about reproducibility answers it. The rest of this page is
+        about that question.</p>
+    </div>
+  </section>
+  <section id="assumptions" class="alt">
+    <div class="container prose">
+      <div class="eyebrow">Load-bearing</div>
+      <h2 class="section-title">Assumptions the model rests on</h2>
+      <p>Each of these is built into the arithmetic. If one is false, the output is wrong in the
+        specific way stated.</p>
+      <ol>
+        <li><b>Decision latency dominates structural health.</b> Backlog at boundaries carries
+          half the composite penalty, the largest single share. If latency matters less than
+          that, the score over-rewards removing queues relative to fixing incentives.</li>
+        <li><b>Authority misplacement compounds.</b> A team without local authority is charged
+          three times: its capacity is cut, it counts toward the escalation share and it drives
+          the influence divisor when others depend on it. If authority mattered less than this,
+          the delegation moves the guide favours would be systematically overpriced.</li>
+        <li><b>Every dependency costs alike.</b> Coupling counts edges, not their nature; a
+          well-interfaced, cheap dependency and a daily-friction dependency weigh the same. Where
+          cheap dependencies are common, coupled organisations read worse than they are.</li>
+        <li><b>Delay converts to load linearly.</b> Arrivals inflate by 0.25 per unit of
+          propagation delay. If the true effect is super-linear (oscillation, compounding rework),
+          high-latency boundaries are under-priced, not over-priced.</li>
+        <li><b>Workload arrives uniformly.</b> Every team receives the same arrivals per turn. If
+          load concentrates on hotspots, the score is too kind: one drowning team is averaged
+          away.</li>
+        <li><b>The declared structure is the real one.</b> The model scores the organisation you
+          drew. If informal authority routes around the formal graph, the score describes an
+          organisation that does not exist.</li>
+      </ol>
+    </div>
+  </section>
+  <section id="wrong">
+    <div class="container prose">
+      <div class="eyebrow">Known limits</div>
+      <h2 class="section-title">Where I expect this to be wrong</h2>
+      <p>A model with no admitted failure modes is marketing. These are the places the model is
+        expected to fail, not hedges.</p>
+      <ul>
+        <li><b>Very small organisations.</b> With a team or two there are few boundaries, little
+          coupling and often no hierarchy: most of the model's terms have no signal and the score
+          collapses to workload against capacity plus skew. Below that size the tool is a toy, not
+          a diagnostic.</li>
+        <li><b>Matrix and dual-reporting structures.</b> Authority in Fulcrum is one boolean per
+          team on one dependency graph. Two claimants to the same decision class cannot be drawn
+          at all, yet that discontinuity is exactly the pathology the books treat as most
+          interesting. Fulcrum cannot currently represent the disease it would most want to
+          price.</li>
+        <li><b>Organisations where informal authority dominates.</b> The model reads the formal
+          graph. Where the shadow structure makes the real decisions, the inputs are fiction and
+          so is the score.</li>
+        <li><b>Non-engineering organisations.</b> The coefficients encode software-delivery
+          experience in defence, fintech, telecoms and startups. A hospital, a newsroom or a
+          logistics firm has different latency and authority economics; nothing in the model knows
+          that.</li>
+        <li><b>Anything short-lived or mid-transition.</b> The score is a steady-state reading of
+          a static structure. An organisation that never reaches steady state (a rapid reorg, a
+          project org wound up in months) is described by a number about a state it never
+          occupies; latency-induced oscillation over time is invisible to a single
+          snapshot.</li>
+        <li><b>Heterogeneous teams.</b> Every team gets the same base capacity. Differences in
+          skill, seniority and tooling do not exist in the model; two structurally identical teams
+          always score identically.</li>
+      </ul>
+    </div>
+  </section>
+  <section id="falsify" class="alt">
+    <div class="container prose">
+      <div class="eyebrow">The test</div>
+      <h2 class="section-title">What would actually falsify this</h2>
+      <p>An earlier version of this site offered an internal test: model an organisation in which
+        adding an approval layer improves structural health and the framework is wrong. That test
+        cannot come out false, because Fulcrum's own scoring function decides whether the layer
+        improved anything. It is a consistency check wearing a falsifiability costume; it has
+        been retired.</p>
+      <p>The real test is external and blind:</p>
+      <ol>
+        <li>Assemble a set of real organisations whose structural outcomes are independently
+          documented: sustained delivery at scale on one side, delivery collapse or a structural
+          post-mortem on the other. The outcome record is fixed before anything is scored.</li>
+        <li>A modeller who does not know the outcomes builds each organisation's Fulcrum model
+          from structural facts alone: the org chart, the dependency map and the authority
+          placement as they stood at the time.</li>
+        <li>Score each model once. No re-modelling after seeing a result.</li>
+        <li>Test whether the score ranking predicts the outcome ranking better than chance, with
+          the correlation threshold registered before the scores are computed.</li>
+      </ol>
+      <p><b>This protocol has not been run.</b> The obstacle is data honesty rather than design:
+        structural facts about failed organisations are confidential and post-hoc accounts of them
+        are unreliable, so assembling a clean blind set is slow. Until it runs, the correct status
+        of the model is: a published, inspectable expert prior whose external validation is
+        specified but outstanding. If you hold structural records that could join such a set, the
+        <a href="https://github.com/oernster/fulcrum">repository</a> is the place to say so.</p>
+    </div>
+  </section>
+  <section id="sensitivity">
+    <div class="container prose">
+      <div class="eyebrow">Robustness</div>
+      <h2 class="section-title">Sensitivity: do the conclusions depend on the exact numbers?</h2>
+      <p>If the published results only hold at precisely these coefficients, the model is a
+        curve-fit to its own examples. So the repository carries a deterministic sweep,
+        <a href="https://github.com/oernster/fulcrum/blob/main/sensitivity.py">sensitivity.py</a>,
+        which scales every tunable coefficient by 0.8 and by 1.2 (the three composite penalty
+        shares are renormalised to keep their enforced sum of 1.0), re-scores the ten shipped
+        archetypes under each of the 20 perturbed configurations and checks four qualitative
+        conclusions: the typical archetypes still collapse in order with scale, the well-designed
+        archetypes keep their order, every well-designed archetype still outscores its typical
+        counterpart and adding an approval layer still lowers the score on every typical
+        archetype.</p>
+      <p><b>All four conclusions survive every perturbation.</b> The baseline scores below
+        reproduce the published archetype numbers exactly; under all 20 perturbed configurations
+        the orderings, the typical-versus-well-designed gap and the sign of the approval-layer
+        blunder are unchanged. The qualitative results come from the structure of the model, not
+        from the particular values of its coefficients.</p>
+      <div class="table-scroll">
+        <table class="weights">
+          <thead>
+            <tr><th>Archetype</th><th>Typical</th><th>Well-designed</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Startup</td><td>75.6</td><td>98.7</td></tr>
+            <tr><td>Scale-up</td><td>49.0</td><td>91.0</td></tr>
+            <tr><td>Enterprise</td><td>24.5</td><td>78.7</td></tr>
+            <tr><td>Very large</td><td>18.9</td><td>68.8</td></tr>
+            <tr><td>Conglomerate</td><td>14.8</td><td>66.4</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The sweep's own limits, stated plainly: it perturbs one coefficient at a time, at
+        &plusmn;20% only, against the ten shipped archetypes. It does not test joint
+        perturbations, larger swings or every published claim (the 1,732-team move-locality result
+        is not re-run under perturbation). It is a robustness check on the published conclusions,
+        not a proof about every organisation. Rerun it from the repository root with
+        <code>python sensitivity.py</code>; there is no randomness, so you will get this table.</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="download.html">Download Fulcrum</a>
+        <a class="btn btn-ghost" href="why.html">Why this exists</a>
+      </div>
+    </div>
+  </section>
+</main>
+<footer>
+  <div class="container footer-inner">
+    <div>
+      <strong>Fulcrum</strong>: Organisational Decision Architecture Simulation Tool<br>
+      (c) Oliver Ernster · Local-first · GPL-3.0 + LGPL-3.0 · v<!--VERSION-->2.0.0<!--/VERSION-->
+    </div>
+    <div class="footer-links">
+      <a href="https://github.com/oernster/fulcrum/releases">Releases</a>
+      <a href="https://github.com/oernster/fulcrum">GitHub</a>
+      <a href="https://www.crankthecode.com/books">The books</a>
+      <a href="https://www.crankthecode.com/">crankthecode.com</a>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

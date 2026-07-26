@@ -31,6 +31,7 @@
     <nav class="nav-links">
       <a href="tool.html">The tool</a>
       <a href="why.html">Why</a>
+      <a href="model.html">The model</a>
       <a href="why.html#books">The books</a>
       <a href="download.html">Download</a>
       <a href="https://github.com/oernster/fulcrum">GitHub</a>
@@ -51,8 +52,13 @@
         placement, incentive skew), scores its structural health deterministically from 0 to 100 and
         valuates every legal move from blunder to great. There is no randomness in scoring: two
         people with the same model get the same number, which converts an argument about structure
-        into an examinable model.</p>
-      <p>The numbers behave the way the books predict. Scale exposes structure: typical organisation
+        into an examinable model. That determinism buys reproducibility, not validity: whether the
+        model itself describes real organisations is a separate question, taken head-on in
+        <a href="model.html">What grounds the score</a>.</p>
+      <p>The numbers reproduce what the books describe, which is a consistency check: it shows the
+        implementation faithfully executes the model the books set out, not that the model matches
+        reality (that question lives in <a href="model.html">What grounds the score</a>).
+        Scale exposes structure: typical organisation
         archetypes collapse from 75.6 to 14.8 as they grow while well-designed ones degrade gently
         from 98.7 to 66.4. Moves are asymmetric: on the enterprise archetype the one available
         approval-layer move scores -9.40 while the best good move is worth +6.85, so a single
@@ -62,9 +68,9 @@
         into a leaf and see its move space.</p>
       <p>It runs entirely on your machine: generate a level, model your own organisation or import
         one as JSON, then ask the guide for a move-by-move line to a stronger score. No account, no
-        server, no telemetry. The claims are falsifiable by design: model a realistic organisation
-        in which adding an approval layer improves structural health and the framework is wrong in
-        a way anyone can inspect.</p>
+        server, no telemetry. The test that would actually falsify the model is external: score
+        real organisations blind to their known outcomes and check whether the ranking holds, a
+        protocol set out in <a href="model.html#falsify">What grounds the score</a>.</p>
       <p>Full reasoning at <a href="https://www.crankthecode.com/books">crankthecode.com</a>:
         Decision Architecture (how organisations fail and recover) and Decision Architecture
         Patterns (the Gang of Four design patterns applied to organisations) laid the foundations
