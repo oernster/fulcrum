@@ -10,14 +10,16 @@ is the view from that altitude, shown but never composed.
 
 from __future__ import annotations
 
-from PySide6.QtCore import QEvent, Qt
+from PySide6.QtCore import QSize, Qt
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
-    QApplication,
     QCheckBox,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QSplitter,
     QTreeWidget,
     QTreeWidgetItem,
@@ -31,6 +33,11 @@ from fulcrum.application.org_guide import GuideNode, OrgGuide
 from fulcrum.application.planner import GuideStep
 from fulcrum.ui import ui_scale
 from fulcrum.ui.widgets.board_renderers import clear_layout, magnifier_button
+from fulcrum.ui.widgets.dialog_focus_ring import (
+    GROUP_STOP,
+    WIDGET_STOP,
+    DialogFocusRing,
+)
 from fulcrum.ui.widgets.move_preview_dialog import MovePreviewDialog
 from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 
@@ -38,6 +45,13 @@ _MIN_WIDTH = 980
 _MIN_HEIGHT = 560
 _TREE_SHARE = 2
 _STEPS_SHARE = 3
+_TREE_PANE_W = 340
+_STEPS_PANE_W = 640
+# The dialog opens at most of the app window (or screen), like the org
+# editor: a hierarchy needs the room, and both panes then fit without
+# horizontal scrolling.
+_PARENT_FILL = 0.85
+_SCREEN_FILL = 0.80
 _SCORE_DECIMALS = 1
 _NODE_ROLE = Qt.ItemDataRole.UserRole
 _GROW_TOGGLE_TEXT = "Allow the organisation to grow (split or add teams)"
@@ -51,10 +65,6 @@ _AGGREGATE_NOTE = (
     "it, so only leaf lines count toward the headline."
 )
 _TOO_LARGE = "This section is too large to plan live; drill into its units."
-_WIDGET = "widget"
-_GROUP = "group"
-_FORWARD = 1
-_BACK = -1
 
 
 def _step_text(index: int, step: GuideStep) -> str:
@@ -102,6 +112,7 @@ class OrgGuideDialog(NeutralDialog):
         self.setWindowTitle("Guide - path to a stronger org, level by level")
         self.setWindowFlag(Qt.WindowType.WindowMaximizeButtonHint, True)
         self.setMinimumSize(ui_scale.px(_MIN_WIDTH), ui_scale.px(_MIN_HEIGHT))
+        self.resize(self._initial_size(parent))
         self._guide = guide
         self._growth_guide = growth_guide
         self._simulator = simulator
@@ -122,7 +133,14 @@ class OrgGuideDialog(NeutralDialog):
 
         self._tree = QTreeWidget()
         self._tree.setHeaderLabels(["Level", "Line"])
-        self._tree.setColumnWidth(0, ui_scale.px(280))
+        # The climb column takes exactly what its short scores need and the
+        # level column stretches into the rest, eliding long unit names, so
+        # the climb is always fully visible at any pane width.
+        header = self._tree.header()
+        header.setStretchLastSection(False)
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        self._tree.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._tree.currentItemChanged.connect(lambda *_: self._render_steps())
 
         steps_box = QWidget()
@@ -137,6 +155,9 @@ class OrgGuideDialog(NeutralDialog):
         steps_layout.addWidget(self._frame_note)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        # Rows fit the viewport width; a sideways scrollbar over move rows
+        # reads as covered-up UI, so it is off and long labels elide instead.
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._rows_holder = QWidget()
         self._rows = QVBoxLayout(self._rows_holder)
         scroll.setWidget(self._rows_holder)
@@ -147,6 +168,7 @@ class OrgGuideDialog(NeutralDialog):
         panes.addWidget(steps_box)
         panes.setStretchFactor(0, _TREE_SHARE)
         panes.setStretchFactor(1, _STEPS_SHARE)
+        panes.setSizes([ui_scale.px(_TREE_PANE_W), ui_scale.px(_STEPS_PANE_W)])
         layout.addWidget(panes, 1)
 
         row = QHBoxLayout()
@@ -157,7 +179,23 @@ class OrgGuideDialog(NeutralDialog):
         layout.addLayout(row)
 
         self._render_current()
-        QApplication.instance().installEventFilter(self)
+        self._focus_ring = DialogFocusRing(self, self._ring, self._tree_owns_updown)
+
+    @staticmethod
+    def _initial_size(parent) -> QSize:
+        """Most of the app window's size, or the screen's when parentless."""
+        if parent is not None:
+            base = parent.window().size()
+            return QSize(
+                round(base.width() * _PARENT_FILL),
+                round(base.height() * _PARENT_FILL),
+            )
+        screen = QGuiApplication.primaryScreen()
+        available = screen.availableGeometry().size()
+        return QSize(
+            round(available.width() * _SCREEN_FILL),
+            round(available.height() * _SCREEN_FILL),
+        )
 
     # ------------------------------------------------------------- rendering
 
@@ -229,6 +267,7 @@ class OrgGuideDialog(NeutralDialog):
             return
         hint = QLabel(_HINT)
         hint.setObjectName("Muted")
+        hint.setWordWrap(True)
         self._rows.addWidget(hint)
         for index, step in enumerate(node.guide.steps):
             self._rows.addWidget(self._step_row(node, index, step))
@@ -242,8 +281,13 @@ class OrgGuideDialog(NeutralDialog):
         self._rows.addStretch()
 
     def _step_row(self, node: GuideNode, index: int, step: GuideStep) -> QWidget:
-        move = QPushButton(_step_text(index, step))
+        text = _step_text(index, step)
+        move = QPushButton(text)
         move.setObjectName("MoveButton")
+        # A long move label compresses rather than forcing the pane to
+        # scroll sideways; the tooltip carries the full text.
+        move.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
+        move.setToolTip(text)
         move.setCursor(Qt.CursorShape.PointingHandCursor)
         move.clicked.connect(lambda _=False, n=node, s=step: self._preview(n, s))
         magnifier = magnifier_button(lambda n=node, s=step: self._preview(n, s))
@@ -272,95 +316,19 @@ class OrgGuideDialog(NeutralDialog):
 
     # ------------------------------------------------------------- keyboard
 
-    # Focus ring: grow toggle -> tree -> moves group -> Close -> wrap. Tab and
-    # Right step forward; Shift+Tab and Left step back. Up and Down stay with
-    # the tree when it has focus and walk the move rows when they do.
-    def eventFilter(self, obj, event) -> bool:
-        if event.type() != QEvent.Type.KeyPress:
-            return False
-        if QApplication.activeModalWidget() is not self:
-            return False
-        key = event.key()
-        shift = bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
-        if key == Qt.Key.Key_Right or (key == Qt.Key.Key_Tab and not shift):
-            self._step(_FORWARD)
-            return True
-        if key in (Qt.Key.Key_Backtab, Qt.Key.Key_Left) or (
-            key == Qt.Key.Key_Tab and shift
-        ):
-            self._step(_BACK)
-            return True
-        focus = QApplication.focusWidget()
-        if key == Qt.Key.Key_Down:
-            return self._step_within(focus, _FORWARD)
-        if key == Qt.Key.Key_Up:
-            return self._step_within(focus, _BACK)
-        return False
-
-    def done(self, result: int) -> None:
-        QApplication.instance().removeEventFilter(self)
-        super().done(result)
-
+    # Focus ring: grow toggle -> tree -> moves group -> Close -> wrap. The
+    # tree keeps its own Up and Down; the move rows use the ring's.
     def _ring(self) -> list:
         return [
-            (_WIDGET, self._toggle),
-            (_WIDGET, self._tree),
-            (_GROUP, self._rows_holder),
-            (_WIDGET, self._close_button),
+            (WIDGET_STOP, self._toggle),
+            (WIDGET_STOP, self._tree),
+            (GROUP_STOP, self._rows_holder),
+            (WIDGET_STOP, self._close_button),
         ]
 
-    def _focusables(self) -> list:
-        return [
-            widget
-            for widget in self._rows_holder.findChildren(QWidget)
-            if widget.focusPolicy() != Qt.FocusPolicy.NoFocus
-            and widget.isVisibleTo(self._rows_holder)
-            and widget.isEnabled()
-        ]
+    def _tree_owns_updown(self, focus) -> bool:
+        return focus is self._tree or self._tree.isAncestorOf(focus)
 
-    def _step(self, delta) -> None:
-        stops = self._ring()
-        index = self._current_index(stops)
-        if index < 0:
-            index = -1 if delta == _FORWARD else 0
-        for _ in range(len(stops)):
-            index = (index + delta) % len(stops)
-            if self._focus_stop(stops[index]):
-                return
-
-    def _current_index(self, stops) -> int:
-        focus = QApplication.focusWidget()
-        if focus is None:
-            return -1
-        for index, (kind, target) in enumerate(stops):
-            if kind == _WIDGET and (target is focus or target.isAncestorOf(focus)):
-                return index
-            if kind == _GROUP and target.isAncestorOf(focus):
-                return index
-        return -1
-
-    def _focus_stop(self, stop) -> bool:
-        kind, target = stop
-        if kind == _GROUP:
-            focusables = self._focusables()
-            if not focusables:
-                return False
-            focusables[0].setFocus(Qt.FocusReason.TabFocusReason)
-            return True
-        if not (target.isEnabled() and target.isVisible()):
-            return False
-        target.setFocus(Qt.FocusReason.TabFocusReason)
-        return True
-
-    def _step_within(self, focus, delta) -> bool:
-        # The tree owns its own Up and Down; only the move rows use the ring's.
-        if focus is not None and (
-            focus is self._tree or self._tree.isAncestorOf(focus)
-        ):
-            return False
-        focusables = self._focusables()
-        if focus in focusables and len(focusables) > 1:
-            index = (focusables.index(focus) + delta) % len(focusables)
-            focusables[index].setFocus(Qt.FocusReason.TabFocusReason)
-            return True
-        return False
+    def done(self, result: int) -> None:
+        self._focus_ring.detach()
+        super().done(result)
