@@ -53,6 +53,7 @@ from fulcrum.ui.widgets.org_guide_text import (
     frame_note_text,
     gain,
     line_of,
+    non_composing_note,
     same_lines,
     step_text,
 )
@@ -181,8 +182,11 @@ class OrgGuideDialog(NeutralDialog):
         note = ""
         if self._toggle.isChecked() and same_lines(self._guide, self._growth_guide):
             note = f"   {GROWTH_SAME_NOTE}"
+        dropped = non_composing_note(active)
+        if dropped:
+            note = f"{note}   {dropped}" if note else f"   {dropped}"
         self._summary.setText(
-            "Whole organisation, playing every leaf line: "
+            "Whole organisation, playing every composing leaf line: "
             f"{active.flat_before:.{SCORE_DECIMALS}f} → "
             f"{active.flat_after:.{SCORE_DECIMALS}f}{note}"
         )

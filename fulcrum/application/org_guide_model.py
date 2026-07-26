@@ -47,6 +47,11 @@ class GuideNode:
     grown_line marks the whole-org growth row, whose line is planned from
     the position after every leaf line, so its org_delta is growth's worth
     on top of the other lines rather than applied alone.
+    composes says whether the line enters the headline: the composition
+    guard drops a leaf line that would cost the whole organisation more
+    than it gains once the other lines land, and compose_cost then holds
+    that cost in whole-org points (zero while the line composes). The row
+    stays the frame's own best line either way.
     """
 
     frame_id: str | None
@@ -58,6 +63,8 @@ class GuideNode:
     org_delta: float = 0.0
     children: tuple[GuideNode, ...] = ()
     grown_line: bool = False
+    composes: bool = True
+    compose_cost: float = 0.0
 
 
 @dataclass(frozen=True, slots=True)

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from fulcrum.application.org_guide import GuideNode, OrgGuide
 from fulcrum.application.planner import GuideStep
+from fulcrum.shared.text import count_noun
 
 SCORE_DECIMALS = 1
 GROW_TOGGLE_TEXT = "Allow the organisation to grow (split or add teams)"
@@ -27,6 +28,7 @@ AGGREGATE_NOTE = (
 )
 TOO_LARGE = "This section is too large to plan live; drill into its units."
 GROWTH_TOO_LARGE = "The organisation is too large to plan growth live."
+NOT_COMPOSED_BADGE = "not composed"
 
 
 def step_text(index: int, step: GuideStep) -> str:
@@ -51,6 +53,8 @@ def gain(node: GuideNode) -> str:
         return "view"
     if not node.guide.steps:
         return "healthy"
+    if not node.composes:
+        return f"{node.org_delta:+.{SCORE_DECIMALS}f} org points ({NOT_COMPOSED_BADGE})"
     return f"{node.org_delta:+.{SCORE_DECIMALS}f} org points"
 
 
@@ -72,6 +76,15 @@ def frame_note_text(node: GuideNode) -> str:
             f"{frame_climb(node)} on the whole organisation's scale. The "
             "org points above are growth's worth on top of the other lines."
         )
+    if node.is_leaf and not node.composes:
+        return (
+            f"This line scores {frame_climb(node)} on this level's own "
+            "0 to 100 scale, but it does not compose into the headline: "
+            "played after the other leaf lines it would cost the whole "
+            f"organisation {node.compose_cost:.{SCORE_DECIMALS}f} points, "
+            "since merging this level's teams raises the weight of every "
+            "problem elsewhere. It is still this frame's own best line."
+        )
     if node.is_leaf:
         return (
             f"This line scores {frame_climb(node)} on this level's own "
@@ -86,6 +99,17 @@ def frame_note_text(node: GuideNode) -> str:
 
 def line_of(node: GuideNode) -> tuple:
     return tuple((s.move.kind, s.move.targets) for s in node.guide.steps)
+
+
+def non_composing_note(tree: OrgGuide) -> str:
+    """The headline's caveat when the guard left any leaf line out."""
+    dropped = sum(1 for node in tree.leaf_nodes() if not node.composes)
+    if not dropped:
+        return ""
+    return (
+        f"Left out of the headline: {count_noun(dropped, 'line')} that "
+        "would cost the whole organisation; see the flagged rows."
+    )
 
 
 def find_frame(tree: OrgGuide, frame_id: str | None) -> GuideNode | None:

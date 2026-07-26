@@ -10,8 +10,12 @@ view from that altitude, restricted to the kinds that translate down cleanly.
 Sibling leaf frames are disjoint team sets and their moves act on real teams
 (a scoped stabilise thins only its frame's edges), so the leaf lines compose:
 applying every leaf line to the real organisation gives an honest whole-org
-before and after, which is the tree's headline. Aggregate lines are shown but
-never composed; they overlap the leaf repairs beneath them by construction.
+before and after, which is the tree's headline. Composition is guarded: a
+leaf line that would cost the whole organisation once the other lines land
+(a frame cannot see the per-team means its collapses dilute elsewhere) is
+marked as not composing and left out of the headline, its row saying why
+(see org_guide_compose). Aggregate lines are shown but never composed; they
+overlap the leaf repairs beneath them by construction.
 A mixed unit (teams held directly beside child units that hold teams) gets an
 extra leaf row for its direct teams, as does the top level for loose teams,
 so every team sits in exactly one leaf frame and no repair is dropped from
@@ -34,6 +38,11 @@ from typing import Callable
 
 from fulcrum.application.game_session import MAX_PLAYABLE_TEAMS
 from fulcrum.application.interfaces import Simulator
+from fulcrum.application.org_guide_compose import (
+    compose_leaf_lines,
+    guard_leaf_lines,
+    replay_line,
+)
 from fulcrum.application.org_guide_model import (
     GROWTH_FRAME_LABEL,
     LOOSE_TEAMS_FRAME,
@@ -45,7 +54,6 @@ from fulcrum.application.org_guide_model import (
     direct_teams_frame,
 )
 from fulcrum.application.planner import Guide, ImprovementPlanner
-from fulcrum.domain.errors import FulcrumError
 from fulcrum.domain.hierarchy import (
     AGGREGATE_MOVE_KINDS,
     TOP_LEVEL_FOCUS,
@@ -58,7 +66,7 @@ from fulcrum.domain.hierarchy import (
     top_level_section,
 )
 from fulcrum.domain.models import Domain, OrgState
-from fulcrum.domain.moves import Move, MoveKind, apply_move
+from fulcrum.domain.moves import Move, MoveKind
 
 _GROWTH_MOVE_KINDS = (MoveKind.SPLIT_TEAM, MoveKind.ADD_TEAM)
 _EMPTY_SCORE = 0.0
@@ -132,7 +140,9 @@ class _Builder:
         roots = _plannable_domains(self._org, None)
         if not roots:
             # The flat row plans over the real org, so growth is already
-            # inline in its one line; no separate growth row is needed.
+            # inline in its one line and no separate growth row is needed.
+            # Every step of that line gains at the org level by planner
+            # construction, so the composition guard has nothing to price.
             self._total = 1
             nodes: tuple[GuideNode, ...] = (self._flat_node(),)
             composed = compose_leaf_lines(
@@ -150,7 +160,7 @@ class _Builder:
                 self._direct_node(None, LOOSE_TEAMS_LABEL, LOOSE_TEAMS_FRAME),
             )
         nodes = nodes + tuple(self._unit_node(d) for d in roots)
-        composed = compose_leaf_lines(self._org, OrgGuide(nodes, 0.0, 0.0, self._grown))
+        nodes, composed = guard_leaf_lines(self._org, self._simulator, nodes)
         flat_after = self._simulator.score(composed).value
         if self._grown:
             growth, flat_after = self._growth_node(composed, flat_after)
@@ -196,7 +206,7 @@ class _Builder:
 
     def _org_delta(self, guide: Guide) -> float:
         """A leaf line's worth in whole-org points, applied alone."""
-        replayed = _replay_line(self._org, guide)
+        replayed = replay_line(self._org, guide)
         return self._simulator.score(replayed).value - self._flat_before
 
     def _tick(self) -> None:
@@ -301,31 +311,3 @@ class _Builder:
             org_delta=self._org_delta(guide) if leaf and playable else 0.0,
             children=children,
         )
-
-
-def _replay_line(org: OrgState, guide: Guide) -> OrgState:
-    """org with one line applied; a step that cannot replay stops the line.
-
-    A grown team's frame-derived id can land differently on the real org, so
-    the replay errs conservative (stops that line) rather than failing.
-    """
-    current = org
-    for step in guide.steps:
-        try:
-            current = apply_move(current, step.move)
-        except FulcrumError:
-            break
-    return current
-
-
-def compose_leaf_lines(org: OrgState, guide_tree: OrgGuide) -> OrgState:
-    """The real org with every leaf line applied, in tree order.
-
-    Leaf moves act on real teams and a scoped stabilise thins only its own
-    frame's edges, so disjoint leaf lines compose without stepping on each
-    other.
-    """
-    current = org
-    for node in guide_tree.leaf_nodes():
-        current = _replay_line(current, node.guide)
-    return current
