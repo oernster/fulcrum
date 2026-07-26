@@ -59,6 +59,8 @@ _RIGHT_PANE_MIN = 360
 _MOVES_RIGHT_PAD = 12
 _UNDO_LABEL = "Take a move back"
 _UNDO_TIP = "Undo the last move played"
+_LAST_MOVE_PREFIX = "Last move played"
+_EARLIER_RUN_SUFFIX = " (in an earlier run)"
 
 
 class BoardView(QWidget):
@@ -330,13 +332,20 @@ class BoardView(QWidget):
             self._play(valuation)
 
     def _set_last_move_note(self) -> None:
-        # The note names the move it explains: with history persisting
-        # across runs, the last move is not necessarily one just played.
-        if self._session is not None and self._session.history:
-            last = self._session.history[-1]
-            self._move_note.set_text(f"{last.display_label()}. {move_note(last.kind)}")
-        else:
+        # The note says exactly what it explains: with history persisting
+        # across runs, the last move is not necessarily one just played,
+        # so a bare explanation would sit there with no context at all.
+        if self._session is None or not self._session.history:
             self._move_note.set_text("")
+            return
+        history = self._session.history
+        last = history[-1]
+        earlier = len(history) <= self._session.prior_history_count
+        run = _EARLIER_RUN_SUFFIX if earlier else ""
+        self._move_note.set_text(
+            f"{_LAST_MOVE_PREFIX}{run}: {last.display_label()}. "
+            f"{move_note(last.kind)}"
+        )
 
     def _open_signal_detail(self, reading: SignalReading) -> None:
         SignalDetailDialog(reading, self).exec()
