@@ -64,14 +64,16 @@
             <img loading="lazy" src="assets/screenshots/play-board.png" alt="The Fulcrum board scoring a modelled organisation's structure">
           </div>
           <figcaption><b>The position.</b> A modelled organisation scoring
-            69.0 out of 100: 51 people across 7 teams, drawn as the units of
-            the top level with the dependencies between them. Green marks a
-            unit whose teams decide locally; amber marks one that escalates.
-            The right-hand list holds every move the current scope opens up,
-            each graded from blunder to great with its exact gain, and the
-            signals below flag the pain. "Play this level" scores the top
-            level as its own frame, so even a dependency between two whole
-            units is priced.</figcaption>
+            38.9 out of 100 after an approval layer landed: 59 people across
+            8 teams, drawn as the units of the top level with the
+            dependencies between them. Green marks a unit whose teams decide
+            locally; amber marks one that escalates: the approval gate
+            everyone now waits on. The right-hand list grades every move the
+            scope opens up from blunder to great with its exact gain
+            (delegating authority to the gate is worth +23.2 alone), the
+            signals below flag the pain and the note under the map names the
+            last move played, even when it came from an earlier
+            run.</figcaption>
         </figure>
         <figure class="shot">
           <div class="frame">
@@ -79,25 +81,26 @@
           </div>
           <figcaption><b>The line.</b> The guide plans every level: the left
             pane lists each frame's line with its worth in org points and the
-            leaf lines compose into a whole-org climb, here from 69.0 to 97.6.
-            Every team counts: teams sitting directly inside a unit that also
+            leaf lines compose into a whole-org climb, here from 38.9 to
+            80.1, winning back most of what the approval layer cost. Every
+            team counts: teams sitting directly inside a unit that also
             holds sub-units get their own "Teams directly in" row. The right
             pane plays the selected frame move by move, every step priced
             from its before score to its after score. It delegates authority
-            team by team first, because that is where the points are, then
-            sweeps up the remaining incentive skew: the same order the books
-            argue for, discovered by the engine.</figcaption>
+            first, because that is where the points are, then sweeps up the
+            remaining incentive skew: the same order the books argue for,
+            discovered by the engine.</figcaption>
         </figure>
         <figure class="shot">
           <div class="frame">
-            <img loading="lazy" src="assets/screenshots/play-guide2.png" alt="An aggregate frame in the Fulcrum guide: Group Epsilon's line shown as the view from that altitude">
+            <img loading="lazy" src="assets/screenshots/play-guide2.png" alt="A leaf line in the Fulcrum guide: the teams directly in Group Epsilon, worth +4.6 org points">
           </div>
-          <figcaption><b>The view from altitude.</b> Select a unit and the
-            guide shows its whole frame's line: here Group Epsilon climbs
-            from 50.3 to 97.6 on its own 0 to 100 scale, stated plainly as a
-            view because those gains overlap the leaf repairs beneath it.
-            Only the leaf rows' org points count toward the headline, so
-            nothing is counted twice.</figcaption>
+          <figcaption><b>One leaf line.</b> Select a leaf row and the guide
+            shows that level's own short line: here the teams directly in
+            Group Epsilon climb from 50.3 to 97.6 on their own 0 to 100
+            scale, while their honest worth to the whole organisation is the
+            +4.6 org points in the tree. Only leaf rows compose into the
+            headline, so nothing is counted twice.</figcaption>
         </figure>
       </div>
       <div class="cta">
@@ -123,7 +126,9 @@
             folders and convert an item's type in place. Dependencies link any
             two items: team to team, unit to unit or across levels, so a
             division blocked on a single platform team is one honest row, not
-            a workaround. Everything round-trips: the model autosaves, reopens
+            a workaround. Authority claims sit beside them: who else asserts
+            the right to decide for a team, the matrix disease made explicit.
+            Everything round-trips: the model autosaves, reopens
             for editing whatever its origin and exports as JSON.</figcaption>
         </figure>
       </div>
@@ -146,10 +151,13 @@
                     loading="lazy"
                     style="display:block;width:100%;height:640px;border:0;background:#0d0f12"></iframe>
           </div>
-          <figcaption><b>The plan.</b> One delegation, plus six points of
-            structural health: the report names the move, the lead it belongs
-            to and the signal that eased. A JSON twin exports alongside it, so
-            the organisation and its played moves re-import to resume.</figcaption>
+          <figcaption><b>The report.</b> Four moves from an earlier run, the
+            approval-layer blunder among them, priced honestly: structural
+            health falls from 69.0 to 38.9 and every move names its lead, its
+            classification and the signal it moved. The record separates
+            earlier runs' moves from the current run's by colour and a JSON
+            twin exports alongside it, so the organisation and its played
+            moves re-import to resume.</figcaption>
         </figure>
       </div>
       <div class="cta">

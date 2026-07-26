@@ -74,7 +74,9 @@ A short tour and the books behind it are at <https://oernster.github.io/fulcrum/
   for a gloss, click for the full meaning.
 - Structural moves scored from blunder to great. The Guide plans every level
   of the organisation at once: a tree of frames where each leaf line is
-  priced in whole-org points (the badges sum to the headline), the leaf
+  priced in whole-org points (the composing badges sum to the headline and
+  a line that would cost the whole organisation is kept out of it, flagged
+  with its cost), the leaf
   lines compose into an honest whole-org before and after and an aggregate
   row is labelled as the view from that altitude (its gains overlap the leaf
   repairs beneath it). Teams sitting directly inside a unit that also holds
