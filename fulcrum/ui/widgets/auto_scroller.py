@@ -33,7 +33,9 @@ class AutoScroller(QObject):
     # reading pace, gentle enough for dense content on every surface.
     _DOWN_TICKS_PER_STEP = 2
     _UP_STEP_PX = 6
-    _BOTTOM_PAUSE_MS = 4000
+    # Hold at the end long enough to finish reading the tail before the
+    # rewind takes it away.
+    _BOTTOM_PAUSE_MS = 5000
     _TOP_PAUSE_MS = 2000
     # Stillness required after a manual scroll before the cycle resumes.
     _RESUME_AFTER_MS = 2500
