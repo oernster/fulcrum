@@ -65,8 +65,10 @@ A short tour and the books behind it are at <https://oernster.github.io/fulcrum/
   from a built-in pool (overtype it in one motion, or roll the dice for
   another), across the editor, the wizard and random generation.
 - Per-team headcount that rolls up through the domain hierarchy to a whole-org
-  total, so a 100k-person structure is as workable as a handful of teams. It is
-  descriptive context and never changes the structural score.
+  total, so a 100k-person structure is as workable as a handful of teams. The
+  rolled-up population sets the scale at which each frame prices concentrated
+  authority (the prince band: forgiven up to the Dunbar horizon of 150 people,
+  priced progressively harder beyond 200); nothing else in the score reads it.
 - Two example org sets under `examples/`: a debt ladder that worsens with scale
   and a well-designed reference set that stays healthy.
 - Signals to watch (handoff queue age, escalations, rework, influence without

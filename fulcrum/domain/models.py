@@ -23,8 +23,9 @@ _MIN_TEAM_SIZE: int = 1
 
 # A team's headcount: the number of people in it. Headcount rolls up through the
 # domain hierarchy into the org total, so a structure can model 100k+ people
-# without a rendered node per person. It is descriptive and does not affect the
-# structural score.
+# without a rendered node per person. The rolled-up population sets the scale at
+# which a frame prices concentrated authority (the prince band); no other part
+# of the score reads it.
 DEFAULT_HEADCOUNT: int = 8
 _MIN_HEADCOUNT: int = 1
 

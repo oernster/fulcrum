@@ -8,94 +8,67 @@ share of teams without authority and the mean incentive skew become three
 bounded penalties that compose into the score. A team many others depend on
 but that cannot decide locally adds a further gentle penalty: the
 influence-without-authority gap.
+
+Clean concentration is priced by scale through the prince band (see
+authority_scale): attenuated up to the Dunbar horizon, at parity across the
+band and amplified with the log of the population above it, capped at the
+survivor ceiling. Contested ownership is never attenuated at any scale.
+
+This module remains the import surface for the whole model: the coefficient
+and classification vocabulary lives in parameters and the scale rule in
+authority_scale, re-exported here so callers need one import path.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
 
-from fulcrum.domain.errors import InvalidOrgStateError
+from fulcrum.domain.authority_scale import (
+    contest_scale_factor,
+    frame_headcount,
+    prince_scale_factor,
+    scaled_authority_penalty,
+)
 from fulcrum.domain.models import OrgState, Team
+from fulcrum.domain.parameters import (
+    DEFAULT_PARAMETERS,
+    DEFAULT_THRESHOLDS,
+    ClassificationThresholds,
+    MoveClassification,
+    SimulationParameters,
+    classify_delta,
+)
+
+__all__ = [
+    "DEFAULT_PARAMETERS",
+    "DEFAULT_THRESHOLDS",
+    "ClassificationThresholds",
+    "CouplingIndex",
+    "MoveClassification",
+    "SimulationParameters",
+    "StructuralScore",
+    "claim_load",
+    "classify_delta",
+    "contest_scale_factor",
+    "coupling_of",
+    "depended_upon",
+    "dependency_index",
+    "evaluate",
+    "external_claimants",
+    "frame_headcount",
+    "incoming_delay",
+    "influence_load",
+    "influence_without_authority",
+    "is_contested",
+    "prince_scale_factor",
+    "scaled_authority_penalty",
+    "team_arrivals",
+    "team_capacity",
+    "team_imbalance",
+]
 
 _UNIT: float = 1.0
 _ZERO: float = 0.0
-_WEIGHT_SUM_TOLERANCE: float = 1e-9
-_MIN_IDEAL_TEAM_SIZE: int = 1
-_MIN_INFLUENCE_TOLERANCE: int = 0
-
-
-@dataclass(frozen=True, slots=True)
-class SimulationParameters:
-    """Tunable coefficients for the structural model (no hidden constants)."""
-
-    base_capacity: float = 12.0
-    authority_penalty: float = 0.45
-    contested_penalty: float = 0.35
-    coupling_weight: float = 0.6
-    incentive_weight: float = 0.8
-    delay_arrival_weight: float = 0.25
-    latency_weight: float = 0.5
-    escalation_weight: float = 0.3
-    rework_weight: float = 0.2
-    cognitive_load_weight: float = 0.6
-    ideal_team_size: int = 3
-    influence_weight: float = 0.08
-    influence_tolerance: int = 1
-    contested_weight: float = 0.1
-    max_score: float = 100.0
-
-    def __post_init__(self) -> None:
-        if self.base_capacity <= _ZERO:
-            raise InvalidOrgStateError("base_capacity must be positive")
-        if not _ZERO < self.authority_penalty <= _UNIT:
-            raise InvalidOrgStateError("authority_penalty must be in (0, 1]")
-        # Contest may never be cheaper than clean escalation: an escalating
-        # team has a resolvable worldline, a contested one does not.
-        if not _ZERO < self.contested_penalty <= self.authority_penalty:
-            raise InvalidOrgStateError(
-                "contested_penalty must be in (0, authority_penalty]"
-            )
-        if self.contested_weight < _ZERO:
-            raise InvalidOrgStateError("contested_weight must not be negative")
-        weight_sum = self.latency_weight + self.escalation_weight + self.rework_weight
-        if abs(weight_sum - _UNIT) > _WEIGHT_SUM_TOLERANCE:
-            raise InvalidOrgStateError("penalty weights must sum to 1.0")
-        if self.cognitive_load_weight < _ZERO:
-            raise InvalidOrgStateError("cognitive_load_weight must not be negative")
-        if self.ideal_team_size < _MIN_IDEAL_TEAM_SIZE:
-            raise InvalidOrgStateError("ideal_team_size must be at least 1")
-        if self.influence_weight < _ZERO:
-            raise InvalidOrgStateError("influence_weight must not be negative")
-        if self.influence_tolerance < _MIN_INFLUENCE_TOLERANCE:
-            raise InvalidOrgStateError("influence_tolerance must not be negative")
-        if self.max_score <= _ZERO:
-            raise InvalidOrgStateError("max_score must be positive")
-
-
-DEFAULT_PARAMETERS = SimulationParameters()
-
-
-@dataclass(frozen=True, slots=True)
-class ClassificationThresholds:
-    """Score-delta bands that turn a move's effect into a classification."""
-
-    great_delta: float = 9.0
-    good_delta: float = 3.0
-    blunder_delta: float = -1.0
-
-
-DEFAULT_THRESHOLDS = ClassificationThresholds()
-
-
-class MoveClassification(str, Enum):
-    """How good a move is, judged purely by its effect on the score."""
-
-    GREAT = "great"
-    GOOD = "good"
-    NEUTRAL = "neutral"
-    BAD = "bad"
-    BLUNDER = "blunder"
 
 
 @dataclass(frozen=True, slots=True)
@@ -206,13 +179,27 @@ def team_capacity(
     team: Team,
     params: SimulationParameters = DEFAULT_PARAMETERS,
     index: CouplingIndex | None = None,
+    scale_factor: float | None = None,
 ) -> float:
-    """Decisions a team can clear per turn, after structural penalties."""
+    """Decisions a team can clear per turn, after structural penalties.
+
+    scale_factor is the prince factor for the frame's population; None
+    computes it from the org, and callers scoring many teams pass it once.
+    A contested team pays the worse of the contest price and the scaled
+    escalation price, so contest is never cheaper than clean escalation at
+    any scale.
+    """
+    factor = (
+        prince_scale_factor(frame_headcount(org), params)
+        if scale_factor is None
+        else scale_factor
+    )
     capacity = params.base_capacity
+    scaled_authority = scaled_authority_penalty(params, factor)
     if is_contested(org, team, index):
-        capacity *= params.contested_penalty
+        capacity *= min(params.contested_penalty, scaled_authority)
     elif not team.has_local_authority:
-        capacity *= params.authority_penalty
+        capacity *= scaled_authority
     capacity /= _UNIT + params.coupling_weight * coupling_of(org, team.id, index)
     capacity /= _UNIT + params.incentive_weight * team.incentive_skew
     excess_size = max(_ZERO, float(team.size - params.ideal_team_size))
@@ -236,10 +223,11 @@ def team_imbalance(
     team: Team,
     params: SimulationParameters = DEFAULT_PARAMETERS,
     index: CouplingIndex | None = None,
+    scale_factor: float | None = None,
 ) -> float:
     """Per-turn backlog growth for a team (arrivals over capacity, floored)."""
     arrivals = team_arrivals(org, team, params, index)
-    return max(_ZERO, arrivals - team_capacity(org, team, params, index))
+    return max(_ZERO, arrivals - team_capacity(org, team, params, index, scale_factor))
 
 
 def depended_upon(
@@ -281,21 +269,33 @@ def influence_load(
 def evaluate(
     org: OrgState, params: SimulationParameters = DEFAULT_PARAMETERS
 ) -> StructuralScore:
-    """Fold the structural penalties into a single 0..100 health score."""
+    """Fold the structural penalties into a single 0..100 health score.
+
+    The prince factor is computed once from the frame's population and
+    applied to every clean-concentration cost: the escalation share of
+    uncontested teams, their capacity penalty and the influence load. A
+    contested team cannot decide cleanly either (the meta-question of who
+    decides escalates even when the team formally holds local authority),
+    and its share is never attenuated, only amplified.
+    """
     index = dependency_index(org)
+    factor = prince_scale_factor(frame_headcount(org), params)
+    contest_factor = contest_scale_factor(factor)
     team_count = len(org.teams)
     total_arrivals = sum(team_arrivals(org, t, params, index) for t in org.teams)
-    total_imbalance = sum(team_imbalance(org, t, params, index) for t in org.teams)
+    total_imbalance = sum(
+        team_imbalance(org, t, params, index, factor) for t in org.teams
+    )
     latency = total_imbalance / total_arrivals
-    # A contested team cannot decide cleanly either: the meta-question of who
-    # decides escalates even when the team formally holds local authority.
-    escalation = (
-        sum(
-            1
-            for t in org.teams
-            if not t.has_local_authority or is_contested(org, t, index)
-        )
-        / team_count
+    contested_count = sum(1 for t in org.teams if is_contested(org, t, index))
+    clean_count = sum(
+        1
+        for t in org.teams
+        if not t.has_local_authority and not is_contested(org, t, index)
+    )
+    escalation = min(
+        _UNIT,
+        (clean_count * factor + contested_count * contest_factor) / team_count,
     )
     rework = sum(t.incentive_skew for t in org.teams) / team_count
     penalty = (
@@ -304,7 +304,9 @@ def evaluate(
         + params.rework_weight * rework
     )
     value = params.max_score * (_UNIT - penalty)
-    value /= _UNIT + params.influence_weight * influence_load(org, params, index)
+    value /= (
+        _UNIT + params.influence_weight * influence_load(org, params, index) * factor
+    )
     value /= _UNIT + params.contested_weight * claim_load(org, index)
     return StructuralScore(
         value=max(_ZERO, min(params.max_score, value)),
@@ -312,18 +314,3 @@ def evaluate(
         escalation_penalty=escalation,
         rework_penalty=rework,
     )
-
-
-def classify_delta(
-    delta: float, thresholds: ClassificationThresholds = DEFAULT_THRESHOLDS
-) -> MoveClassification:
-    """Map a score delta to a move classification."""
-    if delta >= thresholds.great_delta:
-        return MoveClassification.GREAT
-    if delta >= thresholds.good_delta:
-        return MoveClassification.GOOD
-    if delta <= thresholds.blunder_delta:
-        return MoveClassification.BLUNDER
-    if delta < _ZERO:
-        return MoveClassification.BAD
-    return MoveClassification.NEUTRAL

@@ -87,6 +87,12 @@
               <td>Judgement; the ordering constraint is enforced in code</td>
             </tr>
             <tr>
+              <td><code>dunbar_headcount</code> = 150<br><code>prince_band_upper</code> = 200<br><code>prince_attenuation</code> = 0.3<br><code>prince_amplification</code> = 0.25<br><code>prince_survivor_ceiling</code> = 1.6</td>
+              <td>Price clean concentration by scale (the prince band). Up to 150 people the authority charges cost 0.3 of their flat price: the centre's light cone covers the whole organisation, so escalating to it is a conversation rather than a queue. Across 150 to 200 the price rises linearly to parity; above 200 it grows with the log of the population and caps at 1.6, so concentration at scale is graded, never prohibited. Contested ownership is never attenuated, only amplified.</td>
+              <td>Machiavelli, <i>The Prince</i> and the <i>Discourses</i>, unified by scale; Dunbar's number for the horizon; <i>Relativistic Decision Architecture</i>, Axiom 3 (light cones) and the limits of control (beyond its causal reach, authority becomes observation)</td>
+              <td>Horizon and band edge from Dunbar's number; magnitudes engineering judgement; the positive-capacity cap on the ceiling is enforced in code</td>
+            </tr>
+            <tr>
               <td><code>coupling_weight</code> = 0.6</td>
               <td>Divides capacity by 1 + 0.6 &times; the dependencies touching the team.</td>
               <td><i>Decision Architecture</i> (latency accumulation); <i>The Move Space</i> (coordination overload)</td>
@@ -200,6 +206,15 @@
           three times: its capacity is cut, it counts toward the escalation share and it drives
           the influence divisor when others depend on it. If authority mattered less than this,
           the delegation moves the guide favours would be systematically overpriced.</li>
+        <li><b>Concentration is scale-relative (the prince band).</b> All three authority
+          charges are scaled by the frame's population: attenuated to 0.3 up to 150 people,
+          at parity by 200, then amplified with the log of the population and capped. This is
+          Machiavelli read structurally: the Prince governs the small state well and the durable
+          large state is a republic, with the survivor cap conceding that rare princes persist at
+          scale. If the Dunbar horizon is the wrong hinge (a hundred-person organisation that
+          already needs a republic, a founder who genuinely scales command past a thousand), the
+          score over-rewards small autocracies or over-punishes large ones in exactly that band.
+          Contested ownership is never attenuated by scale.</li>
         <li><b>Every dependency costs alike.</b> Coupling counts edges, not their nature; a
           well-interfaced, cheap dependency and a daily-friction dependency weigh the same. Where
           cheap dependencies are common, coupled organisations read worse than they are.</li>
@@ -294,14 +309,15 @@
         curve-fit to its own examples. So the repository carries a deterministic sweep,
         <a href="https://github.com/oernster/fulcrum/blob/main/sensitivity.py">sensitivity.py</a>,
         which scales every tunable coefficient by 0.8 and by 1.2 (the three composite penalty
-        shares are renormalised to keep their enforced sum of 1.0), re-scores the ten shipped
-        archetypes under each of the 24 perturbed configurations and checks five qualitative
-        conclusions: the typical archetypes still collapse in order with scale, the well-designed
+        shares are renormalised to keep their enforced sum of 1.0, and the prince band's float
+        coefficients are swept while its headcount edges, being structural counts, are not),
+        re-scores the ten shipped archetypes under each of the 30 perturbed configurations and
+        checks five qualitative conclusions: the typical archetypes still collapse in order with scale, the well-designed
         archetypes keep their order, every well-designed archetype still outscores its typical
         counterpart and both canonical blunders (the approval layer and the matrix overlay) still
         lower the score on every typical archetype.</p>
       <p><b>All five conclusions survive every perturbation.</b> The baseline scores below
-        reproduce the published archetype numbers exactly; under all 24 perturbed configurations
+        reproduce the published archetype numbers exactly; under all 30 perturbed configurations
         the orderings, the typical-versus-well-designed gap and the signs of both blunders are
         unchanged. The qualitative results come from the structure of the model, not from the
         particular values of its coefficients.</p>
@@ -324,11 +340,11 @@
             <tr><th>Archetype</th><th>Typical</th><th>Well-designed</th></tr>
           </thead>
           <tbody>
-            <tr><td>Startup</td><td>75.6</td><td>98.7</td></tr>
-            <tr><td>Scale-up</td><td>49.0</td><td>91.0</td></tr>
-            <tr><td>Enterprise</td><td>24.5</td><td>78.7</td></tr>
-            <tr><td>Very large</td><td>18.9</td><td>68.8</td></tr>
-            <tr><td>Conglomerate</td><td>14.8</td><td>66.4</td></tr>
+            <tr><td>Startup</td><td>90.6</td><td>98.7</td></tr>
+            <tr><td>Scale-up</td><td>47.8</td><td>91.0</td></tr>
+            <tr><td>Enterprise</td><td>17.2</td><td>78.7</td></tr>
+            <tr><td>Very large</td><td>12.2</td><td>68.8</td></tr>
+            <tr><td>Conglomerate</td><td>8.8</td><td>66.4</td></tr>
           </tbody>
         </table>
       </div>

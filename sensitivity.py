@@ -18,8 +18,9 @@ reports whether the qualitative conclusions survive:
 The three composite penalty weights (latency, escalation, rework) must sum to
 1.0 by construction, so each is perturbed and the trio renormalised rather
 than perturbed in isolation. Integer parameters (ideal_team_size,
-influence_tolerance) are structural counts, not tuned magnitudes, so they are
-outside the sweep.
+influence_tolerance and the prince band's headcount edges dunbar_headcount
+and prince_band_upper) are structural counts, not tuned magnitudes, so they
+are outside the sweep; the prince band's float coefficients are inside it.
 
 The axis sweep explores only the edges of the perturbation box; models
 typically break in the interior. So a second, joint sweep follows: a Latin
@@ -93,7 +94,10 @@ WELL_DESIGNED_FILES = (
 )
 
 # Coefficients that can move independently without violating a validation
-# constraint in SimulationParameters.__post_init__.
+# constraint in SimulationParameters.__post_init__. The prince-band floats
+# join the sweep; its headcount edges (dunbar_headcount, prince_band_upper)
+# are structural counts like the other integers and stay outside it. The
+# survivor ceiling is capped against the positive-capacity constraint below.
 INDEPENDENT_COEFFICIENTS = (
     "base_capacity",
     "authority_penalty",
@@ -104,7 +108,15 @@ INDEPENDENT_COEFFICIENTS = (
     "cognitive_load_weight",
     "influence_weight",
     "contested_weight",
+    "prince_attenuation",
+    "prince_amplification",
+    "prince_survivor_ceiling",
 )
+
+# A perturbed survivor ceiling must keep escalation capacity strictly
+# positive: ceiling * (1 - authority_penalty) < 1. The headroom fraction
+# keeps the capped value clear of the validated boundary.
+PRINCE_CEILING_HEADROOM = 0.99
 # The composite penalty weights are constrained to sum to 1.0, so a
 # perturbation to one is followed by renormalising all three.
 COMPOSITE_WEIGHTS = ("latency_weight", "escalation_weight", "rework_weight")
@@ -131,6 +143,7 @@ def load_org(path: Path) -> OrgState:
             name=t["name"],
             has_local_authority=t["has_local_authority"],
             incentive_skew=t.get("incentive_skew", 0.0),
+            headcount=t["headcount"],
         )
         for t in data["teams"]
     )
@@ -154,7 +167,16 @@ def perturbed(name: str, factor: float) -> SimulationParameters:
     """
     base = DEFAULT_PARAMETERS
     if name in INDEPENDENT_COEFFICIENTS:
-        return replace(base, **{name: getattr(base, name) * factor})
+        scaled = {name: getattr(base, name) * factor}
+        # The ceiling constraint couples two coefficients, so whichever of
+        # the pair moved, the ceiling is capped against the effective
+        # authority penalty.
+        authority = scaled.get("authority_penalty", base.authority_penalty)
+        ceiling = scaled.get("prince_survivor_ceiling", base.prince_survivor_ceiling)
+        scaled["prince_survivor_ceiling"] = min(
+            ceiling, PRINCE_CEILING_HEADROOM / (1.0 - authority)
+        )
+        return replace(base, **scaled)
     raw = {w: getattr(base, w) for w in COMPOSITE_WEIGHTS}
     raw[name] *= factor
     total = sum(raw.values())
@@ -195,6 +217,10 @@ def jointly_perturbed(factors: tuple[float, ...]) -> SimulationParameters:
     }
     scaled["contested_penalty"] = min(
         scaled["contested_penalty"], scaled["authority_penalty"]
+    )
+    scaled["prince_survivor_ceiling"] = min(
+        scaled["prince_survivor_ceiling"],
+        PRINCE_CEILING_HEADROOM / (1.0 - scaled["authority_penalty"]),
     )
     total = sum(scaled[weight] for weight in COMPOSITE_WEIGHTS)
     for weight in COMPOSITE_WEIGHTS:

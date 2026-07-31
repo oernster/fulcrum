@@ -65,7 +65,9 @@ def test_structural_helpers():
     assert coupling_of(org, "a") == 1
     assert incoming_delay(org, "b") == 4.0
     assert incoming_delay(org, "a") == 0.0
-    with_authority = team_capacity(org, org.team("a"))
+    # Same uncoupled team either way, so the comparison isolates authority;
+    # at this org's tiny scale the gap is attenuated but never zero.
+    with_authority = team_capacity(org, _t("x"))
     without_authority = team_capacity(org, _t("x", authority=False))
     assert with_authority > without_authority
     assert team_arrivals(org, org.team("b")) > org.workload

@@ -2,8 +2,10 @@
 
 The site publishes these numbers (why.html and model.html), so any model
 change that moves them must be deliberate and update the site in the same
-change. An org without claims must score exactly as it did before contested
-ownership existed.
+change. The archetypes carry real headcounts, so the typical column is
+priced through the prince band while the well-designed column, holding no
+concentrated authority and no claims, keeps the scores it had before the
+band existed: the scale rule prices concentration only.
 """
 
 import json
@@ -11,17 +13,17 @@ from pathlib import Path
 
 import pytest
 
-from fulcrum.domain.models import Dependency, Origin, OrgState, Team
+from fulcrum.domain.models import Dependency, OrgState, Origin, Team
 from fulcrum.domain.simulation import evaluate
 
 _EXAMPLES = Path(__file__).resolve().parents[2] / "examples"
 
 _PUBLISHED = (
-    ("org-1-startup.json", "well-designed/startup.json", 75.6, 98.7),
-    ("org-2-scaleup.json", "well-designed/scaleup.json", 49.0, 91.0),
-    ("org-3-enterprise.json", "well-designed/enterprise.json", 24.5, 78.7),
-    ("org-4-very-large.json", "well-designed/very-large.json", 18.9, 68.8),
-    ("org-5-conglomerate.json", "well-designed/conglomerate.json", 14.8, 66.4),
+    ("org-1-startup.json", "well-designed/startup.json", 90.6, 98.7),
+    ("org-2-scaleup.json", "well-designed/scaleup.json", 47.8, 91.0),
+    ("org-3-enterprise.json", "well-designed/enterprise.json", 17.2, 78.7),
+    ("org-4-very-large.json", "well-designed/very-large.json", 12.2, 68.8),
+    ("org-5-conglomerate.json", "well-designed/conglomerate.json", 8.8, 66.4),
 )
 
 
@@ -33,6 +35,7 @@ def _load(relative: str) -> OrgState:
             name=t["name"],
             has_local_authority=t["has_local_authority"],
             incentive_skew=t.get("incentive_skew", 0.0),
+            headcount=t["headcount"],
         )
         for t in data["teams"]
     )

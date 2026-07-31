@@ -116,7 +116,9 @@ def _rolled_children(
     themselves, plus the endpoint mapping. A mixed unit holds teams directly
     beside child units that hold teams; dropping the direct teams would lose
     them from the frame entirely, so they stand as nodes at this altitude
-    exactly as a loose team stands at the top level (parent None)."""
+    exactly as a loose team stands at the top level (parent None). Every
+    node carries its real population (a rolled node its subtree's people),
+    so the frame is priced at its own scale by the prince band."""
     nodes: list[Team] = []
     node_of: dict[str, str] = {}
     for child in child_domains(org, parent_id):
@@ -128,12 +130,26 @@ def _rolled_children(
         for domain_id in domain_subtree_ids(org, child.id):
             node_of[domain_id] = child.id
         skew = round(sum(t.incentive_skew for t in teams) / len(teams), _SKEW_DECIMALS)
-        nodes.append(Team(child.id, child.name, _has_majority_authority(teams), skew))
+        nodes.append(
+            Team(
+                child.id,
+                child.name,
+                _has_majority_authority(teams),
+                skew,
+                headcount=headcount_in_domain(org, child.id),
+            )
+        )
     for team in org.teams:
         if team.domain_id == parent_id:
             node_of[team.id] = team.id
             nodes.append(
-                Team(team.id, team.name, team.has_local_authority, team.incentive_skew)
+                Team(
+                    team.id,
+                    team.name,
+                    team.has_local_authority,
+                    team.incentive_skew,
+                    headcount=team.headcount,
+                )
             )
     return nodes, node_of
 
@@ -207,7 +223,13 @@ def direct_teams_section(org: OrgState, parent_id: str | None) -> OrgState:
     least one direct team exists (has_direct_teams).
     """
     teams = tuple(
-        Team(t.id, t.name, t.has_local_authority, t.incentive_skew)
+        Team(
+            t.id,
+            t.name,
+            t.has_local_authority,
+            t.incentive_skew,
+            headcount=t.headcount,
+        )
         for t in org.teams
         if t.domain_id == parent_id
     )
@@ -237,7 +259,13 @@ def focused_suborg(org: OrgState, domain_id: str) -> OrgState:
         return _aggregate_section(org, domain_id)
     ids = domain_subtree_ids(org, domain_id)
     teams = tuple(
-        Team(t.id, t.name, t.has_local_authority, t.incentive_skew)
+        Team(
+            t.id,
+            t.name,
+            t.has_local_authority,
+            t.incentive_skew,
+            headcount=t.headcount,
+        )
         for t in org.teams
         if t.domain_id in ids
     )

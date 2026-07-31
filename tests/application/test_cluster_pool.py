@@ -38,7 +38,7 @@ from fulcrum.domain.models import (
     OrgState,
     Team,
 )
-from fulcrum.domain.simulation import MoveClassification
+from fulcrum.domain.simulation import DEFAULT_PARAMETERS, MoveClassification
 
 _MIN_WORKLOAD = 6
 _MAX_WORKLOAD = 9
@@ -212,3 +212,12 @@ def test_random_cluster_falls_back_after_the_try_cap():
 def test_mean_cluster_people_tracks_team_sizing():
     average = mean_cluster_people()
     assert _TEAM_MIN <= average <= _BIG_TEAM_MAX * max(_TEAMS_PER_LEAF_CHOICES)
+
+
+def test_every_possible_cluster_sits_below_the_dunbar_horizon():
+    """Clone solvability rests on the prince factor being constant across
+    every cluster population: a clone's resampled headcount may differ from
+    its template's, so the largest possible cluster must stay below the
+    Dunbar horizon, where the factor is flat and the score cannot move."""
+    largest = max(_TEAMS_PER_LEAF_CHOICES) * _BIG_TEAM_MAX
+    assert largest < DEFAULT_PARAMETERS.dunbar_headcount

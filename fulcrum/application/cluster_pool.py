@@ -5,10 +5,11 @@ of finding section-solvable clusters is paid a fixed number of times, not once
 per leaf. A small pool of clusters is resampled until each, scored on its own,
 reaches a great move; those templates are then cloned across the org's leaves
 with fresh ids, names and headcounts. A clone keeps its template's authority
-pattern, incentive skews and dependency delays, and headcount never changes the
-structural score, so every clone stays exactly as solvable as the template it
-came from. Per-section solvability therefore holds for thousands of leaves while
-the simulator runs only a couple of dozen times.
+pattern, incentive skews and dependency delays; every cluster's population sits
+far below the Dunbar horizon, where the prince-band scale factor is constant, so
+a clone scores exactly as its template does and stays exactly as solvable.
+Per-section solvability therefore holds for thousands of leaves while the
+simulator runs only a couple of dozen times.
 """
 
 from __future__ import annotations
@@ -32,7 +33,9 @@ _SKEW_DECIMALS: int = 2
 
 # A team is four to six people, occasionally eight to twelve, never more. Every
 # person sits in a team; team headcounts roll up the tree, so a unit's people are
-# exactly the sum of its teams. Headcount never changes the structural score.
+# exactly the sum of its teams. The largest possible cluster stays below the
+# Dunbar horizon, where the prince-band factor is constant, so resampled
+# headcounts never move a cluster's score.
 _TEAM_MIN: int = 4
 _TEAM_MAX: int = 6
 _BIG_TEAM_MIN: int = 8
@@ -198,7 +201,8 @@ def clone_cluster(
 
     Authority, skew and dependency delays carry over unchanged, so the clone is
     exactly as solvable as the template; only the cosmetic identity and the
-    people count, which does not affect the score, are renewed.
+    people count are renewed, and a cluster's population always sits in the
+    constant region of the prince band, so the score cannot move.
     """
     template_teams, template_deps = template
     id_map: dict[str, str] = {}

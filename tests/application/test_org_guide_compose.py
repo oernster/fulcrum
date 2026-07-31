@@ -11,8 +11,14 @@ from fulcrum.application.org_guide import build_org_guide, compose_leaf_lines
 from fulcrum.application.org_guide_compose import replay_line
 from fulcrum.application.simulator import DeterministicSimulator
 from fulcrum.domain.models import Dependency, Domain, OrgState, Team
+from fulcrum.domain.simulation import SimulationParameters
 
-_SIM = DeterministicSimulator()
+# Composition mechanics are pinned at flat authority pricing: attenuation 1
+# with amplification 0 makes the prince factor 1 at every scale, so these
+# carefully balanced dilution scenarios hold at any fixture headcount. The
+# scale rule itself is covered by the prince-band conformance suite.
+_FLAT_PRINCE = SimulationParameters(prince_attenuation=1.0, prince_amplification=0.0)
+_SIM = DeterministicSimulator(params=_FLAT_PRINCE)
 
 # One more troubled team than the planner's max_steps can repair, so the
 # sibling frame keeps residual problems for a collapse to dilute against.
