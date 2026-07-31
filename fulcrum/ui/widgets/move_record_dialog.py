@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 
 from fulcrum.application.game_session import record_positions
 from fulcrum.application.interfaces import Simulator
+from fulcrum.application.move_text import describe_position_change
 from fulcrum.domain.models import OrgState
 from fulcrum.domain.moves import Move
 from fulcrum.shared.text import SCORE_DECIMALS
@@ -104,6 +105,12 @@ class MoveRecordDialog(NeutralDialog):
         self._toggle.clicked.connect(self._flip)
         header.addWidget(self._toggle)
         map_column.addLayout(header)
+        # What the move concretely changed, stated in numbers: always
+        # visible, whatever the map's encoding can or cannot show.
+        self._change = QLabel("")
+        self._change.setObjectName("Muted")
+        self._change.setWordWrap(True)
+        map_column.addWidget(self._change)
         # Display-only: nothing listens for a drill here, so no open cue.
         self._view = CompleteMapView(drillable=False)
         map_column.addWidget(self._view, 1)
@@ -155,6 +162,12 @@ class MoveRecordDialog(NeutralDialog):
         # Mark where the selected move acted, in both positions, so a change
         # the border encoding cannot show still has a visible location.
         self._view.set_highlight(self._history[index].targets)
+        self._change.setText(
+            "This move changed: "
+            + describe_position_change(
+                self._positions[index], self._positions[index + 1]
+            )
+        )
         # The toggle names the ACTION a press performs, never the state.
         self._toggle.setText(_SHOW_BEFORE if self._showing_after else _SHOW_AFTER)
         word = _AFTER_WORD if self._showing_after else _BEFORE_WORD

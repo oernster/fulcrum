@@ -15,7 +15,8 @@ KIND_TEAM = "team"
 KIND_DOMAIN = "domain"
 TEAM_W = 170.0
 TEAM_H = 58.0
-HEADER_H = 56.0
+# Four text lines: category detail, name, lead and the authority rollup.
+HEADER_H = 73.0
 PAD = 14.0
 GAP = 16.0
 PER_ROW = 3

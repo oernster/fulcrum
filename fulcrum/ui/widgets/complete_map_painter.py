@@ -11,7 +11,15 @@ from __future__ import annotations
 import math
 
 from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QBrush, QColor, QFont, QPainterPath, QPen, QPolygonF
+from PySide6.QtGui import (
+    QBrush,
+    QColor,
+    QFont,
+    QFontMetricsF,
+    QPainterPath,
+    QPen,
+    QPolygonF,
+)
 from PySide6.QtWidgets import QGraphicsScene
 
 from fulcrum.domain.hierarchy import headcount_in_domain, teams_in_domain
@@ -38,6 +46,7 @@ _SUB_DY = 31.0
 _DOMAIN_CATEGORY_DY = 6.0
 _DOMAIN_NAME_DY = 21.0
 _DOMAIN_LEAD_DY = 38.0
+_DOMAIN_ROLLUP_DY = 55.0
 _FULL = 1.0
 _EDGE_PEN_W = 1.5
 # A hub's counted trunk draws slightly heavier than a single edge, so the
@@ -64,41 +73,46 @@ def _domain(org: OrgState, ident: str) -> Domain:
     return next(domain for domain in org.domains if domain.id == ident)
 
 
-def _domain_border(org: OrgState, domain_id: str, claimed: frozenset) -> QColor:
-    """The domain's subtree rolled into one border, as the drill map rolls it.
-
-    Any standing claim in the subtree reads contested; otherwise the border
-    blends from amber toward green with the share of member teams holding
-    local authority, so a change deep inside a unit is visible on the unit.
-    """
-    members = teams_in_domain(org, domain_id)
-    if any(team.id in claimed for team in members):
-        return map_palette().contested
-    if not members:
-        return map_palette().no_authority
-    held = sum(1 for team in members if team.has_local_authority)
-    return _blend(
-        map_palette().no_authority, map_palette().authority, held / len(members)
-    )
+def _elide(text: str, font: QFont, width: float) -> str:
+    """Elide with an ellipsis so a detail line never spills its box."""
+    return QFontMetricsF(font).elidedText(text, Qt.TextElideMode.ElideRight, width)
 
 
 def draw_domain(
     scene: QGraphicsScene, org: OrgState, summarize: bool, x, y, box, claimed
 ) -> None:
+    """One domain box, its border and detail rolling the subtree up.
+
+    Any standing claim in the subtree reads contested (violet); otherwise
+    the border blends from amber toward green with the share of member
+    teams deciding locally. The detail line carries the counts themselves,
+    so a change deep inside the unit (a delegation in one department of a
+    contested division) is visible as numbers even where the border colour
+    cannot move.
+    """
     if box.ident == SHELL_ID:
         _draw_shell(scene, x, y, box)
         return
     domain = _domain(org, box.ident)
-    border = _domain_border(org, domain.id, claimed)
+    members = teams_in_domain(org, domain.id)
+    contested_count = sum(1 for team in members if team.id in claimed)
+    held = sum(1 for team in members if team.has_local_authority)
+    if contested_count:
+        border = map_palette().contested
+    elif not members:
+        border = map_palette().no_authority
+    else:
+        border = _blend(
+            map_palette().no_authority, map_palette().authority, held / len(members)
+        )
     path = QPainterPath()
     path.addRoundedRect(QRectF(x, y, box.w, box.h), CORNER, CORNER)
     scene.addPath(path, QPen(border, _PEN_W), QBrush(map_palette().domain_fill))
     people = headcount_in_domain(org, domain.id)
     detail = f"{domain.category} · {count_noun(people, 'person', 'people')}"
     if is_summary(domain, summarize):
-        teams = len(teams_in_domain(org, domain.id))
-        detail = f"{detail} · {count_noun(teams, 'team')}"
-    category = scene.addSimpleText(detail, _font())
+        detail = f"{detail} · {count_noun(len(members), 'team')}"
+    category = scene.addSimpleText(_elide(detail, _font(), box.w - PAD * HALF), _font())
     category.setBrush(border)
     category.setPos(x + PAD, y + _DOMAIN_CATEGORY_DY)
     name = scene.addSimpleText(domain.name, _font(bold=True))
@@ -108,6 +122,15 @@ def draw_domain(
         lead = scene.addSimpleText(f"lead: {domain.lead}", _font())
         lead.setBrush(map_palette().text_muted)
         lead.setPos(x + PAD, y + _DOMAIN_LEAD_DY)
+    if members:
+        # The rollup gets its own line, numbers first, so elision can never
+        # swallow the part that changes between two positions.
+        rollup = f"{held}/{len(members)} decide locally"
+        if contested_count:
+            rollup = f"{held}/{len(members)} decide · {contested_count} contested"
+        line = scene.addSimpleText(_elide(rollup, _font(), box.w - PAD * HALF), _font())
+        line.setBrush(border)
+        line.setPos(x + PAD, y + _DOMAIN_ROLLUP_DY)
 
 
 def _draw_shell(scene: QGraphicsScene, x, y, box) -> None:

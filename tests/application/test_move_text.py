@@ -1,6 +1,10 @@
 """Tests for human-readable move descriptions."""
 
-from fulcrum.application.move_text import describe_move, move_note
+from fulcrum.application.move_text import (
+    describe_move,
+    describe_position_change,
+    move_note,
+)
 from fulcrum.domain.models import AuthorityClaim, Dependency, Domain, OrgState, Team
 from fulcrum.domain.moves import Move, MoveKind
 
@@ -112,3 +116,57 @@ def test_exactly_the_cap_is_named_in_full():
     org = OrgState(teams=teams, workload=1)
     move = Move(MoveKind.DELEGATE_AUTHORITY, tuple(t.id for t in teams))
     assert describe_move(org, move) == "Delegate authority to T0 + T1 + T2"
+
+
+def _base_position():
+    return OrgState(
+        teams=(Team("a", "Alpha", False, 0.5), Team("b", "Bravo", True, 0.4)),
+        dependencies=(Dependency("a", "b", 3),),
+        workload=4,
+    )
+
+
+def test_change_line_states_authority_and_claims_and_teams():
+    before = _base_position()
+    after = OrgState(
+        teams=(
+            Team("a", "Alpha", True, 0.5),
+            Team("b", "Bravo", True, 0.4),
+            Team("c", "Charlie", True, 0.0),
+        ),
+        dependencies=(Dependency("a", "b", 3),),
+        workload=4,
+        claims=(AuthorityClaim("Head of QA", "a"),),
+    )
+    line = describe_position_change(before, after)
+    assert "teams deciding locally 1 → 3" in line
+    assert "teams 2 → 3" in line
+    assert "standing claims 0 → 1" in line
+
+
+def test_change_line_states_dependency_count_and_delay():
+    before = _base_position()
+    fewer = OrgState(teams=before.teams, dependencies=(), workload=4)
+    assert "dependencies 1 → 0" in describe_position_change(before, fewer)
+    slower = OrgState(
+        teams=before.teams,
+        dependencies=(Dependency("a", "b", 9),),
+        workload=4,
+    )
+    assert "total propagation delay 3 → 9" in describe_position_change(before, slower)
+
+
+def test_change_line_states_skew_realignment():
+    before = _base_position()
+    after = OrgState(
+        teams=(Team("a", "Alpha", False, 0.1), Team("b", "Bravo", True, 0.4)),
+        dependencies=(Dependency("a", "b", 3),),
+        workload=4,
+    )
+    line = describe_position_change(before, after)
+    assert line == "incentive skew realigned at 1 team, mean 0.50 → 0.10"
+
+
+def test_change_line_for_identical_positions():
+    before = _base_position()
+    assert describe_position_change(before, before) == "no structural field changed"

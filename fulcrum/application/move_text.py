@@ -130,3 +130,50 @@ _MOVE_NOTES = {
 def move_note(kind: MoveKind) -> str:
     """A one-line structural explanation of what a move kind really does."""
     return _MOVE_NOTES[kind]
+
+
+_SKEW_DECIMALS = 2
+_NO_CHANGE_TEXT = "no structural field changed"
+
+
+def describe_position_change(before: OrgState, after: OrgState) -> str:
+    """One plain line stating what concretely differs between two positions.
+
+    Computed from the positions rather than the move, so the record can
+    always state the delta even where the map's encoding cannot show it (an
+    incentive realignment, or a delegation inside a division that stays
+    contested throughout).
+    """
+    parts: list[str] = []
+    held_before = sum(1 for team in before.teams if team.has_local_authority)
+    held_after = sum(1 for team in after.teams if team.has_local_authority)
+    if held_before != held_after:
+        parts.append(f"teams deciding locally {held_before} → {held_after}")
+    if len(before.teams) != len(after.teams):
+        parts.append(f"teams {len(before.teams)} → {len(after.teams)}")
+    if len(before.claims) != len(after.claims):
+        parts.append(f"standing claims {len(before.claims)} → {len(after.claims)}")
+    if len(before.dependencies) != len(after.dependencies):
+        parts.append(
+            f"dependencies {len(before.dependencies)} → {len(after.dependencies)}"
+        )
+    else:
+        delay_before = sum(d.propagation_delay for d in before.dependencies)
+        delay_after = sum(d.propagation_delay for d in after.dependencies)
+        if delay_before != delay_after:
+            parts.append(f"total propagation delay {delay_before} → {delay_after}")
+    skew_before = {t.id: t.incentive_skew for t in before.teams}
+    changed = [
+        (skew_before[t.id], t.incentive_skew)
+        for t in after.teams
+        if t.id in skew_before and t.incentive_skew != skew_before[t.id]
+    ]
+    if changed:
+        mean_before = sum(pair[0] for pair in changed) / len(changed)
+        mean_after = sum(pair[1] for pair in changed) / len(changed)
+        parts.append(
+            f"incentive skew realigned at {count_noun(len(changed), 'team')}, "
+            f"mean {mean_before:.{_SKEW_DECIMALS}f} → "
+            f"{mean_after:.{_SKEW_DECIMALS}f}"
+        )
+    return "; ".join(parts) if parts else _NO_CHANGE_TEXT
