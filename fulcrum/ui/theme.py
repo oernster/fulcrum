@@ -116,6 +116,10 @@ QPushButton#MoveButton {{
 QPushButton#SignalChip {{ padding: 6px 10px; font-size: {compact_pt}pt; }}
 /* The move record's position arrows: emoji glyphs on a compact chip. */
 QPushButton#RecordArrow {{ padding: 6px 12px; font-size: {glyph_pt}pt; }}
+/* The record's identity banner: the accent title beside the glowing mark. */
+QLabel#RecordTitle {{
+    font-size: {score_pt}pt; font-weight: 700; color: {p.accent_bright};
+}}
 QPushButton#TreeAction, QPushButton#MapZoom {{
     padding: 0;
     min-width: 0;
