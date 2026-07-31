@@ -11,141 +11,181 @@
       "headcount": 4
     },
     {
-      "id": "squad_0",
-      "name": "Squad 0",
+      "id": "checkout",
+      "name": "Checkout squad",
       "has_local_authority": false,
       "incentive_skew": 0.2,
-      "domain_id": "company",
+      "domain_id": "tribe_product",
       "size": 1,
       "owner": "",
       "headcount": 8
     },
     {
-      "id": "squad_1",
-      "name": "Squad 1",
+      "id": "catalogue",
+      "name": "Catalogue squad",
+      "has_local_authority": false,
+      "incentive_skew": 0.15,
+      "domain_id": "tribe_product",
+      "size": 1,
+      "owner": "",
+      "headcount": 6
+    },
+    {
+      "id": "search",
+      "name": "Search squad",
       "has_local_authority": false,
       "incentive_skew": 0.2,
-      "domain_id": "company",
+      "domain_id": "tribe_product",
+      "size": 1,
+      "owner": "",
+      "headcount": 5
+    },
+    {
+      "id": "mobile_app",
+      "name": "Mobile app squad",
+      "has_local_authority": false,
+      "incentive_skew": 0.25,
+      "domain_id": "tribe_product",
+      "size": 1,
+      "owner": "",
+      "headcount": 7
+    },
+    {
+      "id": "web_app",
+      "name": "Web app squad",
+      "has_local_authority": false,
+      "incentive_skew": 0.2,
+      "domain_id": "tribe_product",
+      "size": 1,
+      "owner": "",
+      "headcount": 4
+    },
+    {
+      "id": "onboarding",
+      "name": "Onboarding squad",
+      "has_local_authority": false,
+      "incentive_skew": 0.2,
+      "domain_id": "tribe_product",
       "size": 1,
       "owner": "",
       "headcount": 8
     },
     {
-      "id": "squad_2",
-      "name": "Squad 2",
+      "id": "acquisition",
+      "name": "Acquisition squad",
       "has_local_authority": false,
       "incentive_skew": 0.2,
-      "domain_id": "company",
+      "domain_id": "tribe_growth",
+      "size": 1,
+      "owner": "",
+      "headcount": 7
+    },
+    {
+      "id": "retention",
+      "name": "Retention squad",
+      "has_local_authority": false,
+      "incentive_skew": 0.25,
+      "domain_id": "tribe_growth",
+      "size": 1,
+      "owner": "",
+      "headcount": 5
+    },
+    {
+      "id": "referrals",
+      "name": "Referrals squad",
+      "has_local_authority": false,
+      "incentive_skew": 0.2,
+      "domain_id": "tribe_growth",
       "size": 1,
       "owner": "",
       "headcount": 8
     },
     {
-      "id": "squad_3",
-      "name": "Squad 3",
+      "id": "pricing",
+      "name": "Pricing squad",
+      "has_local_authority": false,
+      "incentive_skew": 0.15,
+      "domain_id": "tribe_growth",
+      "size": 1,
+      "owner": "",
+      "headcount": 6
+    },
+    {
+      "id": "lifecycle",
+      "name": "Lifecycle squad",
       "has_local_authority": false,
       "incentive_skew": 0.2,
-      "domain_id": "company",
+      "domain_id": "tribe_growth",
+      "size": 1,
+      "owner": "",
+      "headcount": 3
+    },
+    {
+      "id": "partnerships",
+      "name": "Partnerships squad",
+      "has_local_authority": false,
+      "incentive_skew": 0.2,
+      "domain_id": "tribe_growth",
+      "size": 1,
+      "owner": "",
+      "headcount": 7
+    },
+    {
+      "id": "api",
+      "name": "API squad",
+      "has_local_authority": false,
+      "incentive_skew": 0.2,
+      "domain_id": "tribe_platform",
+      "size": 1,
+      "owner": "",
+      "headcount": 6
+    },
+    {
+      "id": "data_pipeline",
+      "name": "Data pipeline squad",
+      "has_local_authority": false,
+      "incentive_skew": 0.2,
+      "domain_id": "tribe_platform",
       "size": 1,
       "owner": "",
       "headcount": 8
     },
     {
-      "id": "squad_4",
-      "name": "Squad 4",
+      "id": "identity",
+      "name": "Identity squad",
       "has_local_authority": false,
-      "incentive_skew": 0.2,
-      "domain_id": "company",
+      "incentive_skew": 0.15,
+      "domain_id": "tribe_platform",
       "size": 1,
       "owner": "",
-      "headcount": 8
+      "headcount": 5
     },
     {
-      "id": "squad_5",
-      "name": "Squad 5",
+      "id": "billing",
+      "name": "Billing squad",
       "has_local_authority": false,
-      "incentive_skew": 0.2,
-      "domain_id": "company",
+      "incentive_skew": 0.25,
+      "domain_id": "tribe_platform",
       "size": 1,
       "owner": "",
-      "headcount": 8
+      "headcount": 7
     },
     {
-      "id": "squad_6",
-      "name": "Squad 6",
+      "id": "internal_tools",
+      "name": "Internal tools squad",
       "has_local_authority": false,
       "incentive_skew": 0.2,
-      "domain_id": "company",
+      "domain_id": "tribe_platform",
       "size": 1,
       "owner": "",
-      "headcount": 8
+      "headcount": 4
     },
     {
-      "id": "squad_7",
-      "name": "Squad 7",
+      "id": "reliability",
+      "name": "Reliability squad",
       "has_local_authority": false,
       "incentive_skew": 0.2,
-      "domain_id": "company",
-      "size": 1,
-      "owner": "",
-      "headcount": 8
-    },
-    {
-      "id": "squad_8",
-      "name": "Squad 8",
-      "has_local_authority": false,
-      "incentive_skew": 0.2,
-      "domain_id": "company",
-      "size": 1,
-      "owner": "",
-      "headcount": 8
-    },
-    {
-      "id": "squad_9",
-      "name": "Squad 9",
-      "has_local_authority": false,
-      "incentive_skew": 0.2,
-      "domain_id": "company",
-      "size": 1,
-      "owner": "",
-      "headcount": 8
-    },
-    {
-      "id": "squad_10",
-      "name": "Squad 10",
-      "has_local_authority": false,
-      "incentive_skew": 0.2,
-      "domain_id": "company",
-      "size": 1,
-      "owner": "",
-      "headcount": 8
-    },
-    {
-      "id": "squad_11",
-      "name": "Squad 11",
-      "has_local_authority": false,
-      "incentive_skew": 0.2,
-      "domain_id": "company",
-      "size": 1,
-      "owner": "",
-      "headcount": 8
-    },
-    {
-      "id": "squad_12",
-      "name": "Squad 12",
-      "has_local_authority": false,
-      "incentive_skew": 0.2,
-      "domain_id": "company",
-      "size": 1,
-      "owner": "",
-      "headcount": 8
-    },
-    {
-      "id": "squad_13",
-      "name": "Squad 13",
-      "has_local_authority": false,
-      "incentive_skew": 0.2,
-      "domain_id": "company",
+      "domain_id": "tribe_platform",
       "size": 1,
       "owner": "",
       "headcount": 8
@@ -154,72 +194,117 @@
   "dependencies": [
     {
       "upstream": "founder",
-      "downstream": "squad_0",
+      "downstream": "checkout",
       "propagation_delay": 1
     },
     {
       "upstream": "founder",
-      "downstream": "squad_1",
+      "downstream": "catalogue",
       "propagation_delay": 1
     },
     {
       "upstream": "founder",
-      "downstream": "squad_2",
+      "downstream": "search",
       "propagation_delay": 1
     },
     {
       "upstream": "founder",
-      "downstream": "squad_3",
+      "downstream": "mobile_app",
       "propagation_delay": 1
     },
     {
       "upstream": "founder",
-      "downstream": "squad_4",
+      "downstream": "web_app",
       "propagation_delay": 1
     },
     {
       "upstream": "founder",
-      "downstream": "squad_5",
+      "downstream": "onboarding",
       "propagation_delay": 1
     },
     {
       "upstream": "founder",
-      "downstream": "squad_6",
+      "downstream": "acquisition",
       "propagation_delay": 1
     },
     {
       "upstream": "founder",
-      "downstream": "squad_7",
+      "downstream": "retention",
       "propagation_delay": 1
     },
     {
       "upstream": "founder",
-      "downstream": "squad_8",
+      "downstream": "referrals",
       "propagation_delay": 1
     },
     {
       "upstream": "founder",
-      "downstream": "squad_9",
+      "downstream": "pricing",
       "propagation_delay": 1
     },
     {
       "upstream": "founder",
-      "downstream": "squad_10",
+      "downstream": "lifecycle",
       "propagation_delay": 1
     },
     {
       "upstream": "founder",
-      "downstream": "squad_11",
+      "downstream": "partnerships",
       "propagation_delay": 1
     },
     {
       "upstream": "founder",
-      "downstream": "squad_12",
+      "downstream": "api",
       "propagation_delay": 1
     },
     {
       "upstream": "founder",
-      "downstream": "squad_13",
+      "downstream": "data_pipeline",
+      "propagation_delay": 1
+    },
+    {
+      "upstream": "founder",
+      "downstream": "identity",
+      "propagation_delay": 1
+    },
+    {
+      "upstream": "founder",
+      "downstream": "billing",
+      "propagation_delay": 1
+    },
+    {
+      "upstream": "founder",
+      "downstream": "internal_tools",
+      "propagation_delay": 1
+    },
+    {
+      "upstream": "founder",
+      "downstream": "reliability",
+      "propagation_delay": 1
+    },
+    {
+      "upstream": "api",
+      "downstream": "checkout",
+      "propagation_delay": 2
+    },
+    {
+      "upstream": "identity",
+      "downstream": "onboarding",
+      "propagation_delay": 2
+    },
+    {
+      "upstream": "data_pipeline",
+      "downstream": "retention",
+      "propagation_delay": 2
+    },
+    {
+      "upstream": "catalogue",
+      "downstream": "search",
+      "propagation_delay": 1
+    },
+    {
+      "upstream": "acquisition",
+      "downstream": "referrals",
       "propagation_delay": 1
     }
   ],
@@ -232,6 +317,30 @@
       "parent_id": null,
       "lead": "",
       "category": "Company",
+      "headcount": 0
+    },
+    {
+      "id": "tribe_product",
+      "name": "Product tribe",
+      "parent_id": "company",
+      "lead": "",
+      "category": "Department",
+      "headcount": 0
+    },
+    {
+      "id": "tribe_growth",
+      "name": "Growth tribe",
+      "parent_id": "company",
+      "lead": "",
+      "category": "Department",
+      "headcount": 0
+    },
+    {
+      "id": "tribe_platform",
+      "name": "Platform tribe",
+      "parent_id": "company",
+      "lead": "",
+      "category": "Department",
       "headcount": 0
     }
   ],

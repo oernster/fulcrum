@@ -38,7 +38,13 @@ ineligible for that set. Calibration tunes the prior; validation tests it.
 
 The three shipped cases are synthetic references marking the shapes the
 model prices deliberately: an empowered small agency (scores well), a
-founder with fourteen teams escalating to them (strained: the queue is
-visible even below the Dunbar horizon) and a matrixed enterprise on a
-delayed dependency chain (the documented-collapse shape). Replace or
-outnumber them with real cases as they accumulate.
+founder with eighteen squads across three tribes escalating to them
+(strained: the queue is visible even below the Dunbar horizon) and a
+matrixed enterprise of about six thousand people whose unit and sub-unit
+leadership is claimed by the matrix on a delayed dependency chain (the
+documented-collapse shape). Every case is a drillable hierarchy whose leaf
+teams hold three to eight people with varied sizes. The enterprise case is
+written by `generate_matrixed_enterprise.py` at the repository root
+(deterministic and seeded), so change that script and rerun it rather than
+editing the JSON by hand. Replace or outnumber them with real cases as
+they accumulate.

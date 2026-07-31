@@ -18,7 +18,7 @@
       "domain_id": "company",
       "size": 1,
       "owner": "",
-      "headcount": 6
+      "headcount": 5
     },
     {
       "id": "build_a",
@@ -28,7 +28,7 @@
       "domain_id": "company",
       "size": 1,
       "owner": "",
-      "headcount": 6
+      "headcount": 7
     },
     {
       "id": "build_b",
@@ -38,7 +38,7 @@
       "domain_id": "company",
       "size": 1,
       "owner": "",
-      "headcount": 6
+      "headcount": 4
     },
     {
       "id": "ops",
@@ -48,7 +48,7 @@
       "domain_id": "company",
       "size": 1,
       "owner": "",
-      "headcount": 6
+      "headcount": 8
     }
   ],
   "dependencies": [
