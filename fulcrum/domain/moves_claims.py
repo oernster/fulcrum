@@ -18,7 +18,7 @@ _DOWNGRADE_TARGET_COUNT = 2
 
 # A consulted actor is one turn of waiting on an explicit interface, not a
 # co-owner of the decision class.
-_CONSULTATION_DELAY = 1
+CONSULTATION_DELAY = 1
 
 _OVERLAY_PREFIX = "overlay"
 
@@ -91,7 +91,7 @@ def downgrade_claim(org: OrgState, move: Move) -> OrgState:
     )
     if claimant in known and not already:
         dependencies = dependencies + (
-            Dependency(claimant, subject, _CONSULTATION_DELAY),
+            Dependency(claimant, subject, CONSULTATION_DELAY),
         )
     return OrgState(
         teams=org.teams,

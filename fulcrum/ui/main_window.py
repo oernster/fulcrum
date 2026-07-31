@@ -48,6 +48,7 @@ from fulcrum.ui.widgets.glossary_dialog import GlossaryDialog
 from fulcrum.ui.widgets.keyboard_nav import KeyboardNavigator
 from fulcrum.ui.widgets.org_guide_dialog import OrgGuideDialog
 from fulcrum.ui.widgets.org_overview_dialog import OrgOverviewDialog
+from fulcrum.ui.widgets.provenance_dialog import ProvenanceDialog
 from fulcrum.version import APP_NAME, APP_TAGLINE
 
 _RELEASES_URL = "https://github.com/oernster/fulcrum/releases"
@@ -60,6 +61,9 @@ _PRESENTATION_TOOLTIP = "Create presentation"
 _MODEL_ORG_TOOLTIP = "Model my organisation"
 _EDIT_ORG_TOOLTIP = "Edit my org: reopen and edit the current organisation"
 _GUIDE_TOOLTIP = "Show the guide"
+_PROVENANCE_TOOLTIP = (
+    "What grounds the numbers: every coefficient, its source and its fragility"
+)
 
 
 class MainWindow(QMainWindow):
@@ -146,6 +150,12 @@ class MainWindow(QMainWindow):
             _OVERVIEW_TOOLTIP, self._org_overview
         )
         top.addWidget(overview_button)
+        # Its golden kin sits beside it and answers why the numbers are
+        # what they are: the model's provenance, coefficient by coefficient.
+        provenance_button = header_buttons.provenance_icon_button(
+            _PROVENANCE_TOOLTIP, self._provenance
+        )
+        top.addWidget(provenance_button)
         top.addStretch()
         presentation_link = QPushButton(_PRESENTATION_GLYPH)
         presentation_link.setObjectName("IconLink")
@@ -173,6 +183,7 @@ class MainWindow(QMainWindow):
                 edit_button,
                 guide_button,
                 overview_button,
+                provenance_button,
                 self._theme_toggle,
                 presentation_link,
                 glossary_link,
@@ -318,6 +329,9 @@ class MainWindow(QMainWindow):
 
     def _glossary(self) -> None:
         GlossaryDialog(self).exec()
+
+    def _provenance(self) -> None:
+        ProvenanceDialog(self).exec()
 
     def _org_overview(self) -> None:
         if self._session is None:

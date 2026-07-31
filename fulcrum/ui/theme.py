@@ -82,6 +82,10 @@ QPushButton {{
     font-weight: 600;
 }}
 QPushButton:enabled:hover {{ border-color: {p.ring_green}; }}
+/* The centred glow pair (app icon and its provenance kin) sits on a tight
+   plate so the marks read large; padding only, so the generic hover and
+   focus ring rules still apply. */
+QPushButton#TrayGlow {{ padding: 2px 6px; }}
 QPushButton:enabled:focus {{ border-color: {p.ring_green}; outline: none; }}
 QPushButton:pressed {{ background-color: {p.surface}; }}
 /* Any button carrying a dropdown menu shares the spinbox arrow, so every

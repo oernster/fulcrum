@@ -32,6 +32,25 @@ _BRIGHTNESS = 2.6
 _HALO_BLUR = 16
 _HALO_THIN = 2
 
+# The provenance sibling: the same mark retinted golden (the approved
+# "golden" candidate: hue set uniformly, saturation eased) then given the
+# same glow, so the header's numbers button reads as the app icon's kin.
+_PROVENANCE_NAME = "fulcrum_provenance_256.png"
+_PROVENANCE_SIZE = 256
+_PROVENANCE_HUE_DEG = 38
+_PROVENANCE_SAT = 0.85
+_HUE_MAX = 360
+_CHANNEL_MAX = 255
+
+
+def retint(master: Image.Image, hue_deg: int, sat_scale: float) -> Image.Image:
+    """The master with every pixel's hue set and saturation scaled."""
+    h, s, v = master.convert("RGB").convert("HSV").split()
+    hue = int(hue_deg / _HUE_MAX * _CHANNEL_MAX)
+    h = h.point(lambda _: hue)
+    s = s.point(lambda x: min(_CHANNEL_MAX, int(x * sat_scale)))
+    return Image.merge("HSV", (h, s, v)).convert("RGB")
+
 
 def electric_glow(master: Image.Image) -> Image.Image:
     """The approved icon treatment: keyed, lifted, haloed."""
@@ -67,6 +86,13 @@ def main() -> int:
         sizes=[(size, size) for size in _ICO_SIZES],
     )
     print(f"  [OK] {_ICO_NAME}")
+    provenance = electric_glow(
+        retint(Image.open(root / _SOURCE), _PROVENANCE_HUE_DEG, _PROVENANCE_SAT)
+    )
+    provenance.resize((_PROVENANCE_SIZE, _PROVENANCE_SIZE), _RESAMPLE).save(
+        root / _PROVENANCE_NAME, "PNG"
+    )
+    print(f"  [OK] {_PROVENANCE_NAME}")
     return 0
 
 

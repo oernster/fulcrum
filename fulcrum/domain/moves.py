@@ -26,14 +26,14 @@ from fulcrum.domain.moves_claims import (
 
 # Delay stamped on the dependencies created by an approval layer. A new gate
 # that every team must route through is the canonical blunder.
-_APPROVAL_GATE_DELAY: int = 3
+APPROVAL_GATE_DELAY: int = 3
 _APPROVAL_GATE_PREFIX: str = "approval"
 
 # Fraction of the original delay kept when interfaces are stabilised, and the
 # fraction of incentive skew kept when incentives are realigned. Both pull a
 # value toward zero without forcing it there.
-_STABILISE_RETENTION: float = 0.4
-_REALIGN_RETENTION: float = 0.4
+STABILISE_RETENTION: float = 0.4
+REALIGN_RETENTION: float = 0.4
 
 _COLLAPSE_TARGET_COUNT: int = 2
 
@@ -84,7 +84,7 @@ def apply_move(org: OrgState, move: Move) -> OrgState:
 def _add_approval_layer(org: OrgState, move: Move) -> OrgState:
     gate_id = unique_prefixed_id(org, _APPROVAL_GATE_PREFIX)
     gate = Team(id=gate_id, name="Approval gate", has_local_authority=False)
-    new_deps = tuple(Dependency(gate_id, t.id, _APPROVAL_GATE_DELAY) for t in org.teams)
+    new_deps = tuple(Dependency(gate_id, t.id, APPROVAL_GATE_DELAY) for t in org.teams)
     return OrgState(
         teams=org.teams + (gate,),
         dependencies=org.dependencies + new_deps,
@@ -108,7 +108,7 @@ def _stabilise_interfaces(org: OrgState, move: Move) -> OrgState:
         new_deps = _stabilise_scoped(org, move.targets)
     else:
         new_deps = tuple(
-            d.with_delay(int(d.propagation_delay * _STABILISE_RETENTION))
+            d.with_delay(int(d.propagation_delay * STABILISE_RETENTION))
             for d in org.dependencies
         )
     return OrgState(
@@ -137,7 +137,7 @@ def _stabilise_scoped(org: OrgState, targets: tuple[str, ...]) -> tuple:
         down = owner.get(dep.downstream)
         if up is not None and down is not None and up != down:
             thinned.append(
-                dep.with_delay(int(dep.propagation_delay * _STABILISE_RETENTION))
+                dep.with_delay(int(dep.propagation_delay * STABILISE_RETENTION))
             )
         else:
             thinned.append(dep)
@@ -162,7 +162,7 @@ def _realign_incentives(org: OrgState, move: Move) -> OrgState:
         raise InvalidMoveError("realign_incentives needs at least one target")
     new_teams = tuple(
         (
-            t.with_incentive_skew(t.incentive_skew * _REALIGN_RETENTION)
+            t.with_incentive_skew(t.incentive_skew * REALIGN_RETENTION)
             if t.id in targets
             else t
         )

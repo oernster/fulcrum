@@ -56,6 +56,7 @@ UI_LICENSE_FILE = PROJECT_ROOT / "LICENSE-LGPL-3.0.txt"
 ASSET_FILES = (
     PROJECT_ROOT / "fulcrum.ico",
     PROJECT_ROOT / "fulcrum_256.png",
+    PROJECT_ROOT / "fulcrum_provenance_256.png",
     PROJECT_ROOT / "fulcrum.png",
     PROJECT_ROOT / "spin_up.png",
     PROJECT_ROOT / "spin_down.png",

@@ -235,7 +235,7 @@ modules:
       - cp -r examples/calibration /app/share/${SHARE_DIR}/examples/
       # Loose assets the resource resolver looks for beside main.py: the window
       # and About icon, plus the amber spinbox arrows used by the theme.
-      - cp fulcrum.ico fulcrum.png fulcrum_256.png spin_up.png spin_down.png /app/share/${SHARE_DIR}/
+      - cp fulcrum.ico fulcrum.png fulcrum_256.png fulcrum_provenance_256.png spin_up.png spin_down.png /app/share/${SHARE_DIR}/
       - install -Dm644 fulcrum_16.png  /app/share/icons/hicolor/16x16/apps/${APP_ID}.png
       - install -Dm644 fulcrum_32.png  /app/share/icons/hicolor/32x32/apps/${APP_ID}.png
       - install -Dm644 fulcrum_48.png  /app/share/icons/hicolor/48x48/apps/${APP_ID}.png

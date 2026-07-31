@@ -20,6 +20,7 @@ _ICON_FILENAMES = (
     "fulcrum.png",
 )
 _PNG_SUFFIX = ".png"
+_PROVENANCE_FILENAME = "fulcrum_provenance_256.png"
 _LICENSE_FILENAME = "LICENSE"
 _MODEL_LICENCE_FILENAME = "LICENSE-GPL-3.0.txt"
 _UI_LICENCE_FILENAME = "LICENSE-LGPL-3.0.txt"
@@ -57,6 +58,15 @@ def find_app_icon() -> Path | None:
             candidate = root / name
             if candidate.is_file():
                 return candidate
+    return None
+
+
+def find_provenance_png() -> Path | None:
+    """The golden provenance icon: the app mark's kin for the numbers button."""
+    for root in _candidate_roots():
+        candidate = root / _PROVENANCE_FILENAME
+        if candidate.is_file():
+            return candidate
     return None
 
 

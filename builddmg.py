@@ -63,6 +63,7 @@ BUNDLED_ICONS = [
     "fulcrum_64.png",
     "fulcrum_128.png",
     "fulcrum_256.png",
+    "fulcrum_provenance_256.png",
     "fulcrum_512.png",
     "fulcrum.png",
     "fulcrum.ico",
