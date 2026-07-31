@@ -27,6 +27,7 @@ from fulcrum.domain.signals import SignalReading
 from fulcrum.shared.text import count_noun
 from fulcrum.ui import ui_scale
 from fulcrum.ui.analysis_thread import AnalysisThread
+from fulcrum.ui.widgets.auto_scroller import AutoScroller
 from fulcrum.ui.widgets.board_renderers import clear_layout, move_row, signal_row
 from fulcrum.ui.widgets.board_scope import ScopePresenter
 from fulcrum.ui.widgets.move_note_view import MoveNoteView
@@ -158,6 +159,10 @@ class BoardView(QWidget):
         self._moves_box.setContentsMargins(0, 0, ui_scale.px(_MOVES_RIGHT_PAD), 0)
         self._moves_holder.setLayout(self._moves_box)
         self._moves_scroll.setWidget(self._moves_holder)
+        # The moves list reads itself down gently when it overflows, holding
+        # still while hovered or focused so a button never moves under the
+        # cursor; any manual scroll suspends the cycle.
+        self._moves_scroller = AutoScroller(self._moves_scroll)
         column.addWidget(self._moves_scroll, 1)
         signals_caption = QLabel("Signals to watch")
         signals_caption.setObjectName("Muted")

@@ -1,17 +1,20 @@
-"""Gentle auto-scroll for long help content, in the ClearBudget style.
+"""Gentle auto-scroll for long content, in the ClearBudget style.
 
-The cycle reads down slowly from the moment the dialog opens, holds at the
+The cycle reads down slowly from the moment the surface opens, holds at the
 bottom so the tail can be read, rewinds to the top at a faster pace, holds
 briefly and starts over. Manual scrolling (wheel, click, dragging the
 scrollbar or the arrow keys) only suspends the cycle: once the reader has
 been still for a moment it picks up from wherever they left it, so taking
-over by hand never switches the feature off for the rest of the dialog's
-life.
+over by hand never switches the feature off for the rest of the surface's
+life. While the pointer hovers the surface the cycle holds still, so a
+control inside it never moves away from under the cursor, and focus
+entering the surface (keyboard navigation into a list) suspends it too.
 """
 
 from __future__ import annotations
 
 from PySide6.QtCore import QEvent, QObject, QTimer
+from PySide6.QtWidgets import QApplication, QWidget
 
 from fulcrum.ui import ui_scale
 
@@ -20,8 +23,9 @@ class AutoScroller(QObject):
     """Cycles a scrollable widget: down slowly, pause, rewind fast, repeat.
 
     Works on any scroll surface exposing verticalScrollBar() and viewport()
-    (a QTextBrowser showing credits or a licence, a QScrollArea of cards).
-    The widget becomes the scroller's Qt parent, so their lifetimes match.
+    (a QTextBrowser showing credits or a licence, a QScrollArea of cards or
+    move buttons). The widget becomes the scroller's Qt parent, so their
+    lifetimes match.
     """
 
     _TICK_MS = 40
@@ -46,10 +50,12 @@ class AutoScroller(QObject):
 
     def __init__(self, area) -> None:
         super().__init__(area)
+        self._area = area
         self._bar = area.verticalScrollBar()
         # Straight into the first descent: nothing is held back on opening.
         self._phase = self._DOWN
         self._wait_ms = 0
+        self._hovered = False
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
         self._timer.start(self._TICK_MS)
@@ -59,6 +65,10 @@ class AutoScroller(QObject):
         self._bar.sliderPressed.connect(self.suspend)
         self._bar.sliderReleased.connect(self.suspend)
         self._bar.sliderMoved.connect(self._on_slider_moved)
+        # Keyboard navigation into a child (a move button taking focus) is
+        # reading by hand too; the child never sees this filter, so watch
+        # the application's focus instead.
+        QApplication.instance().focusChanged.connect(self._on_focus_changed)
 
     def suspend(self) -> None:
         """Hand the content to the reader and start counting down to resume."""
@@ -69,12 +79,27 @@ class AutoScroller(QObject):
         """Dragging the scrollbar counts as reading by hand."""
         self.suspend()
 
+    def _on_focus_changed(self, _old, new) -> None:
+        if isinstance(new, QWidget) and (
+            new is self._area or self._area.isAncestorOf(new)
+        ):
+            self.suspend()
+
     def eventFilter(self, obj, event) -> bool:
         if event.type() in self._MANUAL_EVENTS:
+            self.suspend()
+        elif event.type() == QEvent.Type.Enter:
+            self._hovered = True
+        elif event.type() == QEvent.Type.Leave:
+            # Resume a moment after the pointer leaves, from where it rests.
+            self._hovered = False
             self.suspend()
         return False
 
     def _tick(self) -> None:
+        # A hovered surface holds still, so nothing moves under the cursor.
+        if self._hovered:
+            return
         maximum = self._bar.maximum()
         if maximum <= 0:
             return
