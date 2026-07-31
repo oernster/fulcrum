@@ -16,18 +16,24 @@ from PySide6.QtWidgets import (
 )
 
 from fulcrum.application.game_session import GameSession, restore_session
-from fulcrum.application.interfaces import Clock, OrgStore, PlanExporter, Simulator
+from fulcrum.application.interfaces import (
+    Clock,
+    ExampleSource,
+    OrgStore,
+    PlanExporter,
+    Simulator,
+)
 from fulcrum.application.org_guide import build_org_guide
 from fulcrum.domain.org_size import DEFAULT_BAND
 from fulcrum.shared.resources import find_model_licence, find_ui_licence
 from fulcrum.ui.guide_thread import OrgGuideThread
 from fulcrum.ui.org_intake import OrgIntakeController
 from fulcrum.ui.plan_files import PlanFileActions
+from fulcrum.ui.widgets import disabled_cue
 from fulcrum.ui.widgets.about_dialog import AboutDialog, LicenceDialog
 from fulcrum.ui.widgets.board_view import BoardView
 from fulcrum.ui.widgets.book_background_dialog import BookBackgroundDialog
 from fulcrum.ui.widgets.busy_dialog import BusyDialog
-from fulcrum.ui.widgets import disabled_cue
 from fulcrum.ui.widgets.glossary_dialog import GlossaryDialog
 from fulcrum.ui.widgets.keyboard_nav import KeyboardNavigator
 from fulcrum.ui.widgets.org_guide_dialog import OrgGuideDialog
@@ -53,6 +59,7 @@ class MainWindow(QMainWindow):
         plan_exporter: PlanExporter,
         clock: Clock,
         rng: Random,
+        examples: ExampleSource,
         org_store: OrgStore | None = None,
         parent=None,
     ) -> None:
@@ -62,7 +69,12 @@ class MainWindow(QMainWindow):
         self._session: GameSession | None = None
         self._started = False
         self._intake = OrgIntakeController(
-            self, simulator, rng, lambda: self._session, self._set_session
+            self,
+            simulator,
+            rng,
+            lambda: self._session,
+            self._set_session,
+            examples,
         )
         self._plan_files = PlanFileActions(
             self,
@@ -173,6 +185,17 @@ class MainWindow(QMainWindow):
         file_menu.addAction("Model my organisation...", self._intake.model_org)
         file_menu.addAction("Edit my org...", self._intake.edit_org)
         file_menu.addAction("Quick org (wizard)...", self._intake.quick_org)
+        example_menu = file_menu.addMenu("Open example organisation")
+        example_menu.setToolTipsVisible(True)
+        for summary in self._intake.example_entries():
+            action = example_menu.addAction(
+                summary.label,
+                lambda checked=False, s=summary: self._intake.open_example(s),
+            )
+            if summary.note:
+                action.setToolTip(summary.note)
+                action.setStatusTip(summary.note)
+        example_menu.menuAction().setEnabled(not example_menu.isEmpty())
         file_menu.addSeparator()
         self._presentation_action = file_menu.addAction(
             "Create presentation...", self._plan_files.export_html

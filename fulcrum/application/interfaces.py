@@ -8,7 +8,13 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from fulcrum.application.dto import MoveValuation, Plan, PlanReport, SessionSnapshot
+from fulcrum.application.dto import (
+    ExampleSummary,
+    MoveValuation,
+    Plan,
+    PlanReport,
+    SessionSnapshot,
+)
 from fulcrum.domain.models import OrgState
 from fulcrum.domain.moves import Move
 from fulcrum.domain.simulation import StructuralScore
@@ -36,6 +42,14 @@ class OrgStore(Protocol):
     def save(self, snapshot: SessionSnapshot) -> None: ...
 
     def load(self) -> SessionSnapshot | None: ...
+
+
+class ExampleSource(Protocol):
+    """Lists the bundled example organisations and loads one by key."""
+
+    def examples(self) -> tuple[ExampleSummary, ...]: ...
+
+    def load(self, key: str) -> OrgState: ...
 
 
 class PlanExporter(Protocol):

@@ -14,13 +14,13 @@ from random import Random
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QDialog, QMessageBox
 
+from fulcrum.application.dto import ExampleSummary, OrgBlueprint
 from fulcrum.application.game_session import GameSession
 from fulcrum.application.intake import build_org_state, org_to_blueprint
-from fulcrum.application.interfaces import Simulator
+from fulcrum.application.interfaces import ExampleSource, Simulator
 from fulcrum.application.level_generator import generate_level
-from fulcrum.application.dto import OrgBlueprint
 from fulcrum.domain.errors import FulcrumError
-from fulcrum.domain.models import Origin, OrgState
+from fulcrum.domain.models import OrgState, Origin
 from fulcrum.domain.org_size import OrgSizeBand
 from fulcrum.ui.generation_thread import GenerationThread
 from fulcrum.ui.widgets.busy_dialog import BusyDialog
@@ -38,6 +38,11 @@ _DISCARD_QUESTION = (
     "instead."
 )
 
+_EXAMPLE_DISCARD_QUESTION = (
+    'Open the example "{label}"? The current model and its played moves '
+    "will be discarded."
+)
+
 
 class OrgIntakeController:
     """Owns the dialogs and threads that produce a new session."""
@@ -49,12 +54,14 @@ class OrgIntakeController:
         rng: Random,
         session_of,
         set_session,
+        examples: ExampleSource,
     ) -> None:
         self._window = window
         self._simulator = simulator
         self._rng = rng
         self._session_of = session_of
         self._set_session = set_session
+        self._examples = examples
         self._generation: GenerationThread | None = None
 
     def generate(self, band: OrgSizeBand) -> None:
@@ -86,6 +93,29 @@ class OrgIntakeController:
         if editor.exec() != QDialog.DialogCode.Accepted:
             return
         self._load_blueprint(editor.to_blueprint(), session.org.origin)
+
+    def example_entries(self) -> tuple[ExampleSummary, ...]:
+        """The loadable example organisations, for the File menu."""
+        return self._examples.examples()
+
+    def open_example(self, summary: ExampleSummary) -> None:
+        """Replace the session with an example org, confirming any discard."""
+        if self._has_user_model():
+            question = _EXAMPLE_DISCARD_QUESTION.format(label=summary.label)
+            answer = QMessageBox.question(
+                self._window,
+                "Open example organisation",
+                question,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            if answer != QMessageBox.StandardButton.Yes:
+                return
+        try:
+            org = self._examples.load(summary.key)
+        except (FulcrumError, OSError, ValueError, KeyError) as error:
+            QMessageBox.warning(self._window, "Could not open example", str(error))
+            return
+        self._set_session(GameSession(org, self._simulator))
 
     def quick_org(self) -> None:
         wizard = OrgWizard(self._window, rng=self._rng)

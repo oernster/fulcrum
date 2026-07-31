@@ -83,6 +83,9 @@ BUNDLED_DATA = [
 # find_book_cover resolves them in the frozen build.
 BOOK_COVER_DIR = "assets/books"
 
+# Calibration examples offered by File > Open example organisation.
+EXAMPLES_DIR = "examples/calibration"
+
 DEVELOPER_ID = os.environ.get(
     "DEVELOPER_ID_APPLICATION",
     "Developer ID Application: Oliver Ernster (W7K465GKFJ)",
@@ -192,6 +195,12 @@ def build_app_bundle(icns_path: Path | None = None) -> Path:
     if books.is_dir():
         for cover in sorted(books.glob("*.png")):
             cmd.append(f"--include-data-file={cover}={BOOK_COVER_DIR}/{cover.name}")
+    calibration = root / "examples" / "calibration"
+    if calibration.is_dir():
+        for example in sorted(calibration.glob("*.json")):
+            cmd.append(
+                f"--include-data-file={example}=" f"{EXAMPLES_DIR}/{example.name}"
+            )
 
     cmd.append(str(root / "main.py"))
 

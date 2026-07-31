@@ -9,10 +9,11 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
 from fulcrum.application.simulator import DeterministicSimulator
+from fulcrum.infrastructure.example_library import FileExampleLibrary
 from fulcrum.infrastructure.org_autosave import FileOrgStore
 from fulcrum.infrastructure.plan_exporter import FilePlanExporter
 from fulcrum.infrastructure.system_clock import SystemClock
-from fulcrum.shared.resources import find_app_icon
+from fulcrum.shared.resources import find_app_icon, find_examples_dir
 from fulcrum.ui import ui_scale
 from fulcrum.ui.main_window import MainWindow
 from fulcrum.ui.theme import get_dark_qss
@@ -58,6 +59,7 @@ def main() -> int:
         plan_exporter=FilePlanExporter(),
         clock=SystemClock(),
         rng=Random(),
+        examples=FileExampleLibrary(find_examples_dir()),
         org_store=FileOrgStore(),
     )
     if icon is not None:

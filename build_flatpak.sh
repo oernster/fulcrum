@@ -230,6 +230,9 @@ modules:
       - cp -r fulcrum /app/share/${SHARE_DIR}/
       # Book covers shown by Help > Book background, resolved at assets/books.
       - cp -r assets /app/share/${SHARE_DIR}/
+      # Calibration examples offered by File > Open example organisation.
+      - mkdir -p /app/share/${SHARE_DIR}/examples
+      - cp -r examples/calibration /app/share/${SHARE_DIR}/examples/
       # Loose assets the resource resolver looks for beside main.py: the window
       # and About icon, plus the amber spinbox arrows used by the theme.
       - cp fulcrum.ico fulcrum.png fulcrum_256.png spin_up.png spin_down.png /app/share/${SHARE_DIR}/

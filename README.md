@@ -73,7 +73,9 @@ A short tour and the books behind it are at <https://oernster.github.io/fulcrum/
   scale, a well-designed reference set that stays healthy and a calibration
   set (`examples/calibration/`, scored by `python calibrate.py`) whose cases
   carry expected score bands drawn from known outcomes, so the coefficients
-  answer to lived experience rather than taste.
+  answer to lived experience rather than taste. The calibration cases are
+  also available in-app via File | Open example organisation, each loading
+  onto the board ready to inspect, play and rework in the editor.
 - Signals to watch (handoff queue age, escalations, rework, influence without
   authority, contested ownership, centre escalation load and unowned
   interfaces), each carrying its own definition: hover for a gloss, click for

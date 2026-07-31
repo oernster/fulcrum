@@ -41,6 +41,15 @@ class ClaimSpec:
 
 
 @dataclass(frozen=True, slots=True)
+class ExampleSummary:
+    """A loadable example organisation: its menu label, note and lookup key."""
+
+    key: str
+    label: str
+    note: str
+
+
+@dataclass(frozen=True, slots=True)
 class DomainSpec:
     """A plain domain description, as collected by the editor or an importer."""
 

@@ -66,6 +66,8 @@ ASSET_FILES = (
 # them the same way in the frozen build as in the dev tree.
 BOOK_COVER_DIR = PROJECT_ROOT / "assets" / "books"
 BOOK_COVER_TARGET = "assets/books"
+EXAMPLES_DIR = PROJECT_ROOT / "examples" / "calibration"
+EXAMPLES_TARGET = "examples/calibration"
 
 # The bundle is produced straight into the installer payload so the installer
 # build can pick it up without a separate staging copy.
@@ -248,6 +250,14 @@ def build_exe() -> int:
             target = f"{BOOK_COVER_TARGET}/{cover.name}"
             nuitka_args.append(f"--include-data-file={cover}={target}")
             print(f"[buildexe] Bundling cover: {cover} -> {target}")
+
+    # Ship the calibration examples so File | Open example organisation can
+    # offer them in the installed app.
+    if EXAMPLES_DIR.is_dir():
+        for example in sorted(EXAMPLES_DIR.glob("*.json")):
+            target = f"{EXAMPLES_TARGET}/{example.name}"
+            nuitka_args.append(f"--include-data-file={example}={target}")
+            print(f"[buildexe] Bundling example: {example} -> {target}")
 
     nuitka_args.append(str(ENTRY_SCRIPT))
 

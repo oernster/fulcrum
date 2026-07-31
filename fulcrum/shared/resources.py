@@ -24,6 +24,7 @@ _LICENSE_FILENAME = "LICENSE"
 _MODEL_LICENCE_FILENAME = "LICENSE-GPL-3.0.txt"
 _UI_LICENCE_FILENAME = "LICENSE-LGPL-3.0.txt"
 _BOOK_COVER_SUBDIR = ("assets", "books")
+_EXAMPLES_SUBDIR = ("examples", "calibration")
 
 
 def _candidate_roots() -> list[Path]:
@@ -83,6 +84,15 @@ def find_book_cover(filename: str) -> Path | None:
     for root in _candidate_roots():
         candidate = root.joinpath(*_BOOK_COVER_SUBDIR, filename)
         if candidate.is_file():
+            return candidate
+    return None
+
+
+def find_examples_dir() -> Path | None:
+    """Locate the bundled calibration examples directory."""
+    for root in _candidate_roots():
+        candidate = root.joinpath(*_EXAMPLES_SUBDIR)
+        if candidate.is_dir():
             return candidate
     return None
 
