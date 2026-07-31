@@ -1,0 +1,245 @@
+{
+  "teams": [
+    {
+      "id": "founder",
+      "name": "Founder",
+      "has_local_authority": true,
+      "incentive_skew": 0.1,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 4
+    },
+    {
+      "id": "squad_0",
+      "name": "Squad 0",
+      "has_local_authority": false,
+      "incentive_skew": 0.2,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 8
+    },
+    {
+      "id": "squad_1",
+      "name": "Squad 1",
+      "has_local_authority": false,
+      "incentive_skew": 0.2,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 8
+    },
+    {
+      "id": "squad_2",
+      "name": "Squad 2",
+      "has_local_authority": false,
+      "incentive_skew": 0.2,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 8
+    },
+    {
+      "id": "squad_3",
+      "name": "Squad 3",
+      "has_local_authority": false,
+      "incentive_skew": 0.2,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 8
+    },
+    {
+      "id": "squad_4",
+      "name": "Squad 4",
+      "has_local_authority": false,
+      "incentive_skew": 0.2,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 8
+    },
+    {
+      "id": "squad_5",
+      "name": "Squad 5",
+      "has_local_authority": false,
+      "incentive_skew": 0.2,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 8
+    },
+    {
+      "id": "squad_6",
+      "name": "Squad 6",
+      "has_local_authority": false,
+      "incentive_skew": 0.2,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 8
+    },
+    {
+      "id": "squad_7",
+      "name": "Squad 7",
+      "has_local_authority": false,
+      "incentive_skew": 0.2,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 8
+    },
+    {
+      "id": "squad_8",
+      "name": "Squad 8",
+      "has_local_authority": false,
+      "incentive_skew": 0.2,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 8
+    },
+    {
+      "id": "squad_9",
+      "name": "Squad 9",
+      "has_local_authority": false,
+      "incentive_skew": 0.2,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 8
+    },
+    {
+      "id": "squad_10",
+      "name": "Squad 10",
+      "has_local_authority": false,
+      "incentive_skew": 0.2,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 8
+    },
+    {
+      "id": "squad_11",
+      "name": "Squad 11",
+      "has_local_authority": false,
+      "incentive_skew": 0.2,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 8
+    },
+    {
+      "id": "squad_12",
+      "name": "Squad 12",
+      "has_local_authority": false,
+      "incentive_skew": 0.2,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 8
+    },
+    {
+      "id": "squad_13",
+      "name": "Squad 13",
+      "has_local_authority": false,
+      "incentive_skew": 0.2,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 8
+    }
+  ],
+  "dependencies": [
+    {
+      "upstream": "founder",
+      "downstream": "squad_0",
+      "propagation_delay": 1
+    },
+    {
+      "upstream": "founder",
+      "downstream": "squad_1",
+      "propagation_delay": 1
+    },
+    {
+      "upstream": "founder",
+      "downstream": "squad_2",
+      "propagation_delay": 1
+    },
+    {
+      "upstream": "founder",
+      "downstream": "squad_3",
+      "propagation_delay": 1
+    },
+    {
+      "upstream": "founder",
+      "downstream": "squad_4",
+      "propagation_delay": 1
+    },
+    {
+      "upstream": "founder",
+      "downstream": "squad_5",
+      "propagation_delay": 1
+    },
+    {
+      "upstream": "founder",
+      "downstream": "squad_6",
+      "propagation_delay": 1
+    },
+    {
+      "upstream": "founder",
+      "downstream": "squad_7",
+      "propagation_delay": 1
+    },
+    {
+      "upstream": "founder",
+      "downstream": "squad_8",
+      "propagation_delay": 1
+    },
+    {
+      "upstream": "founder",
+      "downstream": "squad_9",
+      "propagation_delay": 1
+    },
+    {
+      "upstream": "founder",
+      "downstream": "squad_10",
+      "propagation_delay": 1
+    },
+    {
+      "upstream": "founder",
+      "downstream": "squad_11",
+      "propagation_delay": 1
+    },
+    {
+      "upstream": "founder",
+      "downstream": "squad_12",
+      "propagation_delay": 1
+    },
+    {
+      "upstream": "founder",
+      "downstream": "squad_13",
+      "propagation_delay": 1
+    }
+  ],
+  "workload": 5,
+  "origin": "imported",
+  "domains": [
+    {
+      "id": "company",
+      "name": "Company",
+      "parent_id": null,
+      "lead": "",
+      "category": "Company",
+      "headcount": 0
+    }
+  ],
+  "claims": [],
+  "calibration": {
+    "label": "Saturated founder startup (~116)",
+    "expected_min": 55,
+    "expected_max": 80,
+    "note": "everyone waits on one person; sub-Dunbar forgiveness cannot hide the queue"
+  }
+}

@@ -14,15 +14,17 @@ from dataclasses import dataclass
 
 from fulcrum.application.move_text import move_note
 from fulcrum.domain.moves import MoveKind
-from fulcrum.domain.simulation import DEFAULT_THRESHOLDS as _THRESHOLDS
 from fulcrum.domain.signals import (
+    CENTRE_LOAD,
     CONTESTED,
     ESCALATIONS,
     INFLUENCE,
     QUEUE_AGE,
     REWORK_RATE,
+    SIGNAL_DEFINITIONS,
+    UNOWNED_INTERFACES,
 )
-from fulcrum.domain.signals import SIGNAL_DEFINITIONS
+from fulcrum.domain.simulation import DEFAULT_THRESHOLDS as _THRESHOLDS
 
 _MOVES_HEADING = "Moves"
 _SIGNALS_HEADING = "Signals to watch"
@@ -39,6 +41,9 @@ TERM_STRUCTURAL_HEALTH = "structural_health"
 TERM_MOVE_CLASSIFICATION = "move_classification"
 TERM_WORKLOAD = "workload"
 TERM_AUTHORITY_CLAIM = "authority_claim"
+TERM_PRINCE_BAND = "prince_band"
+TERM_RESOLUTION_NEIGHBOURHOOD = "resolution_neighbourhood"
+TERM_UNOWNED_INTERFACE = "unowned_interface"
 
 
 @dataclass(frozen=True, slots=True)
@@ -211,6 +216,62 @@ _CONCEPTS: tuple[ConceptEntry, ...] = (
         ),
     ),
     ConceptEntry(
+        key=TERM_PRINCE_BAND,
+        term="The prince band and the Dunbar horizon",
+        definition=(
+            "Concentrated authority is priced by scale. Up to about 150 "
+            "people (the Dunbar horizon) one decisive founder works: "
+            "escalating to them is a conversation, so concentration costs "
+            "little. From 150 to 200 the price rises to its full rate, and "
+            "beyond that it grows with the size of the organisation, capped "
+            "so that the rare founder who scales command is penalised, "
+            "never ruled out. Machiavelli both ways: the Prince for the "
+            "small state, the republic for the large one."
+        ),
+        short_help=(
+            "Concentration priced by size. A 30-person company run by one "
+            "decisive founder scores well; the identical structure at 3,000 "
+            "people scores badly, because the centre is now far from the "
+            "work."
+        ),
+    ),
+    ConceptEntry(
+        key=TERM_RESOLUTION_NEIGHBOURHOOD,
+        term="Resolution neighbourhood and escalation load",
+        definition=(
+            "Where a team's escalations actually resolve: the nearest "
+            "enclosing unit holding someone with authority. Escalation is "
+            "priced at that unit's size, so a team whose lead sits across "
+            "the desk is never priced as if it escalated to a conglomerate "
+            "summit. A share of each escalating team's work also lands on "
+            "the resolving authority's own queue, so a centre absorbing "
+            "thirty teams' escalations visibly saturates."
+        ),
+        short_help=(
+            "The nearest enclosing unit where this team's escalations "
+            "resolve. Escalating one desk over is cheap at any company "
+            "size; the resolving lead carries the escalated load on their "
+            "own queue."
+        ),
+    ),
+    ConceptEntry(
+        key=TERM_UNOWNED_INTERFACE,
+        term="Unowned interface",
+        definition=(
+            "A dependency between two teams that both hold authority but "
+            "share no working roof: no common unit containing a further "
+            "authority who could arbitrate a conflict on that edge. Two "
+            "founders across a desk resolve it by talking, so it is cheap "
+            "when small; at scale it is fragmentation, decisions made "
+            "locally that conflict globally with nowhere to settle them."
+        ),
+        short_help=(
+            "Two sovereign teams depending on each other with nobody above "
+            "both to settle a conflict. Fine between founders, "
+            "fragmentation at scale."
+        ),
+    ),
+    ConceptEntry(
         key=TERM_WORKLOAD,
         term="Workload",
         definition=(
@@ -254,6 +315,16 @@ _SIGNAL_SHORT_HELP: dict[str, str] = {
         "Teams whose decisions have more than one claimant, the matrix "
         "disease. A team answering to both a line manager and a chapter "
         "lead settles who decides before it can decide anything."
+    ),
+    CENTRE_LOAD: (
+        "Escalated decisions per turn landing on the most loaded authority. "
+        "A founder personally deciding for thirty teams carries a queue "
+        "that grows faster than any one person can clear."
+    ),
+    UNOWNED_INTERFACES: (
+        "Dependencies between two sovereign teams with nobody above both "
+        "to settle a conflict. Two founders talk it out; two hundred "
+        "autonomous teams with no shared institutions fragment."
     ),
 }
 

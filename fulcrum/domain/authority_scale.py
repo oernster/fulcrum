@@ -121,16 +121,23 @@ class ScaleContext:
     frame_factor: float
 
 
+# A roof needs an officer: at least one clean authority beyond the edge's
+# own endpoints must sit in the shared subtree to convene resolution.
+_MIN_DISTINCT_OFFICERS: int = 1
+
+
 def _unowned_interface_counts(org: OrgState, claimed: set[str]) -> dict[str, int]:
-    """Per-team count of sovereign-to-sovereign edges with no shared domain.
+    """Per-team count of sovereign-to-sovereign edges with no working roof.
 
     Both endpoints must hold clean local authority: an edge touching an
     escalating team already resolves along that team's line, so only two
-    sovereigns can face each other with nobody above them. Sharing any
-    enclosing domain counts as a roof (the unit and its lead are where the
-    conflict can be taken); a loose team shares no domain with anyone.
+    sovereigns can face each other with nobody above them. A shared
+    enclosing domain counts as a roof only when its subtree holds a clean
+    authority beyond the two endpoints themselves: an institution needs at
+    least one officer, so two sovereigns alone under a nominal roof are
+    still unowned. A loose team shares no domain with anyone.
     """
-    ancestors: dict[str, frozenset[str]] = {}
+    ancestors: dict[str, list[str]] = {}
     parent_of = {d.id: d.parent_id for d in org.domains}
     for domain in org.domains:
         chain: list[str] = []
@@ -138,23 +145,36 @@ def _unowned_interface_counts(org: OrgState, claimed: set[str]) -> dict[str, int
         while current is not None:
             chain.append(current)
             current = parent_of.get(current)
-        ancestors[domain.id] = frozenset(chain)
-    sovereign = {
-        t.id: t.domain_id
-        for t in org.teams
-        if t.has_local_authority and t.id not in claimed
+        ancestors[domain.id] = chain
+    # Endpoint sovereignty is structural (a claim does not dissolve the
+    # unowned edge: contest never repairs fragmentation), while an officer
+    # must be clean: a contested authority cannot convene resolution.
+    sovereign = {t.id: t.domain_id for t in org.teams if t.has_local_authority}
+    officers = {
+        team_id: domain_id
+        for team_id, domain_id in sovereign.items()
+        if team_id not in claimed
     }
     counts = {t.id: 0 for t in org.teams}
-    empty: frozenset[str] = frozenset()
+    empty: list[str] = []
+    officer_counts: dict[str, int] = {}
     for dep in org.internal_dependencies():
         if dep.upstream not in sovereign or dep.downstream not in sovereign:
             continue
-        up_domain = sovereign[dep.upstream]
-        down_domain = sovereign[dep.downstream]
-        up_roof = ancestors.get(up_domain, empty) if up_domain else empty
-        down_roof = ancestors.get(down_domain, empty) if down_domain else empty
-        if up_roof & down_roof:
-            continue
+        up_chain = ancestors.get(sovereign[dep.upstream] or "", empty)
+        down_roof = set(ancestors.get(sovereign[dep.downstream] or "", empty))
+        roof = next((d for d in reversed(up_chain) if d in down_roof), None)
+        if roof is not None:
+            if roof not in officer_counts:
+                inside = domain_subtree_ids(org, roof)
+                officer_counts[roof] = sum(
+                    1 for tid, did in officers.items() if did in inside
+                )
+            endpoint_officers = (dep.upstream in officers) + (
+                dep.downstream in officers
+            )
+            if officer_counts[roof] - endpoint_officers >= _MIN_DISTINCT_OFFICERS:
+                continue
         counts[dep.upstream] += 1
         counts[dep.downstream] += 1
     return counts
@@ -185,9 +205,13 @@ def scale_context(org: OrgState, params: SimulationParameters) -> ScaleContext:
     weighs, and escalation_load_share of its workload lands on that unit's
     clean authorities: the singularity is a queue and it prices itself.
     The shed load is never attenuated by the prince band (the band forgives
-    friction, not bandwidth). A team with no resolving unit up its chain
-    resolves at the frame itself: it is priced at the frame's population
-    and sheds onto the frame's clean authorities; when no clean authority
+    friction, not bandwidth) and it follows the wiring: an escalating team
+    sheds to the resolving authorities it actually has dependencies with,
+    so an unconnected authority absorbs nothing and cannot launder a
+    saturated centre; wiring it in costs coupling on both ends. Only an
+    escalator with no edge to any resolving authority falls back to an
+    equal split across the scope's authorities. A team with no resolving
+    unit up its chain resolves at the frame itself; when no clean authority
     exists anywhere it sheds nothing and its own capacity cut carries the
     cost. Contest is priced at the frame's contest factor: a claim is
     org-visible, not neighbourhood-local.
@@ -204,34 +228,59 @@ def scale_context(org: OrgState, params: SimulationParameters) -> ScaleContext:
     parent_of = {d.id: d.parent_id for d in org.domains}
     groups: dict[str | None, list[str]] = {}
     for team in org.teams:
-        if team.id in claimed:
+        contested = team.id in claimed
+        if contested:
             factors[team.id] = contest_scale_factor(frame_factor)
-            continue
-        if team.has_local_authority:
+            if team.has_local_authority:
+                continue
+        elif team.has_local_authority:
             factors[team.id] = frame_factor
             continue
+        # An escalating team sheds whether or not it is also contested: a
+        # claim never lightens a queue, it only disputes who clears it.
         scope = team.domain_id
         while scope is not None and scope not in marked:
             scope = parent_of.get(scope)
-        if scope is None:
-            factors[team.id] = frame_factor
-        else:
-            factors[team.id] = prince_scale_factor(
-                headcount_in_domain(org, scope), params
-            )
+        if not contested:
+            if scope is None:
+                factors[team.id] = frame_factor
+            else:
+                factors[team.id] = prince_scale_factor(
+                    headcount_in_domain(org, scope), params
+                )
         groups.setdefault(scope, []).append(team.id)
     shed = params.escalation_load_share * org.workload
+    neighbours: dict[str, set[str]] = {}
+    for dep in org.internal_dependencies():
+        neighbours.setdefault(dep.upstream, set()).add(dep.downstream)
+        neighbours.setdefault(dep.downstream, set()).add(dep.upstream)
+    # The queue lands where the line points whether or not that line is
+    # contested: a claim on the receiving authority disputes who clears
+    # the work, it never makes the work disappear, so a blanket overlay
+    # cannot drain the centre's queue by contesting it.
+    line_authorities = [t for t in org.teams if t.has_local_authority]
     for scope, escalators in groups.items():
         if scope is None:
-            recipients = clean_authorities
+            recipients = line_authorities
         else:
             inside = domain_subtree_ids(org, scope)
-            recipients = [t for t in clean_authorities if t.domain_id in inside]
+            recipients = [t for t in line_authorities if t.domain_id in inside]
         if not recipients:
             continue
-        per_recipient = shed * len(escalators) / len(recipients)
-        for recipient in recipients:
-            inflow[recipient.id] += per_recipient
+        recipient_ids = {t.id for t in recipients}
+        unwired = 0
+        for team_id in escalators:
+            wired = sorted(neighbours.get(team_id, set()) & recipient_ids)
+            if wired:
+                per_recipient = shed / len(wired)
+                for recipient_id in wired:
+                    inflow[recipient_id] += per_recipient
+            else:
+                unwired += 1
+        if unwired:
+            per_recipient = shed * unwired / len(recipients)
+            for recipient in recipients:
+                inflow[recipient.id] += per_recipient
     return ScaleContext(
         factors=factors,
         inflow=inflow,

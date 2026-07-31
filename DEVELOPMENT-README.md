@@ -165,6 +165,19 @@ hold, both canonical blunders staying negative included. Deterministic, no
 randomness; exits non-zero if any conclusion fails. The site's model page
 (`docs/model.html`) publishes its result.
 
+### Calibration harness
+
+```
+python calibrate.py
+```
+
+Scores the organisations in `examples/calibration/` against the expected
+bands their `calibration` blocks declare, printing the penalty decomposition
+beside each verdict and exiting non-zero when any case lands outside its
+band. Cases are modelled with outcome knowledge (see the directory's README
+and PREREGISTRATION.md: they are permanently ineligible for the blind
+validation set); add new ones from `TEMPLATE.json`.
+
 ## Conventions
 
 - No magic numbers: domain values come from data, configuration or named

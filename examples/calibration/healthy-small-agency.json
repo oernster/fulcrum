@@ -1,0 +1,90 @@
+{
+  "teams": [
+    {
+      "id": "founder",
+      "name": "Founders",
+      "has_local_authority": true,
+      "incentive_skew": 0.05,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 2
+    },
+    {
+      "id": "design",
+      "name": "Design",
+      "has_local_authority": true,
+      "incentive_skew": 0.1,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 6
+    },
+    {
+      "id": "build_a",
+      "name": "Build A",
+      "has_local_authority": true,
+      "incentive_skew": 0.1,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 6
+    },
+    {
+      "id": "build_b",
+      "name": "Build B",
+      "has_local_authority": true,
+      "incentive_skew": 0.15,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 6
+    },
+    {
+      "id": "ops",
+      "name": "Ops and accounts",
+      "has_local_authority": true,
+      "incentive_skew": 0.1,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 6
+    }
+  ],
+  "dependencies": [
+    {
+      "upstream": "design",
+      "downstream": "build_a",
+      "propagation_delay": 1
+    },
+    {
+      "upstream": "design",
+      "downstream": "build_b",
+      "propagation_delay": 1
+    },
+    {
+      "upstream": "ops",
+      "downstream": "founder",
+      "propagation_delay": 0
+    }
+  ],
+  "workload": 4,
+  "origin": "imported",
+  "domains": [
+    {
+      "id": "company",
+      "name": "Company",
+      "parent_id": null,
+      "lead": "",
+      "category": "Company",
+      "headcount": 0
+    }
+  ],
+  "claims": [],
+  "calibration": {
+    "label": "Healthy small agency (~26)",
+    "expected_min": 85,
+    "expected_max": 100,
+    "note": "empowered teams, light handoffs; the shape that just works"
+  }
+}

@@ -19,7 +19,7 @@ from fulcrum.domain.simulation import evaluate
 _EXAMPLES = Path(__file__).resolve().parents[2] / "examples"
 
 _PUBLISHED = (
-    ("org-1-startup.json", "well-designed/startup.json", 89.3, 98.7),
+    ("org-1-startup.json", "well-designed/startup.json", 84.7, 98.7),
     ("org-2-scaleup.json", "well-designed/scaleup.json", 46.5, 91.0),
     ("org-3-enterprise.json", "well-designed/enterprise.json", 19.4, 78.7),
     ("org-4-very-large.json", "well-designed/very-large.json", 15.4, 68.8),

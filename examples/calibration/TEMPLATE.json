@@ -1,0 +1,45 @@
+{
+  "teams": [
+    {
+      "id": "team_id",
+      "name": "Team name",
+      "has_local_authority": true,
+      "incentive_skew": 0.0,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 8
+    }
+  ],
+  "dependencies": [
+    {
+      "upstream": "team_id",
+      "downstream": "other_team_id",
+      "propagation_delay": 2
+    }
+  ],
+  "workload": 5,
+  "origin": "imported",
+  "domains": [
+    {
+      "id": "company",
+      "name": "Company",
+      "parent_id": null,
+      "lead": "",
+      "category": "Company",
+      "headcount": 0
+    }
+  ],
+  "claims": [
+    {
+      "claimant": "chapter_or_second_boss",
+      "subject": "team_id"
+    }
+  ],
+  "calibration": {
+    "label": "Short name, era (~people)",
+    "expected_min": 0,
+    "expected_max": 100,
+    "note": "One sentence on what actually happened there."
+  }
+}

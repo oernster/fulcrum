@@ -19,10 +19,29 @@ organisations with documented delivery collapse.
 
 The model under test is the scoring function in
 `fulcrum/domain/simulation.py` with the default `SimulationParameters`
-published there, at the release tag named in the registry deposit. Any change
-to a coefficient or to the scoring mechanics after deposit constitutes a new
-model and requires a fresh registration; results under a changed model cannot
-be reported against this one.
+published in `fulcrum/domain/parameters.py`, at the release tag named in the
+registry deposit, which must be the 4.0.0 release or later. That model
+includes the scale-dependent authority pricing introduced in 4.0.0: the
+prince band, resolution neighbourhoods with escalation load, unowned
+interfaces and the proportional influence and claim divisors, together with
+the conformance suites (`tests/domain/test_authority_scale.py`, claims C1 to
+C10, and `tests/domain/test_resolution_conformance.py`, claims C11 to C17)
+that pin its behaviour. Any change to a coefficient or to the scoring
+mechanics after deposit constitutes a new model and requires a fresh
+registration; results under a changed model cannot be reported against this
+one. Earlier drafts of this protocol described the pre-4.0.0 flat-priced
+model; no deposit was made under it and no organisation was scored under it
+for this protocol.
+
+## Calibration cases are excluded
+
+The repository carries a calibration harness (`calibrate.py` with
+`examples/calibration/`) whose cases are modelled with knowledge of their
+outcomes, including cases drawn from the author's lived experience. They
+exist to form and tune the prior and are therefore permanently ineligible
+for the validation set: a case that has appeared in the calibration
+directory, or whose organisation the author has modelled with outcome
+knowledge, is excluded from case assembly under the blinding rule below.
 
 ## Design
 

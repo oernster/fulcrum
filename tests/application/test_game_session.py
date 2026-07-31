@@ -120,7 +120,7 @@ def test_session_exposes_its_simulator():
 def test_game_session_flow():
     session = GameSession(_org(), _FakeSimulator())
     assert session.score() == 50.0
-    assert len(session.signals()) == 5
+    assert len(session.signals()) == 7
     assert len(session.candidate_valuations()) == len(enumerate_moves(_org()))
     session.play(Move(MoveKind.DELEGATE_AUTHORITY, ("b",)))
     assert session.org.team("b").has_local_authority is True
@@ -155,7 +155,7 @@ def test_focus_scores_only_the_section():
     session.focus("d1")
     assert session.focused_on == "d1"
     assert len(session.candidate_valuations()) < full_moves
-    assert len(session.signals()) == 5
+    assert len(session.signals()) == 7
     assert session.score() == 50.0
 
 

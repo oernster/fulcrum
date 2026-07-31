@@ -4,12 +4,14 @@ import pytest
 
 from fulcrum.domain.models import AuthorityClaim, Dependency, OrgState, Team
 from fulcrum.domain.signals import (
+    CENTRE_LOAD,
     CONTESTED,
     ESCALATIONS,
     INFLUENCE,
     QUEUE_AGE,
     REWORK_RATE,
     SIGNAL_DEFINITIONS,
+    UNOWNED_INTERFACES,
     SignalReading,
     compute_signals,
     definition,
@@ -28,7 +30,7 @@ def _t(team_id, authority=True, skew=0.0):
 
 def test_definition_lookup():
     assert definition(QUEUE_AGE).label == "Handoff queue age"
-    assert len(SIGNAL_DEFINITIONS) == 5
+    assert len(SIGNAL_DEFINITIONS) == 7
 
 
 def test_compute_signals_values_and_order():
@@ -39,13 +41,25 @@ def test_compute_signals_values_and_order():
     )
     readings = compute_signals(org)
     keys = tuple(r.definition.key for r in readings)
-    assert keys == (QUEUE_AGE, ESCALATIONS, REWORK_RATE, INFLUENCE, CONTESTED)
+    assert keys == (
+        QUEUE_AGE,
+        ESCALATIONS,
+        REWORK_RATE,
+        INFLUENCE,
+        CONTESTED,
+        CENTRE_LOAD,
+        UNOWNED_INTERFACES,
+    )
     by_key = {r.definition.key: r.value for r in readings}
     assert by_key[ESCALATIONS] == 1.0
     assert by_key[REWORK_RATE] == pytest.approx((0.4 + 0.6) / 2 * 100)
     assert by_key[QUEUE_AGE] >= 0.0
     assert by_key[INFLUENCE] >= 0.0
     assert by_key[CONTESTED] == 0.0
+    # One escalator shedding a quarter of the workload onto its wired
+    # authority; no sovereign pair, so no unowned interfaces.
+    assert by_key[CENTRE_LOAD] == pytest.approx(0.25 * 6)
+    assert by_key[UNOWNED_INTERFACES] == 0.0
 
 
 def _reading(key: str, value: float) -> SignalReading:

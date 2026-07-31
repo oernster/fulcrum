@@ -1,0 +1,162 @@
+{
+  "teams": [
+    {
+      "id": "leadership",
+      "name": "Group leadership",
+      "has_local_authority": true,
+      "incentive_skew": 0.1,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 200
+    },
+    {
+      "id": "core",
+      "name": "Core product",
+      "has_local_authority": false,
+      "incentive_skew": 0.4,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 1200
+    },
+    {
+      "id": "platform",
+      "name": "Platform",
+      "has_local_authority": false,
+      "incentive_skew": 0.5,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 900
+    },
+    {
+      "id": "payments",
+      "name": "Payments",
+      "has_local_authority": false,
+      "incentive_skew": 0.4,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 800
+    },
+    {
+      "id": "data",
+      "name": "Data",
+      "has_local_authority": false,
+      "incentive_skew": 0.6,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 700
+    },
+    {
+      "id": "infra",
+      "name": "Infrastructure",
+      "has_local_authority": false,
+      "incentive_skew": 0.5,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 800
+    },
+    {
+      "id": "intl",
+      "name": "International",
+      "has_local_authority": false,
+      "incentive_skew": 0.5,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 900
+    },
+    {
+      "id": "qa",
+      "name": "Quality",
+      "has_local_authority": false,
+      "incentive_skew": 0.7,
+      "domain_id": "company",
+      "size": 1,
+      "owner": "",
+      "headcount": 500
+    }
+  ],
+  "dependencies": [
+    {
+      "upstream": "platform",
+      "downstream": "core",
+      "propagation_delay": 4
+    },
+    {
+      "upstream": "platform",
+      "downstream": "payments",
+      "propagation_delay": 4
+    },
+    {
+      "upstream": "infra",
+      "downstream": "platform",
+      "propagation_delay": 3
+    },
+    {
+      "upstream": "data",
+      "downstream": "core",
+      "propagation_delay": 3
+    },
+    {
+      "upstream": "core",
+      "downstream": "intl",
+      "propagation_delay": 5
+    },
+    {
+      "upstream": "qa",
+      "downstream": "core",
+      "propagation_delay": 2
+    },
+    {
+      "upstream": "qa",
+      "downstream": "payments",
+      "propagation_delay": 2
+    },
+    {
+      "upstream": "leadership",
+      "downstream": "core",
+      "propagation_delay": 3
+    }
+  ],
+  "workload": 6,
+  "origin": "imported",
+  "domains": [
+    {
+      "id": "company",
+      "name": "Company",
+      "parent_id": null,
+      "lead": "",
+      "category": "Company",
+      "headcount": 0
+    }
+  ],
+  "claims": [
+    {
+      "claimant": "pmo",
+      "subject": "core"
+    },
+    {
+      "claimant": "pmo",
+      "subject": "intl"
+    },
+    {
+      "claimant": "chapter_eng",
+      "subject": "platform"
+    },
+    {
+      "claimant": "chapter_eng",
+      "subject": "infra"
+    }
+  ],
+  "calibration": {
+    "label": "Matrixed enterprise (~6,000)",
+    "expected_min": 0,
+    "expected_max": 30,
+    "note": "matrix overlay on a delayed dependency chain; the documented-collapse shape"
+  }
+}

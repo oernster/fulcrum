@@ -354,7 +354,10 @@ def evaluate(
         for t in org.teams
     )
     value /= _UNIT + params.influence_weight * weighted_influence / team_count
-    value /= _UNIT + params.contested_weight * claim_load(org, index)
+    # Claims divide by their per-team mean for the same reason: a matrix
+    # overlay across a whole division is priced as the share of the org it
+    # actually contests, not as an absolute count that dwarfs everything.
+    value /= _UNIT + params.contested_weight * claim_load(org, index) / team_count
     return StructuralScore(
         value=max(_ZERO, min(params.max_score, value)),
         latency_penalty=latency,

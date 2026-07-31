@@ -10,8 +10,8 @@ layer). Pure transformations, registered in moves.py's dispatch table.
 from __future__ import annotations
 
 from fulcrum.domain.errors import InvalidMoveError, UnknownTeamError
-from fulcrum.domain.models import AuthorityClaim, Dependency, OrgState, Team
-from fulcrum.domain.move_base import Move, unique_prefixed_id
+from fulcrum.domain.models import AuthorityClaim, Dependency, OrgState
+from fulcrum.domain.move_base import Move
 
 _RESOLVE_TARGET_COUNT = 2
 _DOWNGRADE_TARGET_COUNT = 2
@@ -21,7 +21,17 @@ _DOWNGRADE_TARGET_COUNT = 2
 _CONSULTATION_DELAY = 1
 
 _OVERLAY_PREFIX = "overlay"
-_OVERLAY_NAME = "Matrix overlay"
+
+
+def _unique_overlay_label(org: OrgState) -> str:
+    """The first overlay label unused as a team id or an existing claimant."""
+    taken = set(org.team_ids) | {c.claimant for c in org.claims}
+    index = 1
+    candidate = f"{_OVERLAY_PREFIX}_{index}"
+    while candidate in taken:
+        index += 1
+        candidate = f"{_OVERLAY_PREFIX}_{index}"
+    return candidate
 
 
 def resolve_authority(org: OrgState, move: Move) -> OrgState:
@@ -96,15 +106,17 @@ def downgrade_claim(org: OrgState, move: Move) -> OrgState:
 def impose_matrix_overlay(org: OrgState, move: Move) -> OrgState:
     """Overlay a second claimant on every team: the canonical matrix blunder.
 
-    A new overlay actor claims every existing team's decision class, so every
-    team becomes contested at once. Nothing else changes, which isolates the
-    mechanism: the damage is pure contest.
+    The overlay actor claims every existing team's decision class, so every
+    team becomes contested at once. The claimant is an unmodelled label,
+    not a delivery team: a matrix overlay sits beside the delivery graph,
+    so it neither dilutes the per-team means nor absorbs any escalated
+    load. Nothing else changes, which isolates the mechanism: the damage
+    is pure contest.
     """
-    overlay_id = unique_prefixed_id(org, _OVERLAY_PREFIX)
-    overlay = Team(id=overlay_id, name=_OVERLAY_NAME, has_local_authority=True)
+    overlay_id = _unique_overlay_label(org)
     new_claims = tuple(AuthorityClaim(overlay_id, t.id) for t in org.teams)
     return OrgState(
-        teams=org.teams + (overlay,),
+        teams=org.teams,
         dependencies=org.dependencies,
         workload=org.workload,
         origin=org.origin,

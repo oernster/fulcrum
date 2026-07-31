@@ -21,6 +21,16 @@ the mispricings the review found fails loudly:
   C14 Influence is priced proportionally: one overloaded hub costs a
       large organisation a slice of its score, never half of it, and the
       same hub costs a small organisation relatively more.
+  C15 Claims are priced proportionally: a standing claim costs its share
+      of the organisation it contests, never a flat tithe on the whole.
+  C16 Shed load follows the wiring: a resolving authority receives the
+      escalations it actually has dependencies with, so a disconnected
+      puppet authority absorbs nothing and cannot launder a saturated
+      centre; wiring it in costs coupling on both ends.
+  C17 A roof needs an officer: a shared domain owns its sovereigns'
+      interfaces only when its subtree holds a clean authority beyond the
+      two endpoints, so two sovereigns alone under a nominal roof are
+      still unowned.
 
 Claims C1 to C10, the prince band itself, live in test_authority_scale.py.
 """
@@ -29,7 +39,7 @@ from itertools import pairwise
 
 import pytest
 
-from fulcrum.domain.models import Dependency, Domain, OrgState, Team
+from fulcrum.domain.models import AuthorityClaim, Dependency, Domain, OrgState, Team
 from fulcrum.domain.simulation import DEFAULT_PARAMETERS, evaluate, scale_context
 
 _PARAMS = DEFAULT_PARAMETERS
@@ -200,3 +210,82 @@ def test_c14_influence_is_priced_proportionally():
     small_base = evaluate(_advisory_org(12, with_hub=False)).value
     small_cost = small_base - evaluate(_advisory_org(12, with_hub=True)).value
     assert small_cost > large_cost
+
+
+def test_c15_claims_are_priced_proportionally():
+    """One claim costs a large organisation its share, never a tithe."""
+    teams = tuple(
+        Team(f"t{i}", f"T{i}", True, domain_id="company", headcount=100)
+        for i in range(50)
+    )
+    roof = (Domain("company", "Company"),)
+    base = OrgState(teams=teams, workload=3, domains=roof)
+    claimed = OrgState(
+        teams=teams,
+        workload=3,
+        domains=roof,
+        claims=(AuthorityClaim("chapter", "t0"),),
+    )
+    cost = evaluate(base).value - evaluate(claimed).value
+    assert 0.0 < cost <= _HUB_COST_CEILING
+    # The identical claim weighs relatively more in a small organisation.
+    small_teams = tuple(
+        Team(f"t{i}", f"T{i}", True, domain_id="company", headcount=100)
+        for i in range(5)
+    )
+    small_base = OrgState(teams=small_teams, workload=3, domains=roof)
+    small_claimed = OrgState(
+        teams=small_teams,
+        workload=3,
+        domains=roof,
+        claims=(AuthorityClaim("chapter", "t0"),),
+    )
+    small_cost = evaluate(small_base).value - evaluate(small_claimed).value
+    assert small_cost > cost
+
+
+def test_c16_shed_load_follows_the_wiring():
+    """A disconnected authority absorbs nothing: no laundering a queue."""
+    founder = Team("founder", "Founder", True, headcount=8)
+    subs = tuple(Team(f"t{i}", f"T{i}", False, headcount=8) for i in range(10))
+    deps = tuple(Dependency("founder", f"t{i}", 1) for i in range(10))
+    saturated = OrgState(teams=(founder,) + subs, dependencies=deps, workload=3)
+    puppet = Team("puppet", "Puppet", True, headcount=1)
+    laundered = OrgState(teams=(founder, puppet) + subs, dependencies=deps, workload=3)
+    before = scale_context(saturated, _PARAMS)
+    after = scale_context(laundered, _PARAMS)
+    assert after.inflow["puppet"] == 0.0
+    assert after.inflow["founder"] == before.inflow["founder"]
+    # Unwired escalators still fall back to an equal split, so a structure
+    # with no edges keeps its centre loaded (C11's fixture relies on it).
+    edgeless = OrgState(teams=(founder, puppet) + subs, workload=3)
+    fallback = scale_context(edgeless, _PARAMS)
+    assert fallback.inflow["founder"] > 0.0
+    assert fallback.inflow["puppet"] == fallback.inflow["founder"]
+
+
+def test_c17_a_roof_needs_an_officer():
+    """Two sovereigns alone under a nominal roof are still unowned."""
+    roof = (Domain("c", "Company"),)
+    duo = OrgState(
+        teams=(
+            Team("a", "A", True, domain_id="c", headcount=3_000),
+            Team("b", "B", True, domain_id="c", headcount=3_000),
+        ),
+        dependencies=(Dependency("a", "b", 0),),
+        workload=1,
+        domains=roof,
+    )
+    duo_context = scale_context(duo, _PARAMS)
+    assert duo_context.unowned["a"] == 1
+    assert duo_context.unowned["b"] == 1
+    officer = Team("officer", "Officer", True, domain_id="c", headcount=10)
+    trio = OrgState(
+        teams=duo.teams + (officer,),
+        dependencies=duo.dependencies,
+        workload=1,
+        domains=roof,
+    )
+    trio_context = scale_context(trio, _PARAMS)
+    assert all(count == 0 for count in trio_context.unowned.values())
+    assert evaluate(trio).value > evaluate(duo).value

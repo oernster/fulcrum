@@ -106,19 +106,19 @@ def test_downgrade_validates_its_targets():
 def test_matrix_overlay_contests_every_team():
     org = OrgState(teams=(_t("a"), _t("b")), workload=1)
     after = apply_move(org, Move(MoveKind.IMPOSE_MATRIX_OVERLAY))
-    assert after.has_team("overlay_1")
-    assert after.team("overlay_1").has_local_authority is True
+    # The overlay is an unmodelled claimant beside the delivery graph, not
+    # a team: it neither dilutes per-team means nor absorbs escalated load.
+    assert not after.has_team("overlay_1")
+    assert len(after.teams) == len(org.teams)
     assert AuthorityClaim("overlay_1", "a") in after.claims
     assert AuthorityClaim("overlay_1", "b") in after.claims
-    # The overlay claims the teams that existed, not itself.
-    assert after.claims_on("overlay_1") == ()
 
 
 def test_second_overlay_gets_a_fresh_id():
     org = OrgState(teams=(_t("a"),), workload=1)
     once = apply_move(org, Move(MoveKind.IMPOSE_MATRIX_OVERLAY))
     twice = apply_move(once, Move(MoveKind.IMPOSE_MATRIX_OVERLAY))
-    assert twice.has_team("overlay_2")
+    assert AuthorityClaim("overlay_2", "a") in twice.claims
 
 
 def test_collapse_remaps_claims_and_drops_self_claims_and_duplicates():

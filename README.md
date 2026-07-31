@@ -69,11 +69,15 @@ A short tour and the books behind it are at <https://oernster.github.io/fulcrum/
   rolled-up population sets the scale at which each frame prices concentrated
   authority (the prince band: forgiven up to the Dunbar horizon of 150 people,
   priced progressively harder beyond 200); nothing else in the score reads it.
-- Two example org sets under `examples/`: a debt ladder that worsens with scale
-  and a well-designed reference set that stays healthy.
+- Three example org sets under `examples/`: a debt ladder that worsens with
+  scale, a well-designed reference set that stays healthy and a calibration
+  set (`examples/calibration/`, scored by `python calibrate.py`) whose cases
+  carry expected score bands drawn from known outcomes, so the coefficients
+  answer to lived experience rather than taste.
 - Signals to watch (handoff queue age, escalations, rework, influence without
-  authority and contested ownership), each carrying its own definition: hover
-  for a gloss, click for the full meaning.
+  authority, contested ownership, centre escalation load and unowned
+  interfaces), each carrying its own definition: hover for a gloss, click for
+  the full meaning.
 - Structural moves scored from blunder to great. The Guide plans every level
   of the organisation at once: a tree of frames where each leaf line is
   priced in whole-org points (the composing badges sum to the headline and

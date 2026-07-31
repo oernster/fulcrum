@@ -24,12 +24,19 @@ _PERCENT: float = 100.0
 # Floor on capacity used only to keep the queue-age ratio finite; real capacity
 # is always strictly positive.
 _MIN_CAPACITY: float = 1e-6
+_ZERO_LOAD: float = 0.0
 
 QUEUE_AGE = "handoff_queue_age"
 ESCALATIONS = "escalations_per_release"
 REWORK_RATE = "rework_rate"
 INFLUENCE = "influence_without_authority"
 CONTESTED = "contested_ownership"
+CENTRE_LOAD = "centre_escalation_load"
+UNOWNED_INTERFACES = "unowned_interfaces"
+
+# Two endpoints count each unowned edge once apiece, so halving the total
+# recovers the number of interfaces.
+_ENDPOINTS_PER_EDGE = 2
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,6 +114,33 @@ SIGNAL_DEFINITIONS: tuple[SignalDefinition, ...] = (
         reads_high_when="authority worldlines are split between claimants",
         maps_to="the decision semaphore and broken authority worldlines",
     ),
+    SignalDefinition(
+        key=CENTRE_LOAD,
+        label="Centre escalation load",
+        gloss=(
+            "The escalated decisions per turn landing on the most loaded "
+            "resolving authority. A founder or lead absorbing many teams' "
+            "escalations saturates however small the organisation is."
+        ),
+        measures="Escalated arrivals per turn at the most loaded authority",
+        unit="decisions per turn",
+        reads_high_when="too many teams resolve through one centre",
+        maps_to="the decision queue at a concentrated authority",
+    ),
+    SignalDefinition(
+        key=UNOWNED_INTERFACES,
+        label="Unowned interfaces",
+        gloss=(
+            "Dependencies between two sovereign teams with no working roof "
+            "above them: no shared unit holding a further authority who "
+            "could arbitrate a conflict on that edge. Cheap between a few "
+            "founders, fragmentation at scale."
+        ),
+        measures="Sovereign-to-sovereign dependencies with no working roof",
+        unit="interfaces",
+        reads_high_when="distributed authority lacks shared institutions",
+        maps_to="fragmentation: local decisions conflicting globally",
+    ),
 )
 
 _DEFINITION_BY_KEY = {d.key: d for d in SIGNAL_DEFINITIONS}
@@ -140,7 +174,7 @@ def format_reading_value(reading: SignalReading) -> str:
     key = reading.definition.key
     if key == QUEUE_AGE:
         return f"{value:.{_TURNS_DECIMALS}f} turns"
-    if key in (ESCALATIONS, CONTESTED):
+    if key in (ESCALATIONS, CONTESTED, UNOWNED_INTERFACES):
         return f"{round(value):,}"
     if key == REWORK_RATE:
         return f"{round(value)}%"
@@ -171,12 +205,16 @@ def compute_signals(
     rework = (sum(t.incentive_skew for t in org.teams) / team_count) * _PERCENT
     influence = influence_load(org, params, index)
     contested = float(sum(1 for t in org.teams if is_contested(org, t, index)))
+    centre_load = max(context.inflow.values(), default=_ZERO_LOAD)
+    unowned = sum(context.unowned.values()) / _ENDPOINTS_PER_EDGE
     values = {
         QUEUE_AGE: queue_age,
         ESCALATIONS: escalations,
         REWORK_RATE: rework,
         INFLUENCE: influence,
         CONTESTED: contested,
+        CENTRE_LOAD: centre_load,
+        UNOWNED_INTERFACES: unowned,
     }
     return tuple(
         SignalReading(definition=d, value=values[d.key]) for d in SIGNAL_DEFINITIONS
