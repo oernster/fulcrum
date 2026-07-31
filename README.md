@@ -73,8 +73,11 @@ A short tour and the books behind it are at <https://oernster.github.io/fulcrum/
   scale, a well-designed reference set that stays healthy and a calibration
   set (`examples/calibration/`, scored by `python calibrate.py`) whose cases
   carry expected score bands drawn from known outcomes, so the coefficients
-  answer to lived experience rather than taste. The calibration cases are
-  also available in-app via Organisation | Open example organisation, each loading
+  answer to lived experience rather than taste. Every calibration case is a
+  drillable hierarchy of small varied teams; the six-thousand-person
+  enterprise case is generated deterministically by
+  `generate_matrixed_enterprise.py`. The calibration cases are also
+  available in-app via Organisation | Open example organisation, each loading
   onto the board ready to inspect, play and rework in the editor.
 - Signals to watch (handoff queue age, escalations, rework, influence without
   authority, contested ownership, centre escalation load and unowned
@@ -103,8 +106,10 @@ A short tour and the books behind it are at <https://oernster.github.io/fulcrum/
   the organisation and the moves played on it.
 - Full keyboard navigation: the whole interface sits on one explicit focus ring,
   so every control is reachable without a mouse.
-- Help built in: a decision glossary and a background page on the Decision
-  Architecture books.
+- Help built in: About, both licence texts, a decision glossary and a
+  background page on the Decision Architecture books. Long help content
+  reads itself down gently, holds at the end and rewinds; it yields the
+  moment you scroll by hand and resumes where you stopped.
 
 ## Stack
 
@@ -117,7 +122,7 @@ A short tour and the books behind it are at <https://oernster.github.io/fulcrum/
 | Format and lint | black (line length 88), flake8, ruff |
 | Icons and images | Pillow (build time) |
 | Packaging | Nuitka (Windows and macOS), Flatpak (Linux) |
-| Site | static HTML from `build_docs.py`, served on GitHub Pages |
+| Site | hand-maintained static HTML under `docs/`, served on GitHub Pages |
 | Licence | model GPL-3.0, UI LGPL-3.0 |
 
 ## Install and run
