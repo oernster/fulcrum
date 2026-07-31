@@ -86,6 +86,11 @@ QPushButton:enabled:hover {{ border-color: {p.ring_green}; }}
    plate so the marks read large; padding only, so the generic hover and
    focus ring rules still apply. */
 QPushButton#TrayGlow {{ padding: 2px 6px; }}
+/* The complete picture is a keyboard stop (Enter asks for the drill map),
+   so its focus is visible: the standard green ring, transparent at rest so
+   gaining focus never reflows the canvas. */
+QGraphicsView#CompleteMap {{ border: 2px solid transparent; }}
+QGraphicsView#CompleteMap:enabled:focus {{ border: 2px solid {p.ring_green}; }}
 QPushButton:enabled:focus {{ border-color: {p.ring_green}; outline: none; }}
 QPushButton:pressed {{ background-color: {p.surface}; }}
 /* Any button carrying a dropdown menu shares the spinbox arrow, so every

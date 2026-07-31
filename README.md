@@ -53,10 +53,16 @@ A short tour and the books behind it are at <https://ernster.dev/fulcrum/>.
   its own repair moves: resolve the class to a single owner, or downgrade a
   claimant to an explicitly priced consulted dependency. Claims live in the
   editor beside the dependency table and round-trip through JSON.
-- Every level of the map is playable, the top level included: "Play this
-  level" scores the top-level units as one actor each, so dependencies
-  between them are priced, then "Score the whole org" returns to the flat
-  view.
+- The board opens as the complete picture: every domain and team at once,
+  with a click on any domain drilling straight into that section on the
+  navigable map and a synthetic dashed Shell tier grouping a multi-company
+  top level without asserting a modelled roof. Every level of the map is
+  playable, the top level included: "Play this level" scores the top-level
+  units as one actor each, so dependencies between them are priced, then
+  "Score the whole org" returns to the complete picture.
+- A live move record behind the central header button: every move to date,
+  earlier runs marked, each showing the organisation before and after it;
+  the record survives restarts and rides along in JSON export and import.
 - "Edit my org": reopen the current organisation in the same editor at any
   time, whatever its origin (wizard, JSON import, random generation or a
   previous edit), change it and rescore. The current org autosaves, so the

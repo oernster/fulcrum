@@ -98,7 +98,13 @@ class KeyboardNavigator(QObject):
             return False
         focus = QApplication.focusWidget()
         on_menu = self._menubar.activeAction() is not None
-        on_map = (not on_menu) and focus is self._map
+        # The map stop may be a stack of views; focus sits on the current
+        # child, so ancestry counts as being on the map.
+        on_map = (
+            (not on_menu)
+            and focus is not None
+            and (focus is self._map or self._map.isAncestorOf(focus))
+        )
         if self._is_forward(key, shift):
             self._step(_FORWARD)
             return True

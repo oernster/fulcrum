@@ -21,6 +21,10 @@ _MAX_LINES = 4
 _WRAP_FLAG = int(Qt.TextFlag.TextWordWrap)
 
 
+_LAST_MOVE_PREFIX = "Last move played"
+_EARLIER_RUN_SUFFIX = " (in an earlier run)"
+
+
 class MoveNoteView(QScrollArea):
     """The last move's note: height-stable, capped and scrollable when long."""
 
@@ -35,6 +39,25 @@ class MoveNoteView(QScrollArea):
         self.setFrameShape(QFrame.Shape.NoFrame)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setFixedHeight(ui_scale.px(_MIN_HEIGHT))
+
+    def show_last_move(self, session) -> None:
+        """Say what the record's last move was, or nothing without one.
+
+        The note says exactly what it explains: with history persisting
+        across runs, the last move is not necessarily one just played,
+        so a bare explanation would sit there with no context at all.
+        """
+        if session is None or not session.history:
+            self.set_text("")
+            return
+        history = session.history
+        last = history[-1]
+        earlier = len(history) <= session.prior_history_count
+        run = _EARLIER_RUN_SUFFIX if earlier else ""
+        self.set_text(
+            f"{_LAST_MOVE_PREFIX}{run}: {last.display_label()}. "
+            f"{move_note(last.kind)}"
+        )
 
     def set_text(self, text: str) -> None:
         self._label.setText(text)

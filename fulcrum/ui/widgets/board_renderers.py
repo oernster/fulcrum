@@ -97,3 +97,19 @@ def signal_row(
     holder = QWidget()
     holder.setLayout(row)
     return holder
+
+
+def render_signal_rows(layout, readings, on_detail) -> None:
+    """Fill a column with one row per signal reading."""
+    clear_layout(layout)
+    for reading in readings:
+        layout.addWidget(signal_row(reading, on_detail))
+    layout.addStretch()
+
+
+def render_move_rows(layout, active, valuations, on_play, on_preview) -> None:
+    """Fill a column with one row per candidate move."""
+    clear_layout(layout)
+    for valuation in valuations:
+        layout.addWidget(move_row(active, valuation, on_play, on_preview))
+    layout.addStretch()

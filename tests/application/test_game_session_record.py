@@ -5,7 +5,11 @@ from session_support import flat_org as _org
 from session_support import nested_org as _nested_org
 
 from fulcrum.application.dto import SessionSnapshot
-from fulcrum.application.game_session import GameSession, restore_session
+from fulcrum.application.game_session import (
+    GameSession,
+    record_positions,
+    restore_session,
+)
 from fulcrum.domain.hierarchy import TOP_LEVEL_FOCUS
 from fulcrum.domain.moves import Move, MoveKind
 
@@ -100,3 +104,16 @@ def test_a_top_level_move_is_named_as_its_rolled_unit():
         Move(MoveKind.DELEGATE_AUTHORITY, ("root",)), TOP_LEVEL_FOCUS
     )
     assert session.history[0].label == "Delegate authority to Org"
+
+
+def test_record_positions_replays_every_position():
+    """Position i is the org before history[i]; i + 1 the org after it."""
+    session = GameSession(_org(), _FakeSimulator())
+    session.play(Move(MoveKind.DELEGATE_AUTHORITY, ("b",)))
+    session.play(Move(MoveKind.REALIGN_INCENTIVES, ("a",)))
+    positions = record_positions(session.initial_org, session.history)
+    assert len(positions) == 3
+    assert positions[0] == session.initial_org
+    assert positions[0].team("b").has_local_authority is False
+    assert positions[1].team("b").has_local_authority is True
+    assert positions[2] == session.org

@@ -262,6 +262,18 @@ class OrgMapView(QGraphicsView):
             self._render()
             self.drilled.emit(self._parent_id)
 
+    def drill_to(self, domain_id: str) -> None:
+        """Enter directly at a domain's frame, as a complete-picture click.
+
+        Mirrors _drill_at's click path so the board can hand this map a
+        section chosen on the complete picture.
+        """
+        self._reset_hover()
+        self._parent_id = domain_id
+        self._cursor_id = domain_id
+        self._render()
+        self.drilled.emit(self._parent_id)
+
     def _climb(self) -> None:
         if self._parent_id is not None:
             self._reset_hover()

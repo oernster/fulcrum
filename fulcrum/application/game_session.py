@@ -89,6 +89,21 @@ def _append_claim_moves(org: OrgState, team: Team, moves: list[Move]) -> None:
             moves.append(Move(MoveKind.DOWNGRADE_CLAIM, (claim.claimant, team.id)))
 
 
+def record_positions(
+    initial: OrgState, history: tuple[Move, ...]
+) -> tuple[OrgState, ...]:
+    """Every position the record passed through: the start, then one per move.
+
+    The stored history carries translated real moves, so replaying from the
+    starting organisation reproduces each position exactly; position i is
+    the org before history[i] and position i + 1 the org after it.
+    """
+    positions = [initial]
+    for move in history:
+        positions.append(apply_move(positions[-1], move))
+    return tuple(positions)
+
+
 def _append_growth_moves(org: OrgState, moves: list[Move]) -> None:
     for team in org.teams:
         coupling = coupling_of(org, team.id)

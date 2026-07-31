@@ -2,16 +2,15 @@
 
 Domains are drawn as nested boxes holding their teams and sub-domains, with
 every dependency drawn between the teams. It complements the drill-down map by
-showing the entire structure at once rather than one level at a time. Layout is
-a simple recursive flow: each domain sizes to fit its children, wrapping after a
-few per row, and the teams are leaves.
+showing the entire structure at once rather than one level at a time; the
+geometry comes from complete_map_layout and this module draws and interacts.
 """
 
 from __future__ import annotations
 
 import math
 
-from PySide6.QtCore import QPointF, QRectF
+from PySide6.QtCore import QPointF, QRectF, Qt, Signal
 from PySide6.QtGui import (
     QBrush,
     QColor,
@@ -23,32 +22,29 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import QGraphicsScene, QGraphicsView
 
-from fulcrum.domain.hierarchy import (
-    child_domains,
-    headcount_in_domain,
-    root_domains,
-    teams_in_domain,
-)
+from fulcrum.domain.hierarchy import headcount_in_domain, teams_in_domain
 from fulcrum.domain.models import Domain, OrgState
 from fulcrum.domain.simulation import is_contested
 from fulcrum.shared.text import count_noun
 from fulcrum.ui.map_palette import map_palette
 from fulcrum.ui.widgets.complete_map_edges import direct_is_clear, route_edges
+from fulcrum.ui.widgets.complete_map_layout import (
+    HALF,
+    KIND_TEAM,
+    PAD,
+    ROOT_COLUMNS,
+    SHELL_DETAIL,
+    SHELL_ID,
+    SHELL_LABEL,
+    SUMMARY_MAX_TEAMS,
+    TEAM_H,
+    flow,
+    is_summary,
+    root_boxes,
+)
 
-_KIND_TEAM = "team"
-_KIND_DOMAIN = "domain"
-_TEAM_W = 170.0
-_TEAM_H = 58.0
-_HEADER_H = 56.0
-_PAD = 14.0
-_GAP = 16.0
-_PER_ROW = 3
-# Root divisions stack one per row so the whole tree fills a landscape viewport
-# instead of collapsing to a wide thin strip when the divisions sit side by side.
-_ROOT_COLUMNS = 1
 _CORNER = 10.0
 _PEN_W = 2
-_HALF = 2.0
 _ARROW = 9.0
 _NAME_DY = 8.0
 _SUB_DY = 31.0
@@ -66,16 +62,8 @@ _EDGE_PEN_W = 1.5
 # A hub's counted trunk draws slightly heavier than a single edge, so the
 # merge reads as "many wires" at a glance.
 _TRUNK_PEN_W = 2.5
-
-# Above this many teams the complete picture stops at the Division tier, drawing
-# each division as one summary box (its people and team totals) instead of its
-# whole subtree, so a hundred-thousand-person org reads as a spread of divisions
-# rather than tens of thousands of team boxes. The teams are reached by drilling
-# the navigable map instead.
-_SUMMARY_MAX_TEAMS = 300
-_SUMMARY_STOP_CATEGORY = "Division"
-_SUMMARY_W = 250.0
-_SUMMARY_H = _HEADER_H + _PAD
+_CLICK_SLOP = 4
+_SHELL_DASH = (4, 3)
 
 
 def _font(bold: bool = False) -> QFont:
@@ -92,55 +80,75 @@ def _blend(low: QColor, high: QColor, ratio: float) -> QColor:
     )
 
 
-class _Box:
-    """A laid-out node: a team leaf, or a domain holding positioned children."""
-
-    __slots__ = ("children", "h", "ident", "kind", "w")
-
-    def __init__(self, kind, ident, w, h, children) -> None:
-        self.kind = kind
-        self.ident = ident
-        self.w = w
-        self.h = h
-        self.children = children
-
-
-def _flow(
-    boxes: list[_Box], per_row: int = _PER_ROW
-) -> tuple[list[tuple[float, float, _Box]], float, float]:
-    """Pack boxes into rows of per_row; return (placed, width, height)."""
-    placed: list[tuple[float, float, _Box]] = []
-    x = y = row_h = right = 0.0
-    for index, box in enumerate(boxes):
-        if index and index % per_row == 0:
-            x = 0.0
-            y += row_h + _GAP
-            row_h = 0.0
-        placed.append((x, y, box))
-        right = max(right, x + box.w)
-        x += box.w + _GAP
-        row_h = max(row_h, box.h)
-    return placed, right, y + row_h
-
-
 class CompleteMapView(QGraphicsView):
-    """Draws the whole org at once: nested domain boxes, teams and all edges."""
+    """Draws the whole org at once: nested domain boxes, teams and all edges.
+
+    As the board's default view it is also an entry point: clicking any
+    domain emits domain_clicked so the board can drill straight into that
+    section, and Enter or Down asks for the drill map (drill_requested),
+    where the full keyboard cursor lives.
+    """
+
+    domain_clicked = Signal(str)
+    drill_requested = Signal()
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._scene = QGraphicsScene(self)
         self.setScene(self._scene)
+        self.setObjectName("CompleteMap")
         self.setRenderHint(QPainter.RenderHint.Antialiasing)
         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
         self.setBackgroundBrush(QBrush(map_palette().bg))
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self._org: OrgState | None = None
         self._summarize = False
+        self._domain_rects: dict[str, QRectF] = {}
+        self._press_pos = None
 
     def set_org(self, org: OrgState) -> None:
         self._org = org
-        self._summarize = len(org.teams) > _SUMMARY_MAX_TEAMS
+        self._summarize = len(org.teams) > SUMMARY_MAX_TEAMS
         self._render()
         self.show_full_size()
+
+    def apply_map_theme(self) -> None:
+        """Repaint the canvas and scene in the current map palette."""
+        self.setBackgroundBrush(QBrush(map_palette().bg))
+        self._render()
+
+    def mousePressEvent(self, event) -> None:
+        self._press_pos = event.position()
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event) -> None:
+        super().mouseReleaseEvent(event)
+        if self._press_pos is None:
+            return
+        moved = (event.position() - self._press_pos).manhattanLength()
+        self._press_pos = None
+        if moved > _CLICK_SLOP:
+            return
+        clicked = self._domain_at(self.mapToScene(event.position().toPoint()))
+        if clicked is not None:
+            self.domain_clicked.emit(clicked)
+
+    def keyPressEvent(self, event) -> None:
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Down):
+            self.drill_requested.emit()
+            return
+        super().keyPressEvent(event)
+
+    def _domain_at(self, scene_pos) -> str | None:
+        """The deepest (smallest) domain under the point, or None."""
+        best: str | None = None
+        best_area = None
+        for ident, rect in self._domain_rects.items():
+            if rect.contains(scene_pos):
+                area = rect.width() * rect.height()
+                if best_area is None or area < best_area:
+                    best, best_area = ident, area
+        return best
 
     def show_full_size(self) -> None:
         """Show the whole picture at natural size, scrolled to the top-left.
@@ -172,43 +180,23 @@ class CompleteMapView(QGraphicsView):
             self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
             self.scale(factor, factor)
 
-    def _measure(self, kind: str, ident: str) -> _Box:
-        if kind == _KIND_TEAM:
-            return _Box(_KIND_TEAM, ident, _TEAM_W, _TEAM_H, [])
-        if self._is_summary(self._domain(ident)):
-            return _Box(_KIND_DOMAIN, ident, _SUMMARY_W, _SUMMARY_H, [])
-        children = [
-            self._measure(_KIND_DOMAIN, domain.id)
-            for domain in child_domains(self._org, ident)
-        ]
-        children += [
-            self._measure(_KIND_TEAM, team.id)
-            for team in teams_in_domain(self._org, ident, recursive=False)
-        ]
-        placed, inner_w, inner_h = _flow(children)
-        offset = [(_PAD + rx, _HEADER_H + ry, box) for (rx, ry, box) in placed]
-        width = max(inner_w + _PAD * _HALF, _TEAM_W + _PAD * _HALF)
-        height = _HEADER_H + inner_h + _PAD
-        return _Box(_KIND_DOMAIN, ident, width, height, offset)
-
     def _render(self) -> None:
         self._scene.clear()
         if self._org is None:
             return
-        roots = [
-            self._measure(_KIND_DOMAIN, domain.id) for domain in root_domains(self._org)
-        ]
-        roots += [
-            self._measure(_KIND_TEAM, team.id)
-            for team in self._org.teams
-            if team.domain_id is None
-        ]
-        placed, _, _ = _flow(roots, _ROOT_COLUMNS)
+        placed, _, _ = flow(root_boxes(self._org, self._summarize), ROOT_COLUMNS)
         rects: dict[str, QRectF] = {}
-        domains: list[tuple[float, float, _Box]] = []
-        teams: list[tuple[float, float, _Box]] = []
+        domains: list = []
+        teams: list = []
         for rx, ry, box in placed:
             self._collect(box, rx, ry, rects, domains, teams)
+        # The domain rectangles double as the click targets for drilling;
+        # the synthetic Shell is not a modelled unit, so it is not one.
+        self._domain_rects = {
+            box.ident: QRectF(x, y, box.w, box.h)
+            for x, y, box in domains
+            if box.ident != SHELL_ID
+        }
         for x, y, box in domains:
             self._draw_domain(x, y, box)
         for x, y, box in teams:
@@ -252,7 +240,7 @@ class CompleteMapView(QGraphicsView):
         # Domains register a rectangle too, so an authored unit-level
         # dependency draws between the unit rectangles themselves.
         rects[box.ident] = QRectF(x, y, box.w, box.h)
-        if box.kind == _KIND_TEAM:
+        if box.kind == KIND_TEAM:
             teams.append((x, y, box))
             return
         domains.append((x, y, box))
@@ -262,10 +250,10 @@ class CompleteMapView(QGraphicsView):
     def _domain(self, ident: str) -> Domain:
         return next(domain for domain in self._org.domains if domain.id == ident)
 
-    def _is_summary(self, domain: Domain) -> bool:
-        return self._summarize and domain.category == _SUMMARY_STOP_CATEGORY
-
     def _draw_domain(self, x, y, box) -> None:
+        if box.ident == SHELL_ID:
+            self._draw_shell(x, y, box)
+            return
         domain = self._domain(box.ident)
         path = QPainterPath()
         path.addRoundedRect(QRectF(x, y, box.w, box.h), _CORNER, _CORNER)
@@ -276,19 +264,33 @@ class CompleteMapView(QGraphicsView):
         )
         people = headcount_in_domain(self._org, domain.id)
         detail = f"{domain.category} · {count_noun(people, 'person', 'people')}"
-        if self._is_summary(domain):
+        if is_summary(domain, self._summarize):
             teams = len(teams_in_domain(self._org, domain.id))
             detail = f"{detail} · {count_noun(teams, 'team')}"
         category = self._scene.addSimpleText(detail, _font())
         category.setBrush(map_palette().no_authority)
-        category.setPos(x + _PAD, y + _DOMAIN_CATEGORY_DY)
+        category.setPos(x + PAD, y + _DOMAIN_CATEGORY_DY)
         name = self._scene.addSimpleText(domain.name, _font(bold=True))
         name.setBrush(map_palette().text)
-        name.setPos(x + _PAD, y + _DOMAIN_NAME_DY)
+        name.setPos(x + PAD, y + _DOMAIN_NAME_DY)
         if domain.lead:
             lead = self._scene.addSimpleText(f"lead: {domain.lead}", _font())
             lead.setBrush(map_palette().text_muted)
-            lead.setPos(x + _PAD, y + _DOMAIN_LEAD_DY)
+            lead.setPos(x + PAD, y + _DOMAIN_LEAD_DY)
+
+    def _draw_shell(self, x, y, box) -> None:
+        """The synthetic Shell: dashed and muted, visibly not modelled."""
+        path = QPainterPath()
+        path.addRoundedRect(QRectF(x, y, box.w, box.h), _CORNER, _CORNER)
+        pen = QPen(map_palette().text_muted, _PEN_W)
+        pen.setDashPattern(_SHELL_DASH)
+        self._scene.addPath(path, pen, QBrush(Qt.BrushStyle.NoBrush))
+        name = self._scene.addSimpleText(SHELL_LABEL, _font(bold=True))
+        name.setBrush(map_palette().text_muted)
+        name.setPos(x + PAD, y + _DOMAIN_NAME_DY)
+        detail = self._scene.addSimpleText(SHELL_DETAIL, _font())
+        detail.setBrush(map_palette().text_muted)
+        detail.setPos(x + PAD, y + _DOMAIN_CATEGORY_DY)
 
     def _draw_team(self, x, y, box) -> None:
         team = self._org.team(box.ident)
@@ -303,7 +305,7 @@ class CompleteMapView(QGraphicsView):
         self._scene.addPath(path, QPen(border, _PEN_W), QBrush(map_palette().team_fill))
         name = self._scene.addSimpleText(team.name, _font(bold=True))
         name.setBrush(map_palette().text)
-        name.setPos(x + _PAD, y + _NAME_DY)
+        name.setPos(x + PAD, y + _NAME_DY)
         if contested:
             status = "contested"
         elif team.has_local_authority:
@@ -313,7 +315,7 @@ class CompleteMapView(QGraphicsView):
         sub_text = f"{status} · {count_noun(team.headcount, 'person', 'people')}"
         sub = self._scene.addSimpleText(sub_text, _font())
         sub.setBrush(map_palette().text_muted)
-        sub.setPos(x + _PAD, y + _SUB_DY)
+        sub.setPos(x + PAD, y + _SUB_DY)
 
     def _draw_edge(self, start: QPointF, end: QPointF) -> None:
         self._scene.addLine(
@@ -325,8 +327,8 @@ class CompleteMapView(QGraphicsView):
         )
         angle = math.atan2(end.y() - start.y(), end.x() - start.x())
         tip = QPointF(
-            end.x() - _TEAM_H / _HALF * math.cos(angle),
-            end.y() - _TEAM_H / _HALF * math.sin(angle),
+            end.x() - TEAM_H / HALF * math.cos(angle),
+            end.y() - TEAM_H / HALF * math.sin(angle),
         )
         left = QPointF(
             tip.x() - _ARROW * math.cos(angle - math.pi / 6),

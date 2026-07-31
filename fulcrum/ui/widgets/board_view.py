@@ -21,18 +21,20 @@ from PySide6.QtWidgets import (
 
 from fulcrum.application.dto import MoveValuation
 from fulcrum.application.game_session import GameSession
-from fulcrum.application.move_text import move_note
 from fulcrum.domain.hierarchy import total_headcount
 from fulcrum.domain.signals import SignalReading
 from fulcrum.shared.text import SCORE_DECIMALS, count_noun
 from fulcrum.ui import ui_scale
 from fulcrum.ui.analysis_thread import AnalysisThread
 from fulcrum.ui.widgets.auto_scroller import AutoScroller
-from fulcrum.ui.widgets.board_renderers import clear_layout, move_row, signal_row
+from fulcrum.ui.widgets.board_map_pane import BoardMapPane
+from fulcrum.ui.widgets.board_renderers import (
+    render_move_rows,
+    render_signal_rows,
+)
 from fulcrum.ui.widgets.board_scope import ScopePresenter
 from fulcrum.ui.widgets.move_note_view import MoveNoteView
 from fulcrum.ui.widgets.move_preview_dialog import MovePreviewDialog
-from fulcrum.ui.widgets.org_map_view import OrgMapView
 from fulcrum.ui.widgets.signal_detail_dialog import SignalDetailDialog
 
 _SCORE_DECIMALS = SCORE_DECIMALS
@@ -60,8 +62,6 @@ _RIGHT_PANE_MIN = 360
 _MOVES_RIGHT_PAD = 12
 _UNDO_LABEL = "Take a move back"
 _UNDO_TIP = "Undo the last move played"
-_LAST_MOVE_PREFIX = "Last move played"
-_EARLIER_RUN_SUFFIX = " (in an earlier run)"
 
 
 class BoardView(QWidget):
@@ -79,9 +79,11 @@ class BoardView(QWidget):
         self._origin_label.setObjectName("Muted")
         self._headcount_label = QLabel("")
         self._headcount_label.setObjectName("Muted")
-        self._scope = ScopePresenter(lambda: self._session, self._start_analysis)
-        self._map = OrgMapView()
-        self._map.drilled.connect(self._on_drilled)
+        self._scope = ScopePresenter(lambda: self._session, self._on_scope_changed)
+        # The complete picture is the default face of the board; clicking a
+        # domain on it (or pressing Enter) hands over to the drill map.
+        self._map_pane = BoardMapPane(lambda: self._session)
+        self._map_pane.drilled.connect(self._on_drilled)
         self._move_note = MoveNoteView()
         self._undo_button = QPushButton(_UNDO_LABEL)
         self._undo_button.setObjectName("UndoButton")
@@ -135,7 +137,7 @@ class BoardView(QWidget):
         caption_row.addWidget(self._scope.map_caption)
         caption_row.addStretch()
         column.addLayout(caption_row)
-        column.addWidget(self._map, 1)
+        column.addWidget(self._map_pane, 1)
         column.addWidget(self._move_note)
         return pane
 
@@ -192,8 +194,14 @@ class BoardView(QWidget):
     def set_session(self, session: GameSession) -> None:
         self._session = session
         session.focus(None)
-        self._map.reset_view()
+        self._map_pane.reset()
         self.refresh()
+
+    def _on_scope_changed(self) -> None:
+        """The Play-this-level toggle moved the scope; follow with the map."""
+        if self._session is not None:
+            self._map_pane.sync_scope(self._session.focused_on)
+        self._start_analysis()
 
     def _on_drilled(self, domain_id) -> None:
         if self._session is None:
@@ -206,8 +214,8 @@ class BoardView(QWidget):
         self._start_analysis()
 
     def apply_map_theme(self) -> None:
-        """Repaint the map in the current palette after a theme switch."""
-        self._map.apply_map_theme()
+        """Repaint the maps in the current palette after a theme switch."""
+        self._map_pane.apply_map_theme()
 
     def refresh(self) -> None:
         if self._session is None:
@@ -221,9 +229,9 @@ class BoardView(QWidget):
             f"across {count_noun(len(self._session.org.teams), 'team')}"
         )
         self._scope.refresh()
-        self._map.set_preview(False)
-        self._map.set_org(self._session.org)
-        self._set_last_move_note()
+        self._map_pane.set_preview(False)
+        self._map_pane.set_org(self._session.org)
+        self._move_note.show_last_move(self._session)
         self._update_undo()
         self._start_analysis()
 
@@ -243,7 +251,7 @@ class BoardView(QWidget):
         """The board's keyboard-nav stops, in reading order."""
         return (
             self._undo_button,
-            self._map,
+            self._map_pane,
             self._scope.level_button,
             self._moves_holder,
             self._signals_holder,
@@ -306,19 +314,16 @@ class BoardView(QWidget):
         self._scope.show_hint(_OVERVIEW_HINT)
 
     def _render_signals(self, readings: tuple[SignalReading, ...]) -> None:
-        clear_layout(self._signals_row)
-        for reading in readings:
-            self._signals_row.addWidget(signal_row(reading, self._open_signal_detail))
-        self._signals_row.addStretch()
+        render_signal_rows(self._signals_row, readings, self._open_signal_detail)
 
     def _render_moves(self, valuations: tuple[MoveValuation, ...]) -> None:
-        clear_layout(self._moves_box)
-        for valuation in valuations:
-            row = move_row(
-                self._scope_active, valuation, self._play, self._open_move_preview
-            )
-            self._moves_box.addWidget(row)
-        self._moves_box.addStretch()
+        render_move_rows(
+            self._moves_box,
+            self._scope_active,
+            valuations,
+            self._play,
+            self._open_move_preview,
+        )
 
     def _play(self, valuation: MoveValuation) -> None:
         if self._session is None:
@@ -339,22 +344,6 @@ class BoardView(QWidget):
         )
         if dialog.exec():
             self._play(valuation)
-
-    def _set_last_move_note(self) -> None:
-        # The note says exactly what it explains: with history persisting
-        # across runs, the last move is not necessarily one just played,
-        # so a bare explanation would sit there with no context at all.
-        if self._session is None or not self._session.history:
-            self._move_note.set_text("")
-            return
-        history = self._session.history
-        last = history[-1]
-        earlier = len(history) <= self._session.prior_history_count
-        run = _EARLIER_RUN_SUFFIX if earlier else ""
-        self._move_note.set_text(
-            f"{_LAST_MOVE_PREFIX}{run}: {last.display_label()}. "
-            f"{move_note(last.kind)}"
-        )
 
     def _open_signal_detail(self, reading: SignalReading) -> None:
         SignalDetailDialog(reading, self).exec()

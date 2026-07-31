@@ -46,16 +46,15 @@ from fulcrum.ui.widgets.book_background_dialog import BookBackgroundDialog
 from fulcrum.ui.widgets.busy_dialog import BusyDialog
 from fulcrum.ui.widgets.glossary_dialog import GlossaryDialog
 from fulcrum.ui.widgets.keyboard_nav import KeyboardNavigator
+from fulcrum.ui.widgets.move_record_dialog import MoveRecordDialog
 from fulcrum.ui.widgets.org_guide_dialog import OrgGuideDialog
-from fulcrum.ui.widgets.org_overview_dialog import OrgOverviewDialog
 from fulcrum.ui.widgets.provenance_dialog import ProvenanceDialog
 from fulcrum.version import APP_NAME, APP_TAGLINE
 
 _RELEASES_URL = "https://github.com/oernster/fulcrum/releases"
 _GLOSSARY_GLYPH = "\N{INFORMATION SOURCE}\N{VARIATION SELECTOR-16}"
 _GLOSSARY_TOOLTIP = "Decision glossary"
-_OVERVIEW_GLYPH = "\N{WORLD MAP}\N{VARIATION SELECTOR-16}"
-_OVERVIEW_TOOLTIP = "Organisation overview"
+_RECORD_TOOLTIP = "Move record: every move to date, with the position before and after"
 _PRESENTATION_GLYPH = "\N{CHART WITH UPWARDS TREND}"
 _PRESENTATION_TOOLTIP = "Create presentation"
 _MODEL_ORG_TOOLTIP = "Model my organisation"
@@ -144,12 +143,12 @@ class MainWindow(QMainWindow):
         top.addWidget(edit_button)
         top.addWidget(guide_button)
         top.addStretch()
-        # The app icon sits at the centre of the tray and opens the
-        # organisation overview.
-        overview_button = header_buttons.app_icon_button(
-            _OVERVIEW_TOOLTIP, self._org_overview
+        # The app icon sits at the centre of the tray and opens the move
+        # record; the complete overview lives on the board itself now.
+        record_button = header_buttons.app_icon_button(
+            _RECORD_TOOLTIP, self._move_record
         )
-        top.addWidget(overview_button)
+        top.addWidget(record_button)
         # Its golden kin sits beside it and answers why the numbers are
         # what they are: the model's provenance, coefficient by coefficient.
         provenance_button = header_buttons.provenance_icon_button(
@@ -182,7 +181,7 @@ class MainWindow(QMainWindow):
                 model_button,
                 edit_button,
                 guide_button,
-                overview_button,
+                record_button,
                 provenance_button,
                 self._theme_toggle,
                 presentation_link,
@@ -268,7 +267,7 @@ class MainWindow(QMainWindow):
         self._board.historyChanged.connect(self._undo_action.setEnabled)
 
         view_menu = self.menuBar().addMenu("View")
-        view_menu.addAction("Organisation overview...", self._org_overview)
+        view_menu.addAction("Move record...", self._move_record)
 
         help_menu = self.menuBar().addMenu("Help")
         help_menu.addAction("Decision glossary...", self._glossary)
@@ -333,10 +332,17 @@ class MainWindow(QMainWindow):
     def _provenance(self) -> None:
         ProvenanceDialog(self).exec()
 
-    def _org_overview(self) -> None:
+    def _move_record(self) -> None:
         if self._session is None:
             return
-        OrgOverviewDialog(self._session.org, self, theme=self._theme).exec()
+        MoveRecordDialog(
+            self._session.initial_org,
+            self._session.history,
+            self._session.prior_history_count,
+            self._simulator,
+            self,
+            self._theme,
+        ).exec()
 
     def _book_background(self) -> None:
         BookBackgroundDialog(self).exec()
