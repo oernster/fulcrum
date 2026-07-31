@@ -43,9 +43,13 @@ def icon_button(name: str, tooltip: str, handler, theme: str) -> QPushButton:
 
 
 def app_icon_button(tooltip: str, handler) -> QPushButton:
-    """The app icon as a button: sits at the tray's centre, opens the overview."""
+    """The app icon as a button: sits at the tray's centre, opens the overview.
+
+    Deliberately NOT an icon link: it keeps the standard button plate the
+    other header icon buttons have, so the glowing mark sits on the same
+    grey square in both themes instead of washing out on a light surface.
+    """
     button = QPushButton()
-    button.setObjectName(_ICON_LINK)
     icon_path = find_about_png()
     if icon_path is not None:
         button.setIcon(QIcon(str(icon_path)))

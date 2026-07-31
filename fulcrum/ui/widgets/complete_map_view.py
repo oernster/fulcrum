@@ -32,6 +32,7 @@ from fulcrum.domain.hierarchy import (
 from fulcrum.domain.models import Domain, OrgState
 from fulcrum.domain.simulation import is_contested
 from fulcrum.shared.text import count_noun
+from fulcrum.ui.theme import dark_canvas_scrollbar_qss
 from fulcrum.ui.widgets.complete_map_edges import direct_is_clear, route_edges
 
 _AUTHORITY = QColor("#34d399")
@@ -104,7 +105,7 @@ def _blend(low: QColor, high: QColor, ratio: float) -> QColor:
 class _Box:
     """A laid-out node: a team leaf, or a domain holding positioned children."""
 
-    __slots__ = ("kind", "ident", "w", "h", "children")
+    __slots__ = ("children", "h", "ident", "kind", "w")
 
     def __init__(self, kind, ident, w, h, children) -> None:
         self.kind = kind
@@ -142,6 +143,8 @@ class CompleteMapView(QGraphicsView):
         self.setRenderHint(QPainter.RenderHint.Antialiasing)
         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
         self.setBackgroundBrush(QBrush(_BG))
+        # The canvas stays dark in both themes; its scrollbars follow it.
+        self.setStyleSheet(dark_canvas_scrollbar_qss())
         self._org: OrgState | None = None
         self._summarize = False
 

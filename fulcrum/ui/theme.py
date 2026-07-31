@@ -328,3 +328,29 @@ QStatusBar {{
 def get_dark_qss() -> str:
     """The dark stylesheet, kept as the historical entry point."""
     return get_qss(THEME_DARK)
+
+
+def dark_canvas_scrollbar_qss() -> str:
+    """Scrollbars for the always-dark map canvas, whatever the app theme.
+
+    The board keeps its dark surface in both themes (the authority colours
+    are calibrated against it), so the scrollbars riding its viewport keep
+    the dark tokens too rather than striping it with light chrome.
+    """
+    p = DARK
+    return f"""
+QScrollBar:vertical {{ background-color: {p.surface}; width: 8px; }}
+QScrollBar:horizontal {{ background-color: {p.surface}; height: 8px; }}
+QScrollBar::handle:vertical {{
+    background-color: {p.divider};
+    border-radius: 4px;
+    min-height: 20px;
+}}
+QScrollBar::handle:horizontal {{
+    background-color: {p.divider};
+    border-radius: 4px;
+    min-width: 20px;
+}}
+QScrollBar::add-line, QScrollBar::sub-line {{ width: 0px; height: 0px; }}
+QScrollBar::add-page, QScrollBar::sub-page {{ background: none; }}
+"""

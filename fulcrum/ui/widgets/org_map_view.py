@@ -21,6 +21,7 @@ from PySide6.QtWidgets import QGraphicsScene, QGraphicsView
 from fulcrum.application.map_model import build_level
 from fulcrum.domain.models import OrgState
 from fulcrum.ui import ui_scale
+from fulcrum.ui.theme import dark_canvas_scrollbar_qss
 from fulcrum.ui.widgets import org_map_painter as painter
 
 # A section's outer ring: cyan on hover to show it opens, cyan again to mark a
@@ -63,6 +64,8 @@ class OrgMapView(QGraphicsView):
         self.setRenderHint(QPainter.RenderHint.Antialiasing)
         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
         self.setBackgroundBrush(QBrush(_BG))
+        # The canvas stays dark in both themes; its scrollbars follow it.
+        self.setStyleSheet(dark_canvas_scrollbar_qss())
         self.setMinimumHeight(ui_scale.px(_MIN_HEIGHT))
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self._org: OrgState | None = None

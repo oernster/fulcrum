@@ -274,7 +274,7 @@ class MainWindow(QMainWindow):
         """Plan every level off-thread, then open the hierarchy guide."""
         if self._session is None:
             return
-        self._guide_busy = BusyDialog("Planning every level...", self)
+        self._guide_busy = BusyDialog("Planning every level...", self, determinate=True)
         self._guide_busy.show()
         self._guide_thread = OrgGuideThread(self._session.org, self._simulator)
         self._guide_thread.progress.connect(self._guide_busy.set_progress)
