@@ -32,7 +32,8 @@ class AutoScroller(QObject):
     # The descent advances one step every second tick: the app's standard
     # reading pace, gentle enough for dense content on every surface.
     _DOWN_TICKS_PER_STEP = 2
-    _UP_STEP_PX = 6
+    # The rewind is a reposition, not a reading pass, so it travels fast.
+    _UP_STEP_PX = 15
     # Hold at the end long enough to finish reading the tail before the
     # rewind takes it away.
     _BOTTOM_PAUSE_MS = 5000
