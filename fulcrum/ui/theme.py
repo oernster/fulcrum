@@ -114,6 +114,8 @@ QPushButton#MoveButton {{
     font-size: {compact_pt}pt;
 }}
 QPushButton#SignalChip {{ padding: 6px 10px; font-size: {compact_pt}pt; }}
+/* The move record's position arrows: emoji glyphs on a compact chip. */
+QPushButton#RecordArrow {{ padding: 6px 12px; font-size: {glyph_pt}pt; }}
 QPushButton#TreeAction, QPushButton#MapZoom {{
     padding: 0;
     min-width: 0;

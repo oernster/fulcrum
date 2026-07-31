@@ -1,9 +1,10 @@
-"""The move record: every move to date, with the position before and after.
+"""The move record: every position to date, walked sequentially.
 
 The exportable HTML presentation's live sibling: the whole record (earlier
-runs included) as a list, and for the selected move the complete picture of
-the organisation it acted on, toggling between the position before the move
-and the position after it.
+runs included) as a list, and a position cursor over the full timeline from
+the original organisation to the position after the latest move. The arrow
+buttons (or the list) step the cursor; the dialog opens at the latest
+position and carries its own keyboard focus ring.
 """
 
 from __future__ import annotations
@@ -30,6 +31,7 @@ from fulcrum.shared.text import SCORE_DECIMALS
 from fulcrum.ui import ui_scale
 from fulcrum.ui.theme_palettes import DEFAULT_THEME, PALETTES
 from fulcrum.ui.widgets.complete_map_view import CompleteMapView
+from fulcrum.ui.widgets.dialog_focus_ring import WIDGET_STOP, DialogFocusRing
 from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 
 _TITLE = "Move record"
@@ -43,14 +45,16 @@ _LIST_PANE_W = 320
 _MAP_PANE_W = 860
 _EMPTY_TEXT = "No moves have been played yet."
 _EARLIER_SUFFIX = "   (earlier run)"
-_SHOW_BEFORE = "Show the position before this move"
-_SHOW_AFTER = "Show the position after this move"
-_BEFORE_WORD = "before"
-_AFTER_WORD = "after"
+_EARLIER_GLYPH = "⬅️"
+_LATER_GLYPH = "➡️"
+_EARLIER_TIP = "Show the earlier position"
+_LATER_TIP = "Show the later position"
+_ORIGINAL_CAPTION = "The original position"
+_ORIGINAL_CHANGE = "The organisation as it started, before any move."
 
 
 class MoveRecordDialog(NeutralDialog):
-    """Lists the whole record; the selected move shows before and after."""
+    """Lists the whole record; a cursor walks the positions sequentially."""
 
     def __init__(
         self,
@@ -69,7 +73,11 @@ class MoveRecordDialog(NeutralDialog):
         self._history = history
         self._positions = record_positions(initial_org, history)
         self._simulator = simulator
-        self._showing_after = True
+        # The position cursor: 0 is the original organisation, len(history)
+        # the position after the latest move, where the dialog opens.
+        self._position = len(history)
+        self._syncing = False
+        self._entered = False
         palette = PALETTES[theme if theme is not None else DEFAULT_THEME]
         self._earlier_brush = QBrush(QColor(palette.text_muted))
         layout = QVBoxLayout(self)
@@ -91,7 +99,7 @@ class MoveRecordDialog(NeutralDialog):
             if index < prior_count:
                 item.setForeground(self._earlier_brush)
             self._list.addItem(item)
-        self._list.currentRowChanged.connect(lambda _row: self._render_selected())
+        self._list.currentRowChanged.connect(self._on_row_changed)
 
         map_pane = QWidget()
         map_column = QVBoxLayout(map_pane)
@@ -101,9 +109,10 @@ class MoveRecordDialog(NeutralDialog):
         self._caption.setObjectName("Heading")
         header.addWidget(self._caption)
         header.addStretch()
-        self._toggle = QPushButton()
-        self._toggle.clicked.connect(self._flip)
-        header.addWidget(self._toggle)
+        self._earlier = self._arrow_button(_EARLIER_GLYPH, _EARLIER_TIP, -1)
+        header.addWidget(self._earlier)
+        self._later = self._arrow_button(_LATER_GLYPH, _LATER_TIP, 1)
+        header.addWidget(self._later)
         map_column.addLayout(header)
         # What the move concretely changed, stated in numbers: always
         # visible, whatever the map's encoding can or cannot show.
@@ -123,15 +132,66 @@ class MoveRecordDialog(NeutralDialog):
         panes.setSizes([ui_scale.px(_LIST_PANE_W), ui_scale.px(_MAP_PANE_W)])
         layout.addWidget(panes, 1)
         layout.addLayout(self._close_row())
-        self._list.setCurrentRow(len(history) - 1)
+        # The dialog's explicit focus ring: the list is one stop keeping its
+        # own Up and Down; Tab and Right step forward, Shift+Tab and Left
+        # back, wrapping; dead arrows (at either end of the timeline) are
+        # skipped rather than stalled on.
+        self._focus_ring = DialogFocusRing(self, self._ring, self._list_owns_updown)
+        self.finished.connect(lambda _result: self._focus_ring.detach())
+        self._render_position()
+
+    def _arrow_button(self, glyph: str, tip: str, delta: int) -> QPushButton:
+        button = QPushButton(glyph)
+        button.setObjectName("RecordArrow")
+        button.setToolTip(tip)
+        # No autoDefault: Enter belongs to the FOCUSED control (the dialog's
+        # keyPressEvent clicks it), never to whichever button Qt made the
+        # dialog default.
+        button.setAutoDefault(False)
+        button.clicked.connect(lambda: self._go(self._position + delta))
+        return button
 
     def _close_row(self) -> QHBoxLayout:
         row = QHBoxLayout()
         close_button = QPushButton("Close")
+        close_button.setAutoDefault(False)
         close_button.clicked.connect(self.accept)
+        self._close = close_button
         row.addStretch()
         row.addWidget(close_button)
         return row
+
+    def _ring(self) -> list:
+        if not self._history:
+            return [(WIDGET_STOP, self._close)]
+        return [
+            (WIDGET_STOP, self._list),
+            (WIDGET_STOP, self._earlier),
+            (WIDGET_STOP, self._later),
+            (WIDGET_STOP, self._close),
+        ]
+
+    def _list_owns_updown(self, widget) -> bool:
+        return self._history and (
+            widget is self._list or self._list.isAncestorOf(widget)
+        )
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        # First-stop entry: the dialog opens with the record list focused,
+        # so Up and Down walk the moves with no Tab press needed.
+        if not self._entered and self._history:
+            self._entered = True
+            self._list.setFocus(Qt.FocusReason.TabFocusReason)
+
+    def keyPressEvent(self, event) -> None:
+        # Enter activates the focused control, exactly as Space does.
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            target = self.focusWidget()
+            if isinstance(target, QPushButton) and target.isEnabled():
+                target.click()
+                return
+        super().keyPressEvent(event)
 
     @staticmethod
     def _initial_size(parent) -> QSize:
@@ -149,41 +209,54 @@ class MoveRecordDialog(NeutralDialog):
             round(available.height() * _SCREEN_FILL),
         )
 
-    def _flip(self) -> None:
-        self._showing_after = not self._showing_after
-        self._render_selected()
+    def _on_row_changed(self, row: int) -> None:
+        """Choosing a move shows the position that move produced."""
+        if not self._syncing and row >= 0:
+            self._go(row + 1)
 
-    def _render_selected(self) -> None:
-        index = self._list.currentRow()
-        if index < 0:
-            return
-        shown = self._positions[index + 1 if self._showing_after else index]
+    def _go(self, position: int) -> None:
+        self._position = max(0, min(position, len(self._history)))
+        self._render_position()
+
+    def _sync_list(self) -> None:
+        """Follow the cursor in the list without re-entering _go."""
+        self._syncing = True
+        if self._position == 0:
+            self._list.clearSelection()
+            self._list.setCurrentRow(-1)
+        else:
+            self._list.setCurrentRow(self._position - 1)
+        self._syncing = False
+
+    def _render_position(self) -> None:
+        p = self._position
+        shown = self._positions[p]
         self._view.set_org(shown)
-        # Mark where the selected move acted, in both positions, so a change
-        # the border encoding cannot show still has a visible location.
-        self._view.set_highlight(self._history[index].targets)
+        self._earlier.setEnabled(p > 0)
+        self._later.setEnabled(p < len(self._history))
+        self._sync_list()
         # Each line keeps to one frame: the caption describes the POSITION on
-        # screen (its own health, so flipping visibly changes the number) and
-        # the change line describes the MOVE (its climb and its located
-        # delta), never mixing the two.
-        change = describe_position_change(
-            self._positions[index], self._positions[index + 1]
-        )
-        # The toggle names the ACTION a press performs, never the state.
-        self._toggle.setText(_SHOW_BEFORE if self._showing_after else _SHOW_AFTER)
-        word = _AFTER_WORD if self._showing_after else _BEFORE_WORD
-        caption = f"Position {word} move {index + 1}"
+        # screen (its own health, so stepping visibly changes the number) and
+        # the change line describes the MOVE that produced it (its climb and
+        # its located delta), never mixing the two.
+        caption = _ORIGINAL_CAPTION if p == 0 else f"Position after move {p}"
         if self._simulator is not None:
-            shown_health = self._simulator.score(shown).value
-            caption = (
-                f"{caption}   ·   structural health "
-                f"{shown_health:.{SCORE_DECIMALS}f}"
-            )
-            before = self._simulator.score(self._positions[index]).value
-            after = self._simulator.score(self._positions[index + 1]).value
+            health = self._simulator.score(shown).value
+            caption = f"{caption}   ·   structural health {health:.{SCORE_DECIMALS}f}"
+        self._caption.setText(caption)
+        if p == 0:
+            self._view.set_highlight(())
+            self._change.setText(_ORIGINAL_CHANGE)
+            return
+        # Mark where the move that produced this position acted, so a change
+        # the border encoding cannot show still has a visible location.
+        self._view.set_highlight(self._history[p - 1].targets)
+        change = describe_position_change(self._positions[p - 1], self._positions[p])
+        if self._simulator is not None:
+            before = self._simulator.score(self._positions[p - 1]).value
+            after = self._simulator.score(self._positions[p]).value
             change = (
                 f"structural health {before:.{SCORE_DECIMALS}f} → "
                 f"{after:.{SCORE_DECIMALS}f}; {change}"
             )
-        self._caption.setText(caption)
         self._change.setText(f"This move changed: {change}")
