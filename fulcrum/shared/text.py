@@ -5,6 +5,11 @@ Pure string formatting only: no I/O, no Qt, importable from any layer.
 
 from __future__ import annotations
 
+# Decimal places for every rendered score and move value. Three places,
+# because at whole-organisation altitude a real improvement can be worth
+# hundredths of a point and one decimal would show it as nothing at all.
+SCORE_DECIMALS = 3
+
 
 def count_noun(count: int, singular: str, plural: str | None = None) -> str:
     """A count with the right noun form: '1 team', '3 teams', '1,200 people'.

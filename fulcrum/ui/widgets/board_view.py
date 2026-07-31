@@ -24,7 +24,7 @@ from fulcrum.application.game_session import GameSession
 from fulcrum.application.move_text import move_note
 from fulcrum.domain.hierarchy import total_headcount
 from fulcrum.domain.signals import SignalReading
-from fulcrum.shared.text import count_noun
+from fulcrum.shared.text import SCORE_DECIMALS, count_noun
 from fulcrum.ui import ui_scale
 from fulcrum.ui.analysis_thread import AnalysisThread
 from fulcrum.ui.widgets.auto_scroller import AutoScroller
@@ -35,7 +35,7 @@ from fulcrum.ui.widgets.move_preview_dialog import MovePreviewDialog
 from fulcrum.ui.widgets.org_map_view import OrgMapView
 from fulcrum.ui.widgets.signal_detail_dialog import SignalDetailDialog
 
-_SCORE_DECIMALS = 1
+_SCORE_DECIMALS = SCORE_DECIMALS
 _MOVES_TOOLTIP = (
     "At a high-level scope the moves are mostly neutral with very small score "
     "gains. To really gain, drill into a domain on the map and play that "

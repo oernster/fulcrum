@@ -26,11 +26,12 @@ from fulcrum.application.scope_analysis import active_org
 from fulcrum.domain.hierarchy import focused_suborg, translate_focused_move
 from fulcrum.domain.models import OrgState
 from fulcrum.domain.moves import Move, apply_move
+from fulcrum.shared.text import SCORE_DECIMALS
 from fulcrum.ui import ui_scale
 from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 from fulcrum.ui.widgets.org_map_view import OrgMapView
 
-_SCORE_DECIMALS = 1
+_SCORE_DECIMALS = SCORE_DECIMALS
 _SKEW_DECIMALS = 2
 _AFFECTED_CAP = 8
 # Fill most of the screen (the 13in laptop is the floor) so the before/after

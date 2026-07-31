@@ -16,9 +16,10 @@ from fulcrum.application.glossary import short_help
 from fulcrum.application.move_text import describe_move
 from fulcrum.domain.models import OrgState
 from fulcrum.domain.signals import SignalReading, format_reading_value
+from fulcrum.shared.text import SCORE_DECIMALS
 from fulcrum.ui import ui_scale
 
-_VALUE_DECIMALS = 1
+_VALUE_DECIMALS = SCORE_DECIMALS
 _PREVIEW_ICON = "🔍"
 _PREVIEW_TIP = "Preview this move"
 _PREVIEW_BTN_W = 44

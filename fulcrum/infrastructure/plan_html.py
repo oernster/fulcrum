@@ -13,7 +13,7 @@ from html import escape
 from fulcrum.application.dto import DomainRecommendation, PlanReport, PlanStep
 from fulcrum.domain.models import OrgState
 from fulcrum.infrastructure.svg_map import render_overview_svg
-from fulcrum.shared.text import count_noun
+from fulcrum.shared.text import SCORE_DECIMALS, count_noun
 
 _BADGE = {
     "great": "#34d399",
@@ -101,14 +101,24 @@ def _summary_html(
         [
             '<div class="card">',
             '<p class="score-line">Structural health: ',
-            f"<b>{report.start_score:.1f}</b> &rarr; <b>{report.final_score:.1f}</b> ",
-            f"({delta:+.1f}) over {count_noun(len(report.steps), 'move')}.</p>",
+            (
+                f"<b>{report.start_score:.{SCORE_DECIMALS}f}</b> &rarr; "
+                f"<b>{report.final_score:.{SCORE_DECIMALS}f}</b> "
+            ),
+            (
+                f"({delta:+.{SCORE_DECIMALS}f}) over "
+                f"{count_noun(len(report.steps), 'move')}.</p>"
+            ),
             breakdown,
             '<div class="maps">',
-            f"<figure><figcaption>Before</figcaption>"
-            f"{render_overview_svg(initial_org)}</figure>",
-            f"<figure><figcaption>After</figcaption>"
-            f"{render_overview_svg(final_org)}</figure>",
+            (
+                f"<figure><figcaption>Before</figcaption>"
+                f"{render_overview_svg(initial_org)}</figure>"
+            ),
+            (
+                f"<figure><figcaption>After</figcaption>"
+                f"{render_overview_svg(final_org)}</figure>"
+            ),
             "</div></div>",
         ]
     )
@@ -135,8 +145,10 @@ def _step_html(step: PlanStep, split: bool) -> str:
             f'<span class="badge" style="background:{colour}">',
             f"{escape(step.classification.value)}</span> ",
             f"<b>{escape(step.description)}</b> ",
-            f'<span class="score">{step.score_before:.1f} &rarr; '
-            f"{step.score_after:.1f}</span>",
+            (
+                f'<span class="score">{step.score_before:.{SCORE_DECIMALS}f} &rarr; '
+                f"{step.score_after:.{SCORE_DECIMALS}f}</span>"
+            ),
             f'<div class="rationale">{escape(step.rationale)}</div>',
             "</li>",
         ]

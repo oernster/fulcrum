@@ -16,6 +16,7 @@ from fulcrum.domain.models import OrgState
 from fulcrum.domain.moves import Move, apply_move
 from fulcrum.domain.signals import compute_signals, format_reading_value
 from fulcrum.domain.simulation import DEFAULT_THRESHOLDS, classify_delta
+from fulcrum.shared.text import SCORE_DECIMALS
 
 _ORG_WIDE_LABEL = "Organisation-wide (CTO)"
 _NO_LEAD = ""
@@ -102,7 +103,10 @@ def _rationale(
         if best is None or drop > best[0].value - best[1].value:
             best = (reading_before, reading_after)
     eased_from, eased_to = best
-    health = f"structural health {before:.1f} -> {after:.1f} ({classification})"
+    health = (
+        f"structural health {before:.{SCORE_DECIMALS}f} -> "
+        f"{after:.{SCORE_DECIMALS}f} ({classification})"
+    )
     if eased_from.value - eased_to.value > _EPS:
         eased = (
             f"{eased_from.definition.label} falls "
