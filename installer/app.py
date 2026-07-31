@@ -198,7 +198,15 @@ QLabel#InstallPath {{ font-size: 12px; color: {_TEXT_MUTED}; }}
 QLabel#StatusLine {{ font-size: 13px; color: {_TEXT}; }}
 QFrame#Divider {{ background: {_BORDER}; border: none; }}
 QCheckBox {{ spacing: 10px; font-size: 13px; color: {_TEXT}; }}
-QCheckBox::indicator {{ width: 16px; height: 16px; }}
+QCheckBox::indicator {{
+    width: 16px; height: 16px;
+    border: 2px solid {_TEXT_MUTED};
+    border-radius: 3px;
+    background: transparent;
+}}
+QCheckBox::indicator:checked {{
+    background: {_ACCENT}; border-color: {_ACCENT};
+}}
 QPushButton {{
     border: 2px solid transparent;
 }}
