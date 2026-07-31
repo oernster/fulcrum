@@ -29,7 +29,9 @@ NODE_W = 240.0
 NODE_H = 88.0
 CORNER = 10.0
 
-# Contested ownership outranks the authority gradient: any contest reads red.
+# Contested ownership outranks the authority gradient: any contest reads
+# violet (never red, which would read as an error and collide with the green
+# hover ring for red-green colour-blind readers).
 
 _GAP_Y = 72.0
 _PAD = 12.0

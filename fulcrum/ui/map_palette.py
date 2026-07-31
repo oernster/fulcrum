@@ -5,7 +5,9 @@ reading QSS, so they carry their own palette pair. set_map_theme flips the
 module's current palette; the views rebuild their scenes on the next
 refresh, which is how a theme switch repaints the board. The authority
 encoding keeps its meaning in both themes: green decides locally, amber
-escalates, red is contested; only the depth changes so each reads on its
+escalates, violet is contested (violet rather than red, so the state stays
+distinct from the green hover ring under red-green colour blindness and
+never reads as an error); only the depth changes so each reads on its
 surface.
 """
 
@@ -44,7 +46,7 @@ DARK_MAP = MapPalette(
     edge=QColor("#5b6470"),
     authority=QColor("#34d399"),
     no_authority=QColor("#f59e0b"),
-    contested=QColor("#ef4444"),
+    contested=QColor("#a855f7"),
     ring=QColor("#2f9e64"),
     preview=QColor("#fbbf24"),
 )
@@ -58,7 +60,7 @@ LIGHT_MAP = MapPalette(
     edge=QColor("#8a94a4"),
     authority=QColor("#059669"),
     no_authority=QColor("#d97706"),
-    contested=QColor("#dc2626"),
+    contested=QColor("#7c3aed"),
     ring=QColor("#15803d"),
     preview=QColor("#b45309"),
 )

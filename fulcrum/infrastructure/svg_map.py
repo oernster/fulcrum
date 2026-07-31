@@ -26,8 +26,8 @@ _FULL = 1.0
 _AUTHORITY = (52, 211, 153)
 _NO_AUTHORITY = (245, 158, 11)
 # Contested ownership outranks the authority gradient: a node carrying any
-# contest borders red, matching the on-screen map.
-_CONTESTED_STROKE = "#ef4444"
+# contest borders violet, matching the on-screen map.
+_CONTESTED_STROKE = "#a855f7"
 _DOMAIN_FILL = "#222831"
 _TEAM_FILL = "#1a1e24"
 _TEXT = "#e6e9ee"

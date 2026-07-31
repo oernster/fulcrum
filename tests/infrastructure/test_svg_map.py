@@ -43,7 +43,7 @@ def test_overview_svg_for_a_flat_org():
     assert "decides locally" in svg and "escalates" in svg
 
 
-def test_overview_svg_marks_contested_nodes_in_red():
+def test_overview_svg_marks_contested_nodes_in_violet():
     org = OrgState(
         teams=(
             Team("x", "X", True),
@@ -56,4 +56,4 @@ def test_overview_svg_marks_contested_nodes_in_red():
     svg = render_overview_svg(org)
     assert "contested" in svg
     assert "1 contested team" in svg
-    assert "#ef4444" in svg
+    assert "#a855f7" in svg
