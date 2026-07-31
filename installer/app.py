@@ -931,7 +931,22 @@ class AutoScroller(QObject):
             self.suspend()
         return False
 
+    def _frozen_under_modal(self) -> bool:
+        """Whether a modal above this surface should freeze the cycle.
+
+        Two surfaces reading at once compete for the eye, so while a modal
+        dialog is up only ITS surfaces read; anything beneath freezes in
+        place (no wait is consumed) and resumes exactly where it was when
+        the modal closes.
+        """
+        modal = QApplication.activeModalWidget()
+        if modal is None:
+            return False
+        return not (modal is self._area.window() or modal.isAncestorOf(self._area))
+
     def _tick(self) -> None:
+        if self._frozen_under_modal():
+            return
         maximum = self._bar.maximum()
         if maximum <= 0:
             return
