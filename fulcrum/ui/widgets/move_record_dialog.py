@@ -51,6 +51,7 @@ _EARLIER_TIP = "Show the earlier position"
 _LATER_TIP = "Show the later position"
 _ORIGINAL_CAPTION = "The original position"
 _ORIGINAL_CHANGE = "The organisation as it started, before any move."
+_ORIGINAL_ROW = f"0. {_ORIGINAL_CAPTION}"
 
 
 class MoveRecordDialog(NeutralDialog):
@@ -91,6 +92,11 @@ class MoveRecordDialog(NeutralDialog):
             return
 
         self._list = QListWidget()
+        # Row r shows position r: the original organisation first, then the
+        # position each move produced, so the list IS the timeline.
+        origin = QListWidgetItem(_ORIGINAL_ROW)
+        origin.setForeground(self._earlier_brush)
+        self._list.addItem(origin)
         for index, move in enumerate(history):
             label = f"{index + 1}. {move.display_label()}"
             if index < prior_count:
@@ -210,9 +216,9 @@ class MoveRecordDialog(NeutralDialog):
         )
 
     def _on_row_changed(self, row: int) -> None:
-        """Choosing a move shows the position that move produced."""
+        """Row r IS position r: the origin first, then each move's result."""
         if not self._syncing and row >= 0:
-            self._go(row + 1)
+            self._go(row)
 
     def _go(self, position: int) -> None:
         self._position = max(0, min(position, len(self._history)))
@@ -221,11 +227,7 @@ class MoveRecordDialog(NeutralDialog):
     def _sync_list(self) -> None:
         """Follow the cursor in the list without re-entering _go."""
         self._syncing = True
-        if self._position == 0:
-            self._list.clearSelection()
-            self._list.setCurrentRow(-1)
-        else:
-            self._list.setCurrentRow(self._position - 1)
+        self._list.setCurrentRow(self._position)
         self._syncing = False
 
     def _render_position(self) -> None:
