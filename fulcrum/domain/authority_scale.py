@@ -109,12 +109,55 @@ class ScaleContext:
     priced at its resolution neighbourhood's population, a contested team
     at the frame's contest factor and everyone else at the frame factor.
     inflow holds the escalated arrivals landing on each clean authority's
-    queue. frame_factor is the prince factor at the frame's population.
+    queue. unowned holds each clean sovereign's count of unowned
+    interfaces: dependencies to other sovereigns with no shared enclosing
+    domain, so no institutional roof exists to arbitrate their conflicts.
+    frame_factor is the prince factor at the frame's population.
     """
 
     factors: dict[str, float]
     inflow: dict[str, float]
+    unowned: dict[str, int]
     frame_factor: float
+
+
+def _unowned_interface_counts(org: OrgState, claimed: set[str]) -> dict[str, int]:
+    """Per-team count of sovereign-to-sovereign edges with no shared domain.
+
+    Both endpoints must hold clean local authority: an edge touching an
+    escalating team already resolves along that team's line, so only two
+    sovereigns can face each other with nobody above them. Sharing any
+    enclosing domain counts as a roof (the unit and its lead are where the
+    conflict can be taken); a loose team shares no domain with anyone.
+    """
+    ancestors: dict[str, frozenset[str]] = {}
+    parent_of = {d.id: d.parent_id for d in org.domains}
+    for domain in org.domains:
+        chain: list[str] = []
+        current: str | None = domain.id
+        while current is not None:
+            chain.append(current)
+            current = parent_of.get(current)
+        ancestors[domain.id] = frozenset(chain)
+    sovereign = {
+        t.id: t.domain_id
+        for t in org.teams
+        if t.has_local_authority and t.id not in claimed
+    }
+    counts = {t.id: 0 for t in org.teams}
+    empty: frozenset[str] = frozenset()
+    for dep in org.internal_dependencies():
+        if dep.upstream not in sovereign or dep.downstream not in sovereign:
+            continue
+        up_domain = sovereign[dep.upstream]
+        down_domain = sovereign[dep.downstream]
+        up_roof = ancestors.get(up_domain, empty) if up_domain else empty
+        down_roof = ancestors.get(down_domain, empty) if down_domain else empty
+        if up_roof & down_roof:
+            continue
+        counts[dep.upstream] += 1
+        counts[dep.downstream] += 1
+    return counts
 
 
 def _authority_marked_domains(org: OrgState, clean_authorities: list[Team]) -> set[str]:
@@ -151,6 +194,7 @@ def scale_context(org: OrgState, params: SimulationParameters) -> ScaleContext:
     """
     frame_factor = prince_scale_factor(total_headcount(org), params)
     claimed = {c.subject for c in org.claims}
+    unowned = _unowned_interface_counts(org, claimed)
     clean_authorities = [
         t for t in org.teams if t.has_local_authority and t.id not in claimed
     ]
@@ -188,4 +232,9 @@ def scale_context(org: OrgState, params: SimulationParameters) -> ScaleContext:
         per_recipient = shed * len(escalators) / len(recipients)
         for recipient in recipients:
             inflow[recipient.id] += per_recipient
-    return ScaleContext(factors=factors, inflow=inflow, frame_factor=frame_factor)
+    return ScaleContext(
+        factors=factors,
+        inflow=inflow,
+        unowned=unowned,
+        frame_factor=frame_factor,
+    )

@@ -299,7 +299,10 @@ def evaluate(
     centre registers as latency. A contested team cannot decide cleanly
     either (the meta-question of who decides escalates even when the team
     formally holds local authority), and its share is never attenuated,
-    only amplified.
+    only amplified. Clean sovereigns facing each other across unowned
+    interfaces drift toward the same share, priced at the frame's scale,
+    and the influence gap divides the score by its per-team mean rather
+    than its absolute total.
     """
     index = dependency_index(org)
     context = scale_context(org, params)
@@ -314,12 +317,25 @@ def evaluate(
         for t in org.teams
     )
     latency = total_imbalance / total_arrivals
+    # A clean sovereign on unowned interfaces cannot decide cleanly either:
+    # its cross-team conflicts have no roof to resolve under, so each such
+    # team drifts toward the escalation share in proportion to how many of
+    # its interfaces are unowned, priced at the frame's scale. An escalating
+    # or contested team never counts here too: the sets are disjoint.
+    fragmentation = sum(
+        min(_UNIT, params.unowned_interface_weight * count) * context.factors[team_id]
+        for team_id, count in context.unowned.items()
+        if count
+    )
     escalation = min(
         _UNIT,
-        sum(
-            context.factors[t.id]
-            for t in org.teams
-            if not t.has_local_authority or is_contested(org, t, index)
+        (
+            sum(
+                context.factors[t.id]
+                for t in org.teams
+                if not t.has_local_authority or is_contested(org, t, index)
+            )
+            + fragmentation
         )
         / team_count,
     )
@@ -330,11 +346,14 @@ def evaluate(
         + params.rework_weight * rework
     )
     value = params.max_score * (_UNIT - penalty)
+    # The influence gap is priced as its share of the organisation, not as
+    # an absolute count, so one overloaded hub costs a proportionate slice
+    # of a large org's score rather than half of it.
     weighted_influence = sum(
         influence_without_authority(org, t, params, index) * context.factors[t.id]
         for t in org.teams
     )
-    value /= _UNIT + params.influence_weight * weighted_influence
+    value /= _UNIT + params.influence_weight * weighted_influence / team_count
     value /= _UNIT + params.contested_weight * claim_load(org, index)
     return StructuralScore(
         value=max(_ZERO, min(params.max_score, value)),

@@ -8,35 +8,40 @@
       "name": "Platform",
       "has_local_authority": true,
       "incentive_skew": 0.1,
-      "headcount": 60
+      "headcount": 60,
+      "domain_id": "company"
     },
     {
       "id": "product_eng",
       "name": "Product engineering",
       "has_local_authority": true,
       "incentive_skew": 0.15,
-      "headcount": 60
+      "headcount": 60,
+      "domain_id": "company"
     },
     {
       "id": "payments",
       "name": "Payments",
       "has_local_authority": true,
       "incentive_skew": 0.15,
-      "headcount": 60
+      "headcount": 60,
+      "domain_id": "company"
     },
     {
       "id": "data",
       "name": "Data",
       "has_local_authority": true,
       "incentive_skew": 0.1,
-      "headcount": 60
+      "headcount": 60,
+      "domain_id": "company"
     },
     {
       "id": "enablement",
       "name": "Developer enablement",
       "has_local_authority": true,
       "incentive_skew": 0.1,
-      "headcount": 60
+      "headcount": 60,
+      "domain_id": "company"
     }
   ],
   "dependencies": [
@@ -56,5 +61,11 @@
       "propagation_delay": 1
     }
   ],
-  "workload": 6
+  "workload": 6,
+  "domains": [
+    {
+      "id": "company",
+      "name": "Company"
+    }
+  ]
 }

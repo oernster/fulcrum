@@ -24,12 +24,13 @@ from fulcrum.domain.simulation import (
 )
 
 
-def _t(team_id, authority=True, skew=0.0):
+def _t(team_id, authority=True, skew=0.0, domain_id=None):
     return Team(
         id=team_id,
         name=team_id.upper(),
         has_local_authority=authority,
         incentive_skew=skew,
+        domain_id=domain_id,
     )
 
 
@@ -106,10 +107,19 @@ def test_collapsing_past_the_band_lowers_the_score():
 
 
 def test_influence_without_authority_penalises_an_authority_less_hub():
+    # Roofed, so delegating to the hub compares influence against
+    # empowerment rather than creating roofless sovereign interfaces
+    # (fragmentation has its own conformance suite).
+    roof = (Domain("company", "Company"),)
     org = OrgState(
-        teams=(_t("hub", authority=False), _t("a"), _t("b")),
+        teams=(
+            _t("hub", authority=False, domain_id="company"),
+            _t("a", domain_id="company"),
+            _t("b", domain_id="company"),
+        ),
         dependencies=(Dependency("hub", "a", 0), Dependency("hub", "b", 0)),
         workload=1,
+        domains=roof,
     )
     assert depended_upon(org, "hub") == 2
     assert influence_without_authority(org, org.team("hub")) == 1.0

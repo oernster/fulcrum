@@ -8,35 +8,40 @@
       "name": "Platform",
       "has_local_authority": true,
       "incentive_skew": 0.2,
-      "headcount": 60
+      "headcount": 60,
+      "domain_id": "company"
     },
     {
       "id": "product_eng",
       "name": "Product engineering",
       "has_local_authority": false,
       "incentive_skew": 0.3,
-      "headcount": 60
+      "headcount": 60,
+      "domain_id": "company"
     },
     {
       "id": "payments",
       "name": "Payments",
       "has_local_authority": false,
       "incentive_skew": 0.35,
-      "headcount": 60
+      "headcount": 60,
+      "domain_id": "company"
     },
     {
       "id": "data",
       "name": "Data",
       "has_local_authority": true,
       "incentive_skew": 0.25,
-      "headcount": 60
+      "headcount": 60,
+      "domain_id": "company"
     },
     {
       "id": "release_eng",
       "name": "Release engineering",
       "has_local_authority": false,
       "incentive_skew": 0.2,
-      "headcount": 60
+      "headcount": 60,
+      "domain_id": "company"
     }
   ],
   "dependencies": [
@@ -61,5 +66,11 @@
       "propagation_delay": 3
     }
   ],
-  "workload": 6
+  "workload": 6,
+  "domains": [
+    {
+      "id": "company",
+      "name": "Company"
+    }
+  ]
 }

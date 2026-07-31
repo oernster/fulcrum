@@ -8,49 +8,56 @@
       "name": "Core platform",
       "has_local_authority": true,
       "incentive_skew": 0.15,
-      "headcount": 800
+      "headcount": 800,
+      "domain_id": "company"
     },
     {
       "id": "consumer",
       "name": "Consumer division",
       "has_local_authority": true,
       "incentive_skew": 0.2,
-      "headcount": 800
+      "headcount": 800,
+      "domain_id": "company"
     },
     {
       "id": "enterprise_products",
       "name": "Enterprise products",
       "has_local_authority": true,
       "incentive_skew": 0.2,
-      "headcount": 800
+      "headcount": 800,
+      "domain_id": "company"
     },
     {
       "id": "data_ml",
       "name": "Data and ML",
       "has_local_authority": true,
       "incentive_skew": 0.15,
-      "headcount": 800
+      "headcount": 800,
+      "domain_id": "company"
     },
     {
       "id": "security",
       "name": "Security",
       "has_local_authority": true,
       "incentive_skew": 0.15,
-      "headcount": 800
+      "headcount": 800,
+      "domain_id": "company"
     },
     {
       "id": "developer_platform",
       "name": "Developer platform",
       "has_local_authority": true,
       "incentive_skew": 0.1,
-      "headcount": 800
+      "headcount": 800,
+      "domain_id": "company"
     },
     {
       "id": "reliability",
       "name": "Reliability",
       "has_local_authority": true,
       "incentive_skew": 0.15,
-      "headcount": 800
+      "headcount": 800,
+      "domain_id": "company"
     }
   ],
   "dependencies": [
@@ -80,5 +87,11 @@
       "propagation_delay": 2
     }
   ],
-  "workload": 8
+  "workload": 8,
+  "domains": [
+    {
+      "id": "company",
+      "name": "Company"
+    }
+  ]
 }

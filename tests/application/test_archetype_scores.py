@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from fulcrum.domain.models import Dependency, OrgState, Origin, Team
+from fulcrum.domain.models import Dependency, Domain, OrgState, Origin, Team
 from fulcrum.domain.simulation import evaluate
 
 _EXAMPLES = Path(__file__).resolve().parents[2] / "examples"
@@ -21,9 +21,9 @@ _EXAMPLES = Path(__file__).resolve().parents[2] / "examples"
 _PUBLISHED = (
     ("org-1-startup.json", "well-designed/startup.json", 89.3, 98.7),
     ("org-2-scaleup.json", "well-designed/scaleup.json", 46.5, 91.0),
-    ("org-3-enterprise.json", "well-designed/enterprise.json", 16.4, 78.7),
-    ("org-4-very-large.json", "well-designed/very-large.json", 11.8, 68.8),
-    ("org-5-conglomerate.json", "well-designed/conglomerate.json", 8.6, 66.4),
+    ("org-3-enterprise.json", "well-designed/enterprise.json", 19.4, 78.7),
+    ("org-4-very-large.json", "well-designed/very-large.json", 15.4, 68.8),
+    ("org-5-conglomerate.json", "well-designed/conglomerate.json", 12.2, 66.4),
 )
 
 
@@ -35,6 +35,7 @@ def _load(relative: str) -> OrgState:
             name=t["name"],
             has_local_authority=t["has_local_authority"],
             incentive_skew=t.get("incentive_skew", 0.0),
+            domain_id=t.get("domain_id"),
             headcount=t["headcount"],
         )
         for t in data["teams"]
@@ -43,11 +44,16 @@ def _load(relative: str) -> OrgState:
         Dependency(d["upstream"], d["downstream"], d["propagation_delay"])
         for d in data["dependencies"]
     )
+    domains = tuple(
+        Domain(id=d["id"], name=d["name"], parent_id=d.get("parent_id"))
+        for d in data.get("domains", ())
+    )
     return OrgState(
         teams=teams,
         dependencies=dependencies,
         workload=data["workload"],
         origin=Origin.IMPORTED,
+        domains=domains,
     )
 
 

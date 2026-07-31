@@ -46,7 +46,7 @@ from dataclasses import replace
 from itertools import pairwise
 from pathlib import Path
 
-from fulcrum.domain.models import Dependency, OrgState, Origin, Team
+from fulcrum.domain.models import Dependency, Domain, OrgState, Origin, Team
 from fulcrum.domain.moves import Move, MoveKind, apply_move
 from fulcrum.domain.simulation import (
     DEFAULT_PARAMETERS,
@@ -112,6 +112,7 @@ INDEPENDENT_COEFFICIENTS = (
     "prince_amplification",
     "prince_survivor_ceiling",
     "escalation_load_share",
+    "unowned_interface_weight",
 )
 
 # A perturbed survivor ceiling must keep escalation capacity strictly
@@ -144,9 +145,14 @@ def load_org(path: Path) -> OrgState:
             name=t["name"],
             has_local_authority=t["has_local_authority"],
             incentive_skew=t.get("incentive_skew", 0.0),
+            domain_id=t.get("domain_id"),
             headcount=t["headcount"],
         )
         for t in data["teams"]
+    )
+    domains = tuple(
+        Domain(id=d["id"], name=d["name"], parent_id=d.get("parent_id"))
+        for d in data.get("domains", ())
     )
     dependencies = tuple(
         Dependency(d["upstream"], d["downstream"], d["propagation_delay"])
@@ -157,6 +163,7 @@ def load_org(path: Path) -> OrgState:
         dependencies=dependencies,
         workload=data["workload"],
         origin=Origin.IMPORTED,
+        domains=domains,
     )
 
 

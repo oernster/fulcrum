@@ -8,56 +8,64 @@
       "name": "Consumer BU",
       "has_local_authority": true,
       "incentive_skew": 0.25,
-      "headcount": 15000
+      "headcount": 15000,
+      "domain_id": "company"
     },
     {
       "id": "bu_enterprise",
       "name": "Enterprise BU",
       "has_local_authority": true,
       "incentive_skew": 0.25,
-      "headcount": 15000
+      "headcount": 15000,
+      "domain_id": "company"
     },
     {
       "id": "bu_financial",
       "name": "Financial services BU",
       "has_local_authority": true,
       "incentive_skew": 0.3,
-      "headcount": 15000
+      "headcount": 15000,
+      "domain_id": "company"
     },
     {
       "id": "bu_industrial",
       "name": "Industrial BU",
       "has_local_authority": true,
       "incentive_skew": 0.25,
-      "headcount": 15000
+      "headcount": 15000,
+      "domain_id": "company"
     },
     {
       "id": "shared_platform",
       "name": "Shared platform",
       "has_local_authority": true,
       "incentive_skew": 0.2,
-      "headcount": 15000
+      "headcount": 15000,
+      "domain_id": "company"
     },
     {
       "id": "data_commons",
       "name": "Data commons",
       "has_local_authority": true,
       "incentive_skew": 0.2,
-      "headcount": 15000
+      "headcount": 15000,
+      "domain_id": "company"
     },
     {
       "id": "security_guild",
       "name": "Security guild",
       "has_local_authority": true,
       "incentive_skew": 0.2,
-      "headcount": 15000
+      "headcount": 15000,
+      "domain_id": "company"
     },
     {
       "id": "coordination_council",
       "name": "Coordination council",
       "has_local_authority": true,
       "incentive_skew": 0.25,
-      "headcount": 15000
+      "headcount": 15000,
+      "domain_id": "company"
     }
   ],
   "dependencies": [
@@ -87,5 +95,11 @@
       "propagation_delay": 2
     }
   ],
-  "workload": 12
+  "workload": 12,
+  "domains": [
+    {
+      "id": "company",
+      "name": "Company"
+    }
+  ]
 }

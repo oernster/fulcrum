@@ -38,6 +38,13 @@ class SimulationParameters:
     attenuated by the prince band: the band forgives communication friction
     at small scale, never decision bandwidth, so a centre absorbing thirty
     teams' escalations saturates however small the organisation is.
+
+    unowned_interface_weight prices fragmentation: a dependency between two
+    clean sovereigns that share no enclosing domain has no institutional
+    roof under which its conflicts can be arbitrated, so each such edge
+    pushes its endpoints toward the cannot-decide-cleanly share, scaled by
+    the prince factor. Two founders across a desk stay cheap; a roofless
+    sovereign network at scale does not.
     """
 
     base_capacity: float = 12.0
@@ -61,6 +68,7 @@ class SimulationParameters:
     prince_amplification: float = 0.25
     prince_survivor_ceiling: float = 1.6
     escalation_load_share: float = 0.25
+    unowned_interface_weight: float = 0.5
 
     def __post_init__(self) -> None:
         if self.base_capacity <= _ZERO:
@@ -115,6 +123,8 @@ class SimulationParameters:
             )
         if not _ZERO <= self.escalation_load_share <= _UNIT:
             raise InvalidOrgStateError("escalation_load_share must be in [0, 1]")
+        if self.unowned_interface_weight < _ZERO:
+            raise InvalidOrgStateError("unowned_interface_weight must not be negative")
 
 
 DEFAULT_PARAMETERS = SimulationParameters()

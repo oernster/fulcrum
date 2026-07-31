@@ -8,21 +8,24 @@
       "name": "Product",
       "has_local_authority": true,
       "incentive_skew": 0.1,
-      "headcount": 10
+      "headcount": 10,
+      "domain_id": "company"
     },
     {
       "id": "engineering",
       "name": "Engineering",
       "has_local_authority": true,
       "incentive_skew": 0.15,
-      "headcount": 10
+      "headcount": 10,
+      "domain_id": "company"
     },
     {
       "id": "ops",
       "name": "Ops",
       "has_local_authority": false,
       "incentive_skew": 0.25,
-      "headcount": 10
+      "headcount": 10,
+      "domain_id": "company"
     }
   ],
   "dependencies": [
@@ -37,5 +40,11 @@
       "propagation_delay": 2
     }
   ],
-  "workload": 4
+  "workload": 4,
+  "domains": [
+    {
+      "id": "company",
+      "name": "Company"
+    }
+  ]
 }
