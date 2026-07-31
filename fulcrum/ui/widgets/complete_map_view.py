@@ -32,18 +32,8 @@ from fulcrum.domain.hierarchy import (
 from fulcrum.domain.models import Domain, OrgState
 from fulcrum.domain.simulation import is_contested
 from fulcrum.shared.text import count_noun
-from fulcrum.ui.theme import dark_canvas_scrollbar_qss
+from fulcrum.ui.map_palette import map_palette
 from fulcrum.ui.widgets.complete_map_edges import direct_is_clear, route_edges
-
-_AUTHORITY = QColor("#34d399")
-_NO_AUTHORITY = QColor("#f59e0b")
-_CONTESTED = QColor("#ef4444")
-_TEAM_FILL = QColor("#1a1e24")
-_DOMAIN_FILL = QColor("#222831")
-_TEXT = QColor("#e6e9ee")
-_TEXT_MUTED = QColor("#9aa3af")
-_EDGE = QColor("#5b6470")
-_BG = QColor("#0d0f12")
 
 _KIND_TEAM = "team"
 _KIND_DOMAIN = "domain"
@@ -142,9 +132,7 @@ class CompleteMapView(QGraphicsView):
         self.setScene(self._scene)
         self.setRenderHint(QPainter.RenderHint.Antialiasing)
         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
-        self.setBackgroundBrush(QBrush(_BG))
-        # The canvas stays dark in both themes; its scrollbars follow it.
-        self.setStyleSheet(dark_canvas_scrollbar_qss())
+        self.setBackgroundBrush(QBrush(map_palette().bg))
         self._org: OrgState | None = None
         self._summarize = False
 
@@ -250,12 +238,14 @@ class CompleteMapView(QGraphicsView):
         drawing = route_edges(tuple(routed), rects, diagram_right)
         for path, is_trunk in drawing.paths:
             width = _TRUNK_PEN_W if is_trunk else _EDGE_PEN_W
-            self._scene.addPath(path, QPen(_EDGE, width))
+            self._scene.addPath(path, QPen(map_palette().edge, width))
         for arrow in drawing.arrows:
-            self._scene.addPolygon(arrow, QPen(_EDGE), QBrush(_EDGE))
+            self._scene.addPolygon(
+                arrow, QPen(map_palette().edge), QBrush(map_palette().edge)
+            )
         for text, position in drawing.labels:
             label = self._scene.addSimpleText(text, _font(bold=True))
-            label.setBrush(_TEXT_MUTED)
+            label.setBrush(map_palette().text_muted)
             label.setPos(position)
 
     def _collect(self, box, x, y, rects, domains, teams) -> None:
@@ -279,21 +269,25 @@ class CompleteMapView(QGraphicsView):
         domain = self._domain(box.ident)
         path = QPainterPath()
         path.addRoundedRect(QRectF(x, y, box.w, box.h), _CORNER, _CORNER)
-        self._scene.addPath(path, QPen(_NO_AUTHORITY, _PEN_W), QBrush(_DOMAIN_FILL))
+        self._scene.addPath(
+            path,
+            QPen(map_palette().no_authority, _PEN_W),
+            QBrush(map_palette().domain_fill),
+        )
         people = headcount_in_domain(self._org, domain.id)
         detail = f"{domain.category} · {count_noun(people, 'person', 'people')}"
         if self._is_summary(domain):
             teams = len(teams_in_domain(self._org, domain.id))
             detail = f"{detail} · {count_noun(teams, 'team')}"
         category = self._scene.addSimpleText(detail, _font())
-        category.setBrush(_NO_AUTHORITY)
+        category.setBrush(map_palette().no_authority)
         category.setPos(x + _PAD, y + _DOMAIN_CATEGORY_DY)
         name = self._scene.addSimpleText(domain.name, _font(bold=True))
-        name.setBrush(_TEXT)
+        name.setBrush(map_palette().text)
         name.setPos(x + _PAD, y + _DOMAIN_NAME_DY)
         if domain.lead:
             lead = self._scene.addSimpleText(f"lead: {domain.lead}", _font())
-            lead.setBrush(_TEXT_MUTED)
+            lead.setBrush(map_palette().text_muted)
             lead.setPos(x + _PAD, y + _DOMAIN_LEAD_DY)
 
     def _draw_team(self, x, y, box) -> None:
@@ -302,13 +296,13 @@ class CompleteMapView(QGraphicsView):
         path.addRoundedRect(QRectF(x, y, box.w, box.h), _CORNER, _CORNER)
         contested = is_contested(self._org, team)
         if contested:
-            border = _CONTESTED
+            border = map_palette().contested
         else:
             ratio = _FULL if team.has_local_authority else 0.0
-            border = _blend(_NO_AUTHORITY, _AUTHORITY, ratio)
-        self._scene.addPath(path, QPen(border, _PEN_W), QBrush(_TEAM_FILL))
+            border = _blend(map_palette().no_authority, map_palette().authority, ratio)
+        self._scene.addPath(path, QPen(border, _PEN_W), QBrush(map_palette().team_fill))
         name = self._scene.addSimpleText(team.name, _font(bold=True))
-        name.setBrush(_TEXT)
+        name.setBrush(map_palette().text)
         name.setPos(x + _PAD, y + _NAME_DY)
         if contested:
             status = "contested"
@@ -318,12 +312,16 @@ class CompleteMapView(QGraphicsView):
             status = "escalates"
         sub_text = f"{status} · {count_noun(team.headcount, 'person', 'people')}"
         sub = self._scene.addSimpleText(sub_text, _font())
-        sub.setBrush(_TEXT_MUTED)
+        sub.setBrush(map_palette().text_muted)
         sub.setPos(x + _PAD, y + _SUB_DY)
 
     def _draw_edge(self, start: QPointF, end: QPointF) -> None:
         self._scene.addLine(
-            start.x(), start.y(), end.x(), end.y(), QPen(_EDGE, _EDGE_PEN_W)
+            start.x(),
+            start.y(),
+            end.x(),
+            end.y(),
+            QPen(map_palette().edge, _EDGE_PEN_W),
         )
         angle = math.atan2(end.y() - start.y(), end.x() - start.x())
         tip = QPointF(
@@ -339,5 +337,7 @@ class CompleteMapView(QGraphicsView):
             tip.y() - _ARROW * math.sin(angle + math.pi / 6),
         )
         self._scene.addPolygon(
-            QPolygonF([tip, left, right]), QPen(_EDGE), QBrush(_EDGE)
+            QPolygonF([tip, left, right]),
+            QPen(map_palette().edge),
+            QBrush(map_palette().edge),
         )

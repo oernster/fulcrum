@@ -22,22 +22,14 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import QGraphicsScene
 
 from fulcrum.shared.text import count_noun
+from fulcrum.ui.map_palette import map_palette
 
 KIND_DOMAIN = "domain"
 NODE_W = 240.0
 NODE_H = 88.0
 CORNER = 10.0
-PREVIEW = QColor("#fbbf24")
 
-_AUTHORITY = QColor("#34d399")
-_NO_AUTHORITY = QColor("#f59e0b")
 # Contested ownership outranks the authority gradient: any contest reads red.
-_CONTESTED = QColor("#ef4444")
-_TEAM_FILL = QColor("#1a1e24")
-_DOMAIN_FILL = QColor("#222831")
-_TEXT = QColor("#e6e9ee")
-_TEXT_MUTED = QColor("#9aa3af")
-_EDGE = QColor("#5b6470")
 
 _GAP_Y = 72.0
 _PAD = 12.0
@@ -127,25 +119,31 @@ def draw_node(scene: QGraphicsScene, node, top_left: QPointF) -> QRectF:
     rect = QRectF(top_left.x(), top_left.y(), NODE_W, NODE_H)
     path = QPainterPath()
     path.addRoundedRect(rect, CORNER, CORNER)
-    fill = _DOMAIN_FILL if node.kind == KIND_DOMAIN else _TEAM_FILL
+    fill = (
+        map_palette().domain_fill
+        if node.kind == KIND_DOMAIN
+        else map_palette().team_fill
+    )
     if node.contested_count:
-        border = _CONTESTED
+        border = map_palette().contested
     else:
-        border = _blend(_NO_AUTHORITY, _AUTHORITY, node.authority_ratio)
+        border = _blend(
+            map_palette().no_authority, map_palette().authority, node.authority_ratio
+        )
     scene.addPath(path, QPen(border, 2), QBrush(fill))
     _draw_person(scene, rect, border, node)
     name_font = node_font(bold=True)
     name = scene.addSimpleText(_fit(node.label, name_font, _LABEL_WIDTH), name_font)
-    name.setBrush(_TEXT)
+    name.setBrush(map_palette().text)
     name.setPos(rect.x() + _PAD, rect.y() + _PAD)
     sub_font = node_font()
     sub = scene.addSimpleText(_fit(_sublabel(node), sub_font, _LABEL_WIDTH), sub_font)
-    sub.setBrush(_TEXT_MUTED)
+    sub.setBrush(map_palette().text_muted)
     sub.setPos(rect.x() + _PAD, rect.y() + _SUB_DROP + _PAD)
     secondary = _secondary(node)
     if secondary:
         line2 = scene.addSimpleText(_fit(secondary, sub_font, _LABEL_WIDTH), sub_font)
-        line2.setBrush(_TEXT_MUTED)
+        line2.setBrush(map_palette().text_muted)
         line2.setPos(rect.x() + _PAD, rect.y() + _SUB_LINE2 + _PAD)
     return rect
 
@@ -164,7 +162,11 @@ def _draw_arrow(scene: QGraphicsScene, start: QPointF, end: QPointF) -> None:
         tip.x() - _ARROW * math.cos(angle + _ARROW_SPREAD),
         tip.y() - _ARROW * math.sin(angle + _ARROW_SPREAD),
     )
-    scene.addPolygon(QPolygonF([tip, left, right]), QPen(_EDGE), QBrush(_EDGE))
+    scene.addPolygon(
+        QPolygonF([tip, left, right]),
+        QPen(map_palette().edge),
+        QBrush(map_palette().edge),
+    )
 
 
 def draw_edges(scene: QGraphicsScene, edges, positions: dict) -> None:
@@ -174,21 +176,25 @@ def draw_edges(scene: QGraphicsScene, edges, positions: dict) -> None:
             continue
         start = node_center(positions[edge.source])
         end = node_center(positions[edge.target])
-        scene.addLine(start.x(), start.y(), end.x(), end.y(), QPen(_EDGE, 1.5))
+        scene.addLine(
+            start.x(), start.y(), end.x(), end.y(), QPen(map_palette().edge, 1.5)
+        )
         _draw_arrow(scene, start, end)
         if edge.weight > 1:
             label = scene.addSimpleText(str(edge.weight), node_font())
-            label.setBrush(_TEXT_MUTED)
+            label.setBrush(map_palette().text_muted)
             label.setPos((start.x() + end.x()) / _HALF, (start.y() + end.y()) / _HALF)
 
 
 def draw_breadcrumb(scene: QGraphicsScene, parent_name: str) -> QRectF:
     """Draw the back chip above the level; return its rect for hit-testing."""
     rect = QRectF(0, -(NODE_H + _GAP_Y), NODE_W, NODE_H / _HALF)
-    scene.addRect(rect, QPen(PREVIEW, 2), QBrush(_DOMAIN_FILL))
+    scene.addRect(
+        rect, QPen(map_palette().preview, 2), QBrush(map_palette().domain_fill)
+    )
     crumb_font = node_font(bold=True)
     crumb = _fit(f"↑ Back · {parent_name}", crumb_font, _CRUMB_WIDTH)
     text = scene.addSimpleText(crumb, crumb_font)
-    text.setBrush(PREVIEW)
+    text.setBrush(map_palette().preview)
     text.setPos(rect.x() + _PAD, rect.y() + _PAD)
     return rect

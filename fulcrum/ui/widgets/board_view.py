@@ -205,6 +205,10 @@ class BoardView(QWidget):
         self._scope.refresh()
         self._start_analysis()
 
+    def apply_map_theme(self) -> None:
+        """Repaint the map in the current palette after a theme switch."""
+        self._map.apply_map_theme()
+
     def refresh(self) -> None:
         if self._session is None:
             return

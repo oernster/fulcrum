@@ -21,7 +21,7 @@ from PySide6.QtWidgets import QGraphicsScene, QGraphicsView
 from fulcrum.application.map_model import build_level
 from fulcrum.domain.models import OrgState
 from fulcrum.ui import ui_scale
-from fulcrum.ui.theme import dark_canvas_scrollbar_qss
+from fulcrum.ui.map_palette import map_palette
 from fulcrum.ui.widgets import org_map_painter as painter
 
 # A section's outer ring: cyan on hover to show it opens, cyan again to mark a
@@ -30,10 +30,6 @@ from fulcrum.ui.widgets import org_map_painter as painter
 # One ring model everywhere: green marks the node you can act on, whether
 # reached by mouse (hover), keyboard (cursor) or affected by a change; muted
 # so the large surround does not shout.
-_HOVER_RING = QColor("#2f9e64")
-_CHANGE_RING = QColor("#2f9e64")
-_CURSOR_RING = QColor("#2f9e64")
-_BG = QColor("#0d0f12")
 
 _MIN_HEIGHT = 340
 _GAP_X = 64.0
@@ -63,9 +59,7 @@ class OrgMapView(QGraphicsView):
         self.setScene(self._scene)
         self.setRenderHint(QPainter.RenderHint.Antialiasing)
         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
-        self.setBackgroundBrush(QBrush(_BG))
-        # The canvas stays dark in both themes; its scrollbars follow it.
-        self.setStyleSheet(dark_canvas_scrollbar_qss())
+        self.setBackgroundBrush(QBrush(map_palette().bg))
         self.setMinimumHeight(ui_scale.px(_MIN_HEIGHT))
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self._org: OrgState | None = None
@@ -82,6 +76,11 @@ class OrgMapView(QGraphicsView):
         self._min_scale = 0.0
         self.setMouseTracking(True)
         self.viewport().setMouseTracking(True)
+
+    def apply_map_theme(self) -> None:
+        """Repaint the canvas and scene in the current map palette."""
+        self.setBackgroundBrush(QBrush(map_palette().bg))
+        self._render()
 
     def set_org(self, org: OrgState) -> None:
         self._org = org
@@ -312,7 +311,7 @@ class OrgMapView(QGraphicsView):
         self._paint_hover_ring(scene_painter)
         for node_rect, _kind, node_id in self._hot:
             if node_id in self._highlight:
-                self._draw_ring(scene_painter, node_rect, _CHANGE_RING)
+                self._draw_ring(scene_painter, node_rect, map_palette().ring)
         if not self._preview:
             return
         scene_painter.save()
@@ -335,14 +334,14 @@ class OrgMapView(QGraphicsView):
     def _paint_hover_ring(self, scene_painter: QPainter) -> None:
         target = self._hover_rect()
         if target is not None:
-            self._draw_ring(scene_painter, target, _HOVER_RING)
+            self._draw_ring(scene_painter, target, map_palette().ring)
 
     def _paint_cursor_ring(self, scene_painter: QPainter) -> None:
         if not self.hasFocus() or self._cursor_id is None:
             return
         target = self._rect_of(self._cursor_id)
         if target is not None:
-            self._draw_ring(scene_painter, target, _CURSOR_RING)
+            self._draw_ring(scene_painter, target, map_palette().ring)
 
     def _draw_ring(self, scene_painter: QPainter, rect: QRectF, color: QColor) -> None:
         outer = rect.adjusted(-_DRILL_INSET, -_DRILL_INSET, _DRILL_INSET, _DRILL_INSET)

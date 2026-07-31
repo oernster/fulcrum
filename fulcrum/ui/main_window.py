@@ -34,6 +34,7 @@ from fulcrum.shared.resources import (
 from fulcrum.ui import header_buttons
 from fulcrum.ui.guide_thread import OrgGuideThread
 from fulcrum.ui.icons import button_icon
+from fulcrum.ui.map_palette import set_map_theme
 from fulcrum.ui.org_intake import OrgIntakeController
 from fulcrum.ui.plan_files import PlanFileActions
 from fulcrum.ui.theme import get_qss
@@ -80,6 +81,7 @@ class MainWindow(QMainWindow):
         self._org_store = org_store
         self._settings = settings
         self._theme = settings.load_theme() if settings is not None else DEFAULT_THEME
+        set_map_theme(self._theme)
         # The generated header icons carry a variant per theme; the toggle
         # re-dresses each of these (button, icon name) pairs on switch.
         self._themed_icon_buttons: list[tuple[QPushButton, str]] = []
@@ -185,11 +187,16 @@ class MainWindow(QMainWindow):
     def _toggle_theme(self) -> None:
         self._theme = THEME_LIGHT if self._theme == THEME_DARK else THEME_DARK
         QApplication.instance().setStyleSheet(get_qss(self._theme))
+        set_map_theme(self._theme)
         if self._settings is not None:
             self._settings.save_theme(self._theme)
         header_buttons.dress_theme_toggle(self._theme_toggle, self._theme)
         for button, name in self._themed_icon_buttons:
             button.setIcon(button_icon(name, self._theme))
+        # The map paints its own colours; rebuild the board so the canvas,
+        # nodes and edges repaint in the new palette immediately.
+        self._board.apply_map_theme()
+        self._board.refresh()
 
     def _icon_button(self, name: str, tooltip: str, handler) -> QPushButton:
         button = header_buttons.icon_button(name, tooltip, handler, self._theme)
