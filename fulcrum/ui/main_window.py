@@ -32,6 +32,7 @@ from fulcrum.shared.resources import (
     find_ui_licence,
 )
 from fulcrum.ui import header_buttons
+from fulcrum.ui.close_guard import install_close_guard
 from fulcrum.ui.guide_thread import OrgGuideThread
 from fulcrum.ui.icons import button_icon
 from fulcrum.ui.map_palette import set_map_theme
@@ -121,6 +122,10 @@ class MainWindow(QMainWindow):
             self._set_session(restore_session(restored, self._simulator))
         else:
             self._intake.generate(DEFAULT_BAND)
+        # A taskbar close must quit even while a dialog is modal; Qt drops
+        # that close before any filter can see it, so a native guard
+        # dismisses the modals and runs the normal close flow instead.
+        self._close_guard = install_close_guard(self)
 
     def _build_central(self) -> None:
         central = QWidget()
