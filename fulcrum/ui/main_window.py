@@ -50,7 +50,7 @@ from fulcrum.ui.widgets.org_overview_dialog import OrgOverviewDialog
 from fulcrum.version import APP_NAME, APP_TAGLINE
 
 _RELEASES_URL = "https://github.com/oernster/fulcrum/releases"
-_GLOSSARY_GLYPH = "\N{SCROLL}"
+_GLOSSARY_GLYPH = "\N{INFORMATION SOURCE}\N{VARIATION SELECTOR-16}"
 _GLOSSARY_TOOLTIP = "Decision glossary"
 _OVERVIEW_GLYPH = "\N{WORLD MAP}\N{VARIATION SELECTOR-16}"
 _OVERVIEW_TOOLTIP = "Organisation overview"
