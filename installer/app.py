@@ -42,6 +42,7 @@ from types import TracebackType
 from PySide6.QtCore import QEvent, QObject, QSize, Qt, QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
+    QAbstractButton,
     QApplication,
     QCheckBox,
     QDialog,
@@ -1074,6 +1075,17 @@ class InstallerWindow(QWidget):
             # Reinstall): the intuitive next step, rather than whichever
             # licence button happens to sit first in the tab order.
             self._primary.setFocus()
+
+    def keyPressEvent(self, event) -> None:
+        # Enter activates the focused control exactly as Space does; a plain
+        # QWidget window has no dialog default-button mechanism, so buttons
+        # and checkboxes would otherwise ignore it.
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            target = self.focusWidget()
+            if isinstance(target, QAbstractButton) and target.isEnabled():
+                target.click()
+                return
+        super().keyPressEvent(event)
 
     # ----------------------------------------------------------------- layout
 
