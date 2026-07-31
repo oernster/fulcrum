@@ -28,6 +28,7 @@ from fulcrum.domain.authority_scale import (
     frame_headcount,
     prince_scale_factor,
     scaled_authority_penalty,
+    scaled_contested_penalty,
 )
 from fulcrum.domain.models import OrgState, Team
 from fulcrum.domain.parameters import (
@@ -62,6 +63,7 @@ __all__ = [
     "is_contested",
     "prince_scale_factor",
     "scaled_authority_penalty",
+    "scaled_contested_penalty",
     "team_arrivals",
     "team_capacity",
     "team_imbalance",
@@ -185,9 +187,9 @@ def team_capacity(
 
     scale_factor is the prince factor for the frame's population; None
     computes it from the org, and callers scoring many teams pass it once.
-    A contested team pays the worse of the contest price and the scaled
-    escalation price, so contest is never cheaper than clean escalation at
-    any scale.
+    A contested team pays its full flat contest price up to the band and a
+    proportionally deepened one above it, so contest costs strictly more
+    than clean escalation at every scale.
     """
     factor = (
         prince_scale_factor(frame_headcount(org), params)
@@ -195,11 +197,10 @@ def team_capacity(
         else scale_factor
     )
     capacity = params.base_capacity
-    scaled_authority = scaled_authority_penalty(params, factor)
     if is_contested(org, team, index):
-        capacity *= min(params.contested_penalty, scaled_authority)
+        capacity *= scaled_contested_penalty(params, factor)
     elif not team.has_local_authority:
-        capacity *= scaled_authority
+        capacity *= scaled_authority_penalty(params, factor)
     capacity /= _UNIT + params.coupling_weight * coupling_of(org, team.id, index)
     capacity /= _UNIT + params.incentive_weight * team.incentive_skew
     excess_size = max(_ZERO, float(team.size - params.ideal_team_size))

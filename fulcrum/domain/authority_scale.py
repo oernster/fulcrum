@@ -79,3 +79,17 @@ def scaled_authority_penalty(params: SimulationParameters, factor: float) -> flo
     validation on SimulationParameters keeps the result strictly positive.
     """
     return _UNIT - (_UNIT - params.authority_penalty) * factor
+
+
+def scaled_contested_penalty(params: SimulationParameters, factor: float) -> float:
+    """The capacity multiplier for a contested team, at scale.
+
+    Contest keeps its full flat price up to the band (attenuation never
+    reaches it) and above the band it deepens in proportion to the scaled
+    escalation price, so a contested team's capacity sits strictly below a
+    merely escalating team's at every scale: the meta-question of who
+    decides travels the same distance the decision does, then costs more.
+    """
+    scaled = scaled_authority_penalty(params, factor)
+    ratio = params.contested_penalty / params.authority_penalty
+    return min(params.contested_penalty, scaled * ratio)

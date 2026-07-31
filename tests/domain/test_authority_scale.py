@@ -15,8 +15,8 @@ rather than a preference asserted uniformly:
   C6  The penalty saturates at the survivor ceiling: rare princes survive
       at any size, so scale grades the penalty and never prohibits.
   C7  The factor is continuous at both band edges.
-  C8  Contest is never forgiven: full price below the horizon, amplified
-      above it.
+  C8  Contest is never forgiven: full price below the horizon and strictly
+      worse than clean escalation at every scale, deepening above the band.
   C9  Delegating authority (republicanising) is worth more the larger the
       organisation: the same move reads bigger at scale.
   C10 A Dunbar-sized pocket inside a large organisation may stay princely
@@ -45,6 +45,7 @@ from fulcrum.domain.simulation import (
     frame_headcount,
     prince_scale_factor,
     scaled_authority_penalty,
+    scaled_contested_penalty,
     team_capacity,
 )
 
@@ -171,6 +172,27 @@ def test_c8_contest_is_never_forgiven_below_the_horizon():
     assert contest_scale_factor(_PARAMS.prince_survivor_ceiling) == (
         _PARAMS.prince_survivor_ceiling
     )
+    # Below the band contest costs its full flat price; above it the price
+    # deepens in proportion to the scaled escalation price, so a contested
+    # team's capacity sits strictly below an escalating team's at every
+    # scale. The equality regime the min() clamp used to allow is pinned
+    # out: this is the repair for the contest-gets-relatively-cheaper
+    # finding of the adversarial review.
+    assert scaled_contested_penalty(_PARAMS, _PARAMS.prince_attenuation) == (
+        _PARAMS.contested_penalty
+    )
+    ceiling = _PARAMS.prince_survivor_ceiling
+    deepened = scaled_contested_penalty(_PARAMS, ceiling)
+    assert deepened < scaled_authority_penalty(_PARAMS, ceiling)
+    assert deepened == pytest.approx(
+        scaled_authority_penalty(_PARAMS, ceiling)
+        * _PARAMS.contested_penalty
+        / _PARAMS.authority_penalty
+    )
+    for factor_point in (0.3, 1.0, 1.3, ceiling):
+        assert scaled_contested_penalty(_PARAMS, factor_point) < (
+            scaled_authority_penalty(_PARAMS, factor_point)
+        )
 
 
 def test_c9_delegation_reads_larger_the_bigger_the_organisation():
