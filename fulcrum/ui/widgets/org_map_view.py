@@ -7,8 +7,8 @@ runs from amber (no local authority) to teal (fully authoritative); inter-node
 dependencies are drawn as arrows. Hovering a drillable domain or the back chip, or
 moving the keyboard cursor onto a domain, rings it to show it can be opened; each
 level is fit to the panel, with + and - stepping a per-level zoom over that fit.
-Scene painting, the ring and the preview frame live in org_map_painter; this
-view owns navigation, hit-testing and the overlay state.
+Scene painting and the ring live in org_map_painter; this view owns
+navigation, hit-testing and the overlay state.
 """
 
 from __future__ import annotations
@@ -60,7 +60,6 @@ class OrgMapView(QGraphicsView):
         self.setMinimumHeight(ui_scale.px(_MIN_HEIGHT))
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self._org: OrgState | None = None
-        self._preview = False
         self._parent_id: str | None = None
         self._signature: object = None
         self._hot: list[tuple[QRectF, str, str]] = []
@@ -87,10 +86,6 @@ class OrgMapView(QGraphicsView):
         ):
             self._parent_id = None
         self._render()
-
-    def set_preview(self, value: bool) -> None:
-        self._preview = value
-        self.viewport().update()
 
     def set_highlight(self, node_ids) -> None:
         """Ring the given node ids to mark them as changed, then repaint."""
@@ -341,5 +336,3 @@ class OrgMapView(QGraphicsView):
         for node_rect, _kind, node_id in self._hot:
             if node_id in self._highlight:
                 painter.draw_ring(scene_painter, node_rect)
-        if self._preview:
-            painter.draw_preview_frame(scene_painter, self.viewport().rect())

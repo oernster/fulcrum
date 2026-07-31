@@ -96,9 +96,6 @@ class BoardMapPane(QStackedWidget):
         self._map.set_org(org)
         self._complete.set_org(org)
 
-    def set_preview(self, value: bool) -> None:
-        self._map.set_preview(value)
-
     def reset(self) -> None:
         """A fresh organisation: back to the top and the complete picture."""
         self._map.reset_view()

@@ -229,7 +229,6 @@ class BoardView(QWidget):
             f"across {count_noun(len(self._session.org.teams), 'team')}"
         )
         self._scope.refresh()
-        self._map_pane.set_preview(False)
         self._map_pane.set_org(self._session.org)
         self._move_note.show_last_move(self._session)
         self._update_undo()

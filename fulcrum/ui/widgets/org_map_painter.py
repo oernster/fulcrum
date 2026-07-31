@@ -55,10 +55,6 @@ _ARM = 8.0
 _LEG = 6.0
 _LEG_DROP = 9.0
 _ESCALATE = "↑"
-_PREVIEW_INSET = 2
-_PREVIEW_TEXT_X = 8
-_PREVIEW_TEXT_Y = 6
-_PREVIEW_TEXT_DROP = 24
 
 # Text is elided to the inner width so a long label never spills the node; the
 # label row also leaves room for the person glyph on the right.
@@ -216,24 +212,6 @@ def draw_ring(scene_painter: QPainter, rect: QRectF) -> None:
     scene_painter.setPen(QPen(map_palette().ring, RING_PEN))
     scene_painter.setBrush(Qt.BrushStyle.NoBrush)
     scene_painter.drawRoundedRect(outer, radius, radius)
-    scene_painter.restore()
-
-
-def draw_preview_frame(scene_painter: QPainter, viewport_rect) -> None:
-    """The amber Preview frame, drawn in viewport coordinates."""
-    scene_painter.save()
-    scene_painter.resetTransform()
-    frame = viewport_rect.adjusted(
-        _PREVIEW_INSET, _PREVIEW_INSET, -_PREVIEW_INSET, -_PREVIEW_INSET
-    )
-    scene_painter.setPen(QPen(map_palette().preview, 2))
-    scene_painter.setBrush(Qt.BrushStyle.NoBrush)
-    scene_painter.drawRect(frame)
-    scene_painter.drawText(
-        frame.adjusted(_PREVIEW_TEXT_X, _PREVIEW_TEXT_Y, 0, 0).topLeft()
-        + QPointF(0, _PREVIEW_TEXT_DROP).toPoint(),
-        "Preview",
-    )
     scene_painter.restore()
 
 
