@@ -16,7 +16,6 @@ from PySide6.QtWidgets import QGraphicsScene
 
 from fulcrum.domain.hierarchy import headcount_in_domain, teams_in_domain
 from fulcrum.domain.models import Domain, OrgState
-from fulcrum.domain.simulation import is_contested
 from fulcrum.shared.text import count_noun
 from fulcrum.ui.map_palette import map_palette
 from fulcrum.ui.widgets.complete_map_edges import direct_is_clear, route_edges
@@ -65,27 +64,42 @@ def _domain(org: OrgState, ident: str) -> Domain:
     return next(domain for domain in org.domains if domain.id == ident)
 
 
+def _domain_border(org: OrgState, domain_id: str, claimed: frozenset) -> QColor:
+    """The domain's subtree rolled into one border, as the drill map rolls it.
+
+    Any standing claim in the subtree reads contested; otherwise the border
+    blends from amber toward green with the share of member teams holding
+    local authority, so a change deep inside a unit is visible on the unit.
+    """
+    members = teams_in_domain(org, domain_id)
+    if any(team.id in claimed for team in members):
+        return map_palette().contested
+    if not members:
+        return map_palette().no_authority
+    held = sum(1 for team in members if team.has_local_authority)
+    return _blend(
+        map_palette().no_authority, map_palette().authority, held / len(members)
+    )
+
+
 def draw_domain(
-    scene: QGraphicsScene, org: OrgState, summarize: bool, x, y, box
+    scene: QGraphicsScene, org: OrgState, summarize: bool, x, y, box, claimed
 ) -> None:
     if box.ident == SHELL_ID:
         _draw_shell(scene, x, y, box)
         return
     domain = _domain(org, box.ident)
+    border = _domain_border(org, domain.id, claimed)
     path = QPainterPath()
     path.addRoundedRect(QRectF(x, y, box.w, box.h), CORNER, CORNER)
-    scene.addPath(
-        path,
-        QPen(map_palette().no_authority, _PEN_W),
-        QBrush(map_palette().domain_fill),
-    )
+    scene.addPath(path, QPen(border, _PEN_W), QBrush(map_palette().domain_fill))
     people = headcount_in_domain(org, domain.id)
     detail = f"{domain.category} · {count_noun(people, 'person', 'people')}"
     if is_summary(domain, summarize):
         teams = len(teams_in_domain(org, domain.id))
         detail = f"{detail} · {count_noun(teams, 'team')}"
     category = scene.addSimpleText(detail, _font())
-    category.setBrush(map_palette().no_authority)
+    category.setBrush(border)
     category.setPos(x + PAD, y + _DOMAIN_CATEGORY_DY)
     name = scene.addSimpleText(domain.name, _font(bold=True))
     name.setBrush(map_palette().text)
@@ -111,11 +125,11 @@ def _draw_shell(scene: QGraphicsScene, x, y, box) -> None:
     detail.setPos(x + PAD, y + _DOMAIN_CATEGORY_DY)
 
 
-def draw_team(scene: QGraphicsScene, org: OrgState, x, y, box) -> None:
+def draw_team(scene: QGraphicsScene, org: OrgState, x, y, box, claimed) -> None:
     team = org.team(box.ident)
     path = QPainterPath()
     path.addRoundedRect(QRectF(x, y, box.w, box.h), CORNER, CORNER)
-    contested = is_contested(org, team)
+    contested = team.id in claimed
     if contested:
         border = map_palette().contested
     else:

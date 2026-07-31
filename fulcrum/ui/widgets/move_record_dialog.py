@@ -152,6 +152,9 @@ class MoveRecordDialog(NeutralDialog):
             return
         shown = self._positions[index + 1 if self._showing_after else index]
         self._view.set_org(shown)
+        # Mark where the selected move acted, in both positions, so a change
+        # the border encoding cannot show still has a visible location.
+        self._view.set_highlight(self._history[index].targets)
         # The toggle names the ACTION a press performs, never the state.
         self._toggle.setText(_SHOW_BEFORE if self._showing_after else _SHOW_AFTER)
         word = _AFTER_WORD if self._showing_after else _BEFORE_WORD

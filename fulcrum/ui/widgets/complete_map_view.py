@@ -68,8 +68,10 @@ class CompleteMapView(QGraphicsView):
         self._org: OrgState | None = None
         self._summarize = False
         self._domain_rects: dict[str, QRectF] = {}
+        self._node_rects: dict[str, QRectF] = {}
         self._press_pos = None
         self._hover_id: str | None = None
+        self._highlight: frozenset[str] = frozenset()
         self._anchor_on_show = False
         self.setMouseTracking(True)
         self.viewport().setMouseTracking(True)
@@ -142,18 +144,49 @@ class CompleteMapView(QGraphicsView):
             return
         super().keyPressEvent(event)
 
+    def set_highlight(self, node_ids) -> None:
+        """Ring the given nodes (or their nearest drawn ancestor) and repaint.
+
+        The move record uses it to mark where the selected move acted, so a
+        change the encoding cannot show (an incentive realignment) still has
+        a visible location. A team hidden by summarisation rings the deepest
+        ancestor domain the picture actually draws.
+        """
+        self._highlight = frozenset(node_ids)
+        self.viewport().update()
+
+    def _highlight_rects(self) -> list[QRectF]:
+        if self._org is None:
+            return []
+        parents = {d.id: d.parent_id for d in self._org.domains}
+        domain_of = {t.id: t.domain_id for t in self._org.teams}
+        rects = []
+        for node_id in self._highlight:
+            current = node_id
+            if current not in self._node_rects and current in domain_of:
+                current = domain_of[current]
+            while current is not None and current not in self._node_rects:
+                current = parents.get(current)
+            if current is not None:
+                rects.append(self._node_rects[current])
+        return rects
+
     def drawForeground(self, scene_painter: QPainter, rect: QRectF) -> None:
-        if self._hover_id is None:
+        targets = self._highlight_rects()
+        hover = self._domain_rects.get(self._hover_id) if self._hover_id else None
+        if hover is not None:
+            targets.append(hover)
+        if not targets:
             return
-        target = self._domain_rects.get(self._hover_id)
-        if target is None:
-            return
-        outer = target.adjusted(-_RING_INSET, -_RING_INSET, _RING_INSET, _RING_INSET)
         radius = painter.CORNER + _RING_INSET
         scene_painter.save()
         scene_painter.setPen(QPen(map_palette().ring, _RING_PEN))
         scene_painter.setBrush(Qt.BrushStyle.NoBrush)
-        scene_painter.drawRoundedRect(outer, radius, radius)
+        for target in targets:
+            outer = target.adjusted(
+                -_RING_INSET, -_RING_INSET, _RING_INSET, _RING_INSET
+            )
+            scene_painter.drawRoundedRect(outer, radius, radius)
         scene_painter.restore()
 
     def _domain_at(self, scene_pos) -> str | None:
@@ -225,10 +258,16 @@ class CompleteMapView(QGraphicsView):
             for x, y, box in domains
             if box.ident != SHELL_ID
         }
+        self._node_rects = {
+            ident: rect for ident, rect in rects.items() if ident != SHELL_ID
+        }
+        claimed = frozenset(claim.subject for claim in self._org.claims)
         for x, y, box in domains:
-            painter.draw_domain(self._scene, self._org, self._summarize, x, y, box)
+            painter.draw_domain(
+                self._scene, self._org, self._summarize, x, y, box, claimed
+            )
         for x, y, box in teams:
-            painter.draw_team(self._scene, self._org, x, y, box)
+            painter.draw_team(self._scene, self._org, x, y, box, claimed)
         painter.draw_edges(self._scene, self._org, rects)
 
     def _collect(self, box, x, y, rects, domains, teams) -> None:
