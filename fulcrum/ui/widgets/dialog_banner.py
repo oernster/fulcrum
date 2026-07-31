@@ -18,26 +18,32 @@ from fulcrum.ui import ui_scale
 
 _BANNER_ICON_PX = 40
 _TITLE_OBJECT_NAME = "BannerTitle"
-# The icon art carries transparent padding and a soft halo whose tail runs
-# to the image edge; only pixels at least this opaque count as the visible
-# mark when cropping, so the pixmap's bottom row IS the coloured base.
-_INK_ALPHA = 64
+# The icon art carries transparent padding, a soft halo and dim glow skirts
+# that read as empty space; a row or column belongs to the visible mark only
+# when it holds a substantial run of solidly opaque ink, so the crop's
+# bottom row is the mark's PERCEPTUAL base, never a glow tail (the golden
+# provenance mark's skirt hung it below the baseline under a laxer rule).
+_INK_ALPHA = 128
+_MIN_RUN_DIVISOR = 32
 
 
 def _ink_cropped(image: QImage) -> QImage:
-    """The image cropped to its visibly coloured bounds."""
-    left, top = image.width(), image.height()
-    right = bottom = -1
-    for y in range(image.height()):
-        for x in range(image.width()):
-            if image.pixelColor(x, y).alpha() >= _INK_ALPHA:
-                left = min(left, x)
-                right = max(right, x)
-                top = min(top, y)
-                bottom = max(bottom, y)
-    if right < 0:
+    """The image cropped to its perceptually coloured bounds."""
+    width, height = image.width(), image.height()
+    strong = [
+        [image.pixelColor(x, y).alpha() >= _INK_ALPHA for x in range(width)]
+        for y in range(height)
+    ]
+    min_run = max(1, width // _MIN_RUN_DIVISOR)
+    rows = [y for y in range(height) if sum(strong[y]) >= min_run]
+    cols = [
+        x for x in range(width) if sum(strong[y][x] for y in range(height)) >= min_run
+    ]
+    if not rows or not cols:
         return image
-    return image.copy(QRect(left, top, right - left + 1, bottom - top + 1))
+    return image.copy(
+        QRect(cols[0], rows[0], cols[-1] - cols[0] + 1, rows[-1] - rows[0] + 1)
+    )
 
 
 def banner_row(icon_path: Path | None, title: str) -> QHBoxLayout:
