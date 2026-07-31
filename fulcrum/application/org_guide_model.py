@@ -52,6 +52,10 @@ class GuideNode:
     than it gains once the other lines land, and compose_cost then holds
     that cost in whole-org points (zero while the line composes). The row
     stays the frame's own best line either way.
+    growth_shortlist is nonzero only on a whole-org growth row planned for
+    an organisation too large to consider every team live: it holds how
+    many of the most coupled teams the line was planned over, so the
+    guide can state that scope honestly.
     """
 
     frame_id: str | None
@@ -65,6 +69,7 @@ class GuideNode:
     grown_line: bool = False
     composes: bool = True
     compose_cost: float = 0.0
+    growth_shortlist: int = 0
 
 
 @dataclass(frozen=True, slots=True)

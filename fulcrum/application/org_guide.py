@@ -34,7 +34,7 @@ this module.
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from fulcrum.application.game_session import MAX_PLAYABLE_TEAMS
 from fulcrum.application.interfaces import Simulator
@@ -67,9 +67,30 @@ from fulcrum.domain.hierarchy import (
 )
 from fulcrum.domain.models import Domain, OrgState
 from fulcrum.domain.moves import Move, MoveKind
+from fulcrum.domain.simulation import coupling_of
 
 _GROWTH_MOVE_KINDS = (MoveKind.SPLIT_TEAM, MoveKind.ADD_TEAM)
 _EMPTY_SCORE = 0.0
+
+# Past the live-planning size the whole-org growth line is planned over
+# the most coupled teams only (growth pays where the edges live) and with
+# fewer greedy steps, so the line stays live at any organisation size.
+_GROWTH_SHORTLIST_TEAMS = 100
+_GROWTH_LINE_MAX_STEPS = 4
+
+
+def _growth_shortlist(org: OrgState) -> frozenset[str]:
+    """The ids of the most coupled teams, the candidates growth considers.
+
+    Sorted by coupling with the team id as a deterministic tiebreak, so
+    the same organisation always yields the same shortlist.
+    """
+    ranked = sorted(
+        org.teams,
+        key=lambda team: (-coupling_of(org, team.id), team.id),
+    )
+    return frozenset(team.id for team in ranked[:_GROWTH_SHORTLIST_TEAMS])
+
 
 # A progress callback receives (sections planned so far, total sections).
 ProgressCallback = Callable[[int, int], None]
@@ -175,20 +196,29 @@ class _Builder:
 
         Planned from the composed position so every remaining edge is
         visible; returns the node plus the headline including its climb.
+        Past the live-planning size the line is still planned, over the
+        most coupled teams only (growth pays where the edges live) and
+        with fewer steps, and the node carries that scope so the guide
+        states it honestly.
         """
+        shortlist: frozenset[str] | None = None
+        planner = self._full
         if len(composed.teams) > MAX_PLAYABLE_TEAMS:
-            self._tick()
-            too_large = GuideNode(
-                frame_id=None,
-                label=GROWTH_FRAME_LABEL,
-                category="",
-                is_leaf=True,
-                playable=False,
-                guide=Guide(_EMPTY_SCORE, _EMPTY_SCORE, ()),
-                grown_line=True,
+            shortlist = _growth_shortlist(composed)
+            planner = ImprovementPlanner(
+                self._simulator,
+                allow_growth=True,
+                max_steps=_GROWTH_LINE_MAX_STEPS,
             )
-            return too_large, composed_score
-        guide = self._full.plan(composed, _GROWTH_MOVE_KINDS)
+        if shortlist is None:
+            guide = planner.plan(composed, _GROWTH_MOVE_KINDS)
+        else:
+            shortlisted = shortlist
+
+            def keep_shortlisted(move: Move) -> bool:
+                return shortlisted.issuperset(move.targets)
+
+            guide = planner.plan(composed, _GROWTH_MOVE_KINDS, keep_shortlisted)
         self._tick()
         if not guide.steps:
             return None, composed_score
@@ -201,6 +231,7 @@ class _Builder:
             guide=guide,
             org_delta=guide.final_score - guide.start_score,
             grown_line=True,
+            growth_shortlist=0 if shortlist is None else len(shortlist),
         )
         return node, guide.final_score
 

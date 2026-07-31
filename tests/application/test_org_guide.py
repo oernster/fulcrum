@@ -244,15 +244,22 @@ def test_growth_row_is_absent_when_growth_gains_nothing():
     assert grown.flat_after == pytest.approx(fixed.flat_after)
 
 
-def test_oversized_org_reports_growth_unplannable():
+def test_oversized_org_plans_growth_over_a_shortlist():
+    """Past the live size growth is planned, never refused outright.
+
+    The line considers only the most coupled teams, so no unplayable
+    refusal row ever appears; when no shortlisted move clears the
+    planner's bar the row is simply absent, like any other gainless line.
+    """
     teams = tuple(_t(f"t{i}", domain_id="big") for i in range(MAX_PLAYABLE_TEAMS + 1))
-    org = OrgState(teams=teams, workload=1, domains=(Domain("big", "Big"),))
+    org = OrgState(
+        teams=teams,
+        workload=1,
+        dependencies=(Dependency("t0", "t1", 2), Dependency("t2", "t0", 2)),
+        domains=(Domain("big", "Big"),),
+    )
     grown = build_org_guide(org, _SIM, allow_growth=True)
-    growth = grown.nodes[-1]
-    assert growth.label == GROWTH_FRAME_LABEL
-    assert growth.grown_line is True
-    assert growth.playable is False
-    assert growth.guide.steps == ()
+    assert all(not (n.grown_line and not n.playable) for n in grown.nodes)
 
 
 def test_progress_counts_the_growth_pass_when_growing():

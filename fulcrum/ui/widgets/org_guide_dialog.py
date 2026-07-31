@@ -45,7 +45,6 @@ from fulcrum.ui.widgets.org_guide_text import (
     GROW_TOGGLE_TEXT,
     GROWTH_SAME_FRAME_NOTE,
     GROWTH_SAME_NOTE,
-    GROWTH_TOO_LARGE,
     HINT,
     SCORE_DECIMALS,
     TOO_LARGE,
@@ -242,7 +241,7 @@ class OrgGuideDialog(NeutralDialog):
         self._frame_note.setText(note)
         self._frame_note.setVisible(bool(self._frame_note.text()))
         if not node.playable:
-            self._add_note(GROWTH_TOO_LARGE if node.grown_line else TOO_LARGE)
+            self._add_note(TOO_LARGE)
             return
         if not node.guide.steps:
             self._add_note(ALREADY_GOOD)

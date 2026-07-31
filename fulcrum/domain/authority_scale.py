@@ -29,11 +29,11 @@ from math import log10
 
 from fulcrum.domain.hierarchy import (
     domain_subtree_ids,
-    headcount_in_domain,
     total_headcount,
 )
 from fulcrum.domain.models import OrgState, Team
 from fulcrum.domain.parameters import SimulationParameters
+from fulcrum.domain.populations import headcounts_by_domain
 
 _UNIT: float = 1.0
 _NO_INFLOW: float = 0.0
@@ -226,6 +226,9 @@ def scale_context(org: OrgState, params: SimulationParameters) -> ScaleContext:
     inflow: dict[str, float] = {t.id: _NO_INFLOW for t in org.teams}
     marked = _authority_marked_domains(org, clean_authorities)
     parent_of = {d.id: d.parent_id for d in org.domains}
+    # One bottom-up pass prices every resolution neighbourhood; the per-team
+    # loop then reads populations from it instead of rescanning the org.
+    populations = headcounts_by_domain(org)
     groups: dict[str | None, list[str]] = {}
     for team in org.teams:
         contested = team.id in claimed
@@ -245,9 +248,7 @@ def scale_context(org: OrgState, params: SimulationParameters) -> ScaleContext:
             if scope is None:
                 factors[team.id] = frame_factor
             else:
-                factors[team.id] = prince_scale_factor(
-                    headcount_in_domain(org, scope), params
-                )
+                factors[team.id] = prince_scale_factor(populations[scope], params)
         groups.setdefault(scope, []).append(team.id)
     shed = params.escalation_load_share * org.workload
     neighbours: dict[str, set[str]] = {}

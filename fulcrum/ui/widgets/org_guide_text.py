@@ -9,9 +9,8 @@ from __future__ import annotations
 
 from fulcrum.application.org_guide import GuideNode, OrgGuide
 from fulcrum.application.planner import GuideStep
-from fulcrum.shared.text import count_noun
+from fulcrum.shared.text import SCORE_DECIMALS, count_noun
 
-SCORE_DECIMALS = 1
 GROW_TOGGLE_TEXT = "Allow the organisation to grow (split or add teams)"
 GROWTH_SAME_NOTE = "Growth does not improve any line from this position."
 GROWTH_SAME_FRAME_NOTE = (
@@ -27,7 +26,6 @@ AGGREGATE_NOTE = (
     "it, so only leaf lines count toward the headline."
 )
 TOO_LARGE = "This section is too large to plan live; drill into its units."
-GROWTH_TOO_LARGE = "The organisation is too large to plan growth live."
 NOT_COMPOSED_BADGE = "not composed"
 
 
@@ -71,11 +69,18 @@ def frame_note_text(node: GuideNode) -> str:
     if not node.playable or not node.guide.steps:
         return ""
     if node.grown_line:
-        return (
+        note = (
             f"Planned from the position after every leaf line: "
             f"{frame_climb(node)} on the whole organisation's scale. The "
             "org points above are growth's worth on top of the other lines."
         )
+        if node.growth_shortlist:
+            note += (
+                " The organisation is too large to consider every team "
+                f"live, so this line was planned over its "
+                f"{node.growth_shortlist} most coupled teams."
+            )
+        return note
     if node.is_leaf and not node.composes:
         return (
             f"This line scores {frame_climb(node)} on this level's own "

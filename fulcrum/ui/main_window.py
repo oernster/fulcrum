@@ -283,6 +283,10 @@ class MainWindow(QMainWindow):
             return
         self._guide_busy = BusyDialog("Planning every level...", self, determinate=True)
         self._guide_busy.show()
+        # Paint the dialog before the worker starts: the planner's tight
+        # Python loops hold the GIL, which can starve the first paint for
+        # seconds and leave the dialog a blank white rectangle.
+        QApplication.processEvents()
         self._guide_thread = OrgGuideThread(self._session.org, self._simulator)
         self._guide_thread.progress.connect(self._guide_busy.set_progress)
         self._guide_thread.built.connect(self._on_guides_built)
