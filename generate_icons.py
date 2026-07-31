@@ -42,6 +42,16 @@ _PROVENANCE_SAT = 0.85
 _HUE_MAX = 360
 _CHANNEL_MAX = 255
 
+# The master carries wide margins that read as padding in the taskbar and
+# title bar, and its raw alpha bounds are held open by sparse streak tails,
+# so the trim keys on alpha MASS instead: crop to the box holding this share
+# of the ink, pad by the margin, then square. The letterbox cap bounds how
+# much taller than the ink the square may go; the wide axis centre-crops to
+# meet it, which only sheds the dim trail tips beyond the mass box.
+_TRIM_KEEP = 0.995
+_TRIM_MARGIN_RATIO = 0.03
+_MAX_LETTERBOX = 1.15
+
 
 def retint(master: Image.Image, hue_deg: int, sat_scale: float) -> Image.Image:
     """The master with every pixel's hue set and saturation scaled."""
@@ -72,9 +82,60 @@ def electric_glow(master: Image.Image) -> Image.Image:
     return out
 
 
+def _mass_span(sums: list[int], keep: float) -> tuple[int, int]:
+    """The index range holding the central `keep` share of the mass."""
+    total = sum(sums)
+    lo_target = total * (1 - keep) / 2
+    hi_target = total * (1 + keep) / 2
+    running = 0.0
+    lo = 0
+    hi = len(sums)
+    for index, value in enumerate(sums):
+        running += value
+        if running < lo_target:
+            lo = index + 1
+        if running < hi_target:
+            hi = index + 1
+    return lo, min(hi + 1, len(sums))
+
+
+def tighten(art: Image.Image) -> Image.Image:
+    """Crop to the ink's mass box, then square within the letterbox cap."""
+    alpha = art.getchannel("A")
+    width, height = alpha.size
+    data = alpha.tobytes()
+    cols = [0] * width
+    rows = [0] * height
+    for y in range(height):
+        base = y * width
+        row_total = 0
+        for x in range(width):
+            value = data[base + x]
+            cols[x] += value
+            row_total += value
+        rows[y] = row_total
+    x0, x1 = _mass_span(cols, _TRIM_KEEP)
+    y0, y1 = _mass_span(rows, _TRIM_KEEP)
+    if x1 <= x0 or y1 <= y0:
+        return art
+    margin = round(max(x1 - x0, y1 - y0) * _TRIM_MARGIN_RATIO)
+    cropped = art.crop(
+        (
+            max(0, x0 - margin),
+            max(0, y0 - margin),
+            min(width, x1 + margin),
+            min(height, y1 + margin),
+        )
+    )
+    side = min(max(cropped.size), round(min(cropped.size) * _MAX_LETTERBOX))
+    out = Image.new("RGBA", (side, side), (0, 0, 0, 0))
+    out.paste(cropped, ((side - cropped.width) // 2, (side - cropped.height) // 2))
+    return out
+
+
 def main() -> int:
     root = Path(__file__).resolve().parent
-    source = electric_glow(Image.open(root / _SOURCE))
+    source = tighten(electric_glow(Image.open(root / _SOURCE)))
     for size in _PNG_SIZES:
         name = _PNG_TEMPLATE.format(size=size)
         source.resize((size, size), _RESAMPLE).save(root / name, "PNG")
@@ -86,8 +147,10 @@ def main() -> int:
         sizes=[(size, size) for size in _ICO_SIZES],
     )
     print(f"  [OK] {_ICO_NAME}")
-    provenance = electric_glow(
-        retint(Image.open(root / _SOURCE), _PROVENANCE_HUE_DEG, _PROVENANCE_SAT)
+    provenance = tighten(
+        electric_glow(
+            retint(Image.open(root / _SOURCE), _PROVENANCE_HUE_DEG, _PROVENANCE_SAT)
+        )
     )
     provenance.resize((_PROVENANCE_SIZE, _PROVENANCE_SIZE), _RESAMPLE).save(
         root / _PROVENANCE_NAME, "PNG"
