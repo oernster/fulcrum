@@ -162,21 +162,28 @@ class MoveRecordDialog(NeutralDialog):
         # Mark where the selected move acted, in both positions, so a change
         # the border encoding cannot show still has a visible location.
         self._view.set_highlight(self._history[index].targets)
-        self._change.setText(
-            "This move changed: "
-            + describe_position_change(
-                self._positions[index], self._positions[index + 1]
-            )
+        # Each line keeps to one frame: the caption describes the POSITION on
+        # screen (its own health, so flipping visibly changes the number) and
+        # the change line describes the MOVE (its climb and its located
+        # delta), never mixing the two.
+        change = describe_position_change(
+            self._positions[index], self._positions[index + 1]
         )
         # The toggle names the ACTION a press performs, never the state.
         self._toggle.setText(_SHOW_BEFORE if self._showing_after else _SHOW_AFTER)
         word = _AFTER_WORD if self._showing_after else _BEFORE_WORD
         caption = f"Position {word} move {index + 1}"
         if self._simulator is not None:
-            before = self._simulator.score(self._positions[index]).value
-            after = self._simulator.score(self._positions[index + 1]).value
+            shown_health = self._simulator.score(shown).value
             caption = (
                 f"{caption}   ·   structural health "
-                f"{before:.{SCORE_DECIMALS}f} → {after:.{SCORE_DECIMALS}f}"
+                f"{shown_health:.{SCORE_DECIMALS}f}"
+            )
+            before = self._simulator.score(self._positions[index]).value
+            after = self._simulator.score(self._positions[index + 1]).value
+            change = (
+                f"structural health {before:.{SCORE_DECIMALS}f} → "
+                f"{after:.{SCORE_DECIMALS}f}; {change}"
             )
         self._caption.setText(caption)
+        self._change.setText(f"This move changed: {change}")

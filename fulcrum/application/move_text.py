@@ -134,6 +134,30 @@ def move_note(kind: MoveKind) -> str:
 
 _SKEW_DECIMALS = 2
 _NO_CHANGE_TEXT = "no structural field changed"
+_MAX_NAMED_UNITS = 3
+_UNASSIGNED_UNIT = "unassigned teams"
+
+
+def _in_units(org: OrgState, teams: list) -> str:
+    """Name where the change happened, matching the units the map draws."""
+    names = {domain.id: domain.name for domain in org.domains}
+    units = sorted(
+        {
+            (
+                names.get(team.domain_id, _UNASSIGNED_UNIT)
+                if team.domain_id is not None
+                else _UNASSIGNED_UNIT
+            )
+            for team in teams
+        }
+    )
+    if len(units) == 1:
+        return f"in {units[0]}"
+    if len(units) > _MAX_NAMED_UNITS:
+        shown = ", ".join(units[:_MAX_NAMED_UNITS])
+        rest = count_noun(len(units) - _MAX_NAMED_UNITS, "more unit")
+        return f"in {shown} and {rest}"
+    return "in " + ", ".join(units[:-1]) + f" and {units[-1]}"
 
 
 def describe_position_change(before: OrgState, after: OrgState) -> str:
@@ -142,13 +166,36 @@ def describe_position_change(before: OrgState, after: OrgState) -> str:
     Computed from the positions rather than the move, so the record can
     always state the delta even where the map's encoding cannot show it (an
     incentive realignment, or a delegation inside a division that stays
-    contested throughout).
+    contested throughout). Team-level changes are located by the unit they
+    happened in, so the line points at the box that moved rather than at an
+    organisation-wide total no box displays.
     """
     parts: list[str] = []
-    held_before = sum(1 for team in before.teams if team.has_local_authority)
-    held_after = sum(1 for team in after.teams if team.has_local_authority)
-    if held_before != held_after:
-        parts.append(f"teams deciding locally {held_before} → {held_after}")
+    before_teams = {team.id: team for team in before.teams}
+    gained = [
+        team
+        for team in after.teams
+        if team.id in before_teams
+        and team.has_local_authority
+        and not before_teams[team.id].has_local_authority
+    ]
+    lost = [
+        team
+        for team in after.teams
+        if team.id in before_teams
+        and not team.has_local_authority
+        and before_teams[team.id].has_local_authority
+    ]
+    if gained:
+        parts.append(
+            f"now deciding locally: {count_noun(len(gained), 'team')} "
+            f"{_in_units(after, gained)}"
+        )
+    if lost:
+        parts.append(
+            f"no longer deciding locally: {count_noun(len(lost), 'team')} "
+            f"{_in_units(after, lost)}"
+        )
     if len(before.teams) != len(after.teams):
         parts.append(f"teams {len(before.teams)} → {len(after.teams)}")
     if len(before.claims) != len(after.claims):
@@ -162,17 +209,20 @@ def describe_position_change(before: OrgState, after: OrgState) -> str:
         delay_after = sum(d.propagation_delay for d in after.dependencies)
         if delay_before != delay_after:
             parts.append(f"total propagation delay {delay_before} → {delay_after}")
-    skew_before = {t.id: t.incentive_skew for t in before.teams}
     changed = [
-        (skew_before[t.id], t.incentive_skew)
-        for t in after.teams
-        if t.id in skew_before and t.incentive_skew != skew_before[t.id]
+        team
+        for team in after.teams
+        if team.id in before_teams
+        and team.incentive_skew != before_teams[team.id].incentive_skew
     ]
     if changed:
-        mean_before = sum(pair[0] for pair in changed) / len(changed)
-        mean_after = sum(pair[1] for pair in changed) / len(changed)
+        mean_before = sum(before_teams[t.id].incentive_skew for t in changed) / len(
+            changed
+        )
+        mean_after = sum(t.incentive_skew for t in changed) / len(changed)
         parts.append(
-            f"incentive skew realigned at {count_noun(len(changed), 'team')}, "
+            f"incentive skew realigned at {count_noun(len(changed), 'team')} "
+            f"{_in_units(after, changed)}, "
             f"mean {mean_before:.{_SKEW_DECIMALS}f} → "
             f"{mean_after:.{_SKEW_DECIMALS}f}"
         )

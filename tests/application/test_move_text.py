@@ -118,53 +118,109 @@ def test_exactly_the_cap_is_named_in_full():
     assert describe_move(org, move) == "Delegate authority to T0 + T1 + T2"
 
 
+_UNITS = (Domain("u1", "Messaging"), Domain("u2", "Storage"))
+
+
 def _base_position():
     return OrgState(
-        teams=(Team("a", "Alpha", False, 0.5), Team("b", "Bravo", True, 0.4)),
+        teams=(
+            Team("a", "Alpha", False, 0.5, domain_id="u1"),
+            Team("b", "Bravo", True, 0.4, domain_id="u2"),
+        ),
         dependencies=(Dependency("a", "b", 3),),
         workload=4,
+        domains=_UNITS,
     )
 
 
-def test_change_line_states_authority_and_claims_and_teams():
+def test_change_line_locates_authority_and_counts_claims_and_teams():
     before = _base_position()
     after = OrgState(
         teams=(
-            Team("a", "Alpha", True, 0.5),
-            Team("b", "Bravo", True, 0.4),
+            Team("a", "Alpha", True, 0.5, domain_id="u1"),
+            Team("b", "Bravo", False, 0.4, domain_id="u2"),
             Team("c", "Charlie", True, 0.0),
         ),
         dependencies=(Dependency("a", "b", 3),),
         workload=4,
+        domains=_UNITS,
         claims=(AuthorityClaim("Head of QA", "a"),),
     )
     line = describe_position_change(before, after)
-    assert "teams deciding locally 1 → 3" in line
+    assert "now deciding locally: 1 team in Messaging" in line
+    assert "no longer deciding locally: 1 team in Storage" in line
     assert "teams 2 → 3" in line
     assert "standing claims 0 → 1" in line
 
 
+def test_change_line_names_several_units_and_the_unassigned():
+    before = OrgState(
+        teams=(
+            Team("a", "Alpha", False, domain_id="u1"),
+            Team("b", "Bravo", False, domain_id="u2"),
+            Team("c", "Charlie", False),
+        ),
+        workload=1,
+        domains=_UNITS,
+    )
+    after = OrgState(
+        teams=(
+            Team("a", "Alpha", True, domain_id="u1"),
+            Team("b", "Bravo", True, domain_id="u2"),
+            Team("c", "Charlie", True),
+        ),
+        workload=1,
+        domains=_UNITS,
+    )
+    line = describe_position_change(before, after)
+    assert (
+        "now deciding locally: 3 teams in Messaging, Storage and unassigned teams"
+        in line
+    )
+
+
+def test_change_line_counts_units_past_the_naming_cap():
+    domains = tuple(Domain(f"u{i}", f"Unit {i}") for i in range(5))
+    before = OrgState(
+        teams=tuple(Team(f"t{i}", f"T{i}", False, domain_id=f"u{i}") for i in range(5)),
+        workload=1,
+        domains=domains,
+    )
+    after = OrgState(
+        teams=tuple(Team(f"t{i}", f"T{i}", True, domain_id=f"u{i}") for i in range(5)),
+        workload=1,
+        domains=domains,
+    )
+    line = describe_position_change(before, after)
+    assert "5 teams in Unit 0, Unit 1, Unit 2 and 2 more units" in line
+
+
 def test_change_line_states_dependency_count_and_delay():
     before = _base_position()
-    fewer = OrgState(teams=before.teams, dependencies=(), workload=4)
+    fewer = OrgState(teams=before.teams, dependencies=(), workload=4, domains=_UNITS)
     assert "dependencies 1 → 0" in describe_position_change(before, fewer)
     slower = OrgState(
         teams=before.teams,
         dependencies=(Dependency("a", "b", 9),),
         workload=4,
+        domains=_UNITS,
     )
     assert "total propagation delay 3 → 9" in describe_position_change(before, slower)
 
 
-def test_change_line_states_skew_realignment():
+def test_change_line_locates_skew_realignment():
     before = _base_position()
     after = OrgState(
-        teams=(Team("a", "Alpha", False, 0.1), Team("b", "Bravo", True, 0.4)),
+        teams=(
+            Team("a", "Alpha", False, 0.1, domain_id="u1"),
+            Team("b", "Bravo", True, 0.4, domain_id="u2"),
+        ),
         dependencies=(Dependency("a", "b", 3),),
         workload=4,
+        domains=_UNITS,
     )
     line = describe_position_change(before, after)
-    assert line == "incentive skew realigned at 1 team, mean 0.50 → 0.10"
+    assert line == ("incentive skew realigned at 1 team in Messaging, mean 0.50 → 0.10")
 
 
 def test_change_line_for_identical_positions():
