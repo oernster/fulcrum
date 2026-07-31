@@ -21,8 +21,17 @@ _TITLE_OBJECT_NAME = "BannerTitle"
 
 
 def banner_row(icon_path: Path | None, title: str) -> QHBoxLayout:
-    """The banner as a layout row: icon (when the asset resolves) + title."""
+    """The banner as a layout row: icon (when the asset resolves) + title.
+
+    Both are bottom-aligned and the icon is lifted by the title font's
+    descent, so the icon's base sits on the text baseline rather than
+    floating above it as plain vertical centring leaves it.
+    """
     row = QHBoxLayout()
+    label = QLabel(title)
+    label.setObjectName(_TITLE_OBJECT_NAME)
+    label.ensurePolished()
+    descent = label.fontMetrics().descent()
     if icon_path is not None:
         badge = QLabel()
         side = ui_scale.px(_BANNER_ICON_PX)
@@ -34,9 +43,8 @@ def banner_row(icon_path: Path | None, title: str) -> QHBoxLayout:
                 Qt.TransformationMode.SmoothTransformation,
             )
         )
-        row.addWidget(badge)
-    label = QLabel(title)
-    label.setObjectName(_TITLE_OBJECT_NAME)
-    row.addWidget(label)
+        badge.setContentsMargins(0, 0, 0, descent)
+        row.addWidget(badge, 0, Qt.AlignmentFlag.AlignBottom)
+    row.addWidget(label, 0, Qt.AlignmentFlag.AlignBottom)
     row.addStretch()
     return row
