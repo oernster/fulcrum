@@ -21,6 +21,16 @@ rather than a preference asserted uniformly:
       organisation: the same move reads bigger at scale.
   C10 A Dunbar-sized pocket inside a large organisation may stay princely
       in its own frame while the large frames demand a republic.
+  C11 Escalation loads the centre: the resolving authority's queue grows
+      with the number of teams escalating through it, so a saturated
+      centre prices itself however small the organisation is. The shed
+      load is never attenuated by the band (friction is forgiven at small
+      scale, bandwidth is not).
+  C12 Escalation is priced at its resolution distance: a team whose
+      authority sits within its own Dunbar-sized unit is priced at that
+      unit's population however large the whole organisation is, so an
+      organisation of empowered pockets reads the same at any unit count
+      while stripping the pocket leads collapses it.
 """
 
 from itertools import pairwise
@@ -44,6 +54,7 @@ from fulcrum.domain.simulation import (
     evaluate,
     frame_headcount,
     prince_scale_factor,
+    scale_context,
     scaled_authority_penalty,
     scaled_contested_penalty,
     team_capacity,
@@ -65,10 +76,11 @@ _SMALL = 8
 _LARGE = 1_000
 _SATURATED = (10_000, 100_000)
 
-# Conformance bars, set well clear of the measured values (91.0 and 38.0
-# with the default coefficients) so the claims survive gentle recalibration
-# while a regression to flat pricing still fails both.
-_SMALL_PRINCE_FLOOR = 85.0
+# Conformance bars, set well clear of the measured values (84.8 and 35.7
+# with the default coefficients, the founder carrying its five teams' shed
+# escalation load) so the claims survive gentle recalibration while a
+# regression to flat pricing still fails both.
+_SMALL_PRINCE_FLOOR = 80.0
 _LARGE_PRINCE_CEILING = 45.0
 
 
@@ -205,7 +217,10 @@ def test_c9_delegation_reads_larger_the_bigger_the_organisation():
         deltas.append(evaluate(apply_move(org, move)).value - before)
     assert all(earlier <= later for earlier, later in pairwise(deltas))
     assert classify_delta(deltas[-1]) == MoveClassification.GREAT
-    assert classify_delta(deltas[0]) != MoveClassification.GREAT
+    # Small-scale delegation may itself read great now: it relieves the
+    # founder's shed queue (C11), a real gain at any size. The scale claim
+    # is strict growth, so the same move is worth more the larger the org.
+    assert deltas[-1] > deltas[0]
 
 
 def test_c10_a_dunbar_pocket_inside_a_large_org_may_stay_princely():
@@ -250,6 +265,8 @@ def test_c10_a_dunbar_pocket_inside_a_large_org_may_stay_princely():
         {"prince_amplification": -0.1},
         {"prince_survivor_ceiling": 0.9},
         {"prince_survivor_ceiling": 2.0},
+        {"escalation_load_share": -0.1},
+        {"escalation_load_share": 1.5},
     ],
 )
 def test_prince_band_parameters_invalid(kwargs):
@@ -263,3 +280,88 @@ def test_prince_band_defaults_are_the_machiavelli_reading():
     assert 0.0 < _PARAMS.prince_attenuation < 1.0
     assert _PARAMS.prince_amplification > 0.0
     assert _PARAMS.prince_survivor_ceiling * (1.0 - _PARAMS.authority_penalty) < 1.0
+
+
+def _span_autocracy(n_subordinates: int, total_people: int = 148) -> OrgState:
+    """A centre with a widening span at a fixed sub-Dunbar population."""
+    per = max(1, total_people // (n_subordinates + 1))
+    teams = [Team("founder", "Founder", True, headcount=per)]
+    teams += [
+        Team(f"t{i}", f"T{i}", False, headcount=per) for i in range(n_subordinates)
+    ]
+    return OrgState(teams=tuple(teams), workload=_WORKLOAD)
+
+
+def test_c11_escalation_loads_the_centre():
+    spans = (2, 5, 10, 20, 30)
+    orgs = [_span_autocracy(n) for n in spans]
+    inflows = [scale_context(org, _PARAMS).inflow["founder"] for org in orgs]
+    assert all(earlier < later for earlier, later in pairwise(inflows))
+    expected = _PARAMS.escalation_load_share * _WORKLOAD * spans[-1]
+    assert inflows[-1] == pytest.approx(expected)
+    scores = [evaluate(org).value for org in orgs]
+    assert all(earlier > later for earlier, later in pairwise(scores))
+    # A republic sheds nothing: no team escalates, so no queue forms.
+    republic = OrgState(
+        teams=tuple(t.with_authority(True) for t in orgs[-1].teams),
+        workload=_WORKLOAD,
+    )
+    assert all(
+        value == 0.0 for value in scale_context(republic, _PARAMS).inflow.values()
+    )
+
+
+def _pocket_org(n_units: int, leads_have_authority: bool) -> OrgState:
+    """Dunbar-sized units, each with a lead its four teams escalate to."""
+    teams: list[Team] = []
+    domains: list[Domain] = []
+    deps: list[Dependency] = []
+    for unit in range(n_units):
+        uid = f"u{unit}"
+        domains.append(Domain(uid, f"Unit {unit}"))
+        lead_id = f"{uid}_lead"
+        teams.append(
+            Team(
+                lead_id,
+                f"Lead {unit}",
+                leads_have_authority,
+                domain_id=uid,
+                headcount=10,
+            )
+        )
+        for i in range(4):
+            team_id = f"{uid}_t{i}"
+            teams.append(
+                Team(team_id, f"T{unit}.{i}", False, domain_id=uid, headcount=10)
+            )
+            deps.append(Dependency(lead_id, team_id, 1))
+    return OrgState(
+        teams=tuple(teams),
+        dependencies=tuple(deps),
+        workload=3,
+        domains=tuple(domains),
+    )
+
+
+def test_c12_escalation_is_priced_at_its_resolution_distance():
+    small = _pocket_org(4, leads_have_authority=True)
+    large = _pocket_org(100, leads_have_authority=True)
+    # Every escalation resolves within a 50-person unit, so the headline
+    # does not change with the number of units: the whole-org frame no
+    # longer prices a desk-distance escalation at conglomerate scale.
+    assert evaluate(large).value == pytest.approx(evaluate(small).value)
+    context = scale_context(large, _PARAMS)
+    assert context.factors["u0_t0"] == _PARAMS.prince_attenuation
+    assert context.frame_factor > 1.0
+    # The shed load stays inside the unit, on its own lead.
+    per_lead = _PARAMS.escalation_load_share * large.workload * 4
+    assert context.inflow["u0_lead"] == pytest.approx(per_lead)
+    assert context.inflow["u1_t0"] == 0.0
+    # Strip the leads and nothing resolves below the summit: the same
+    # organisation collapses, which is the difference between a federation
+    # of principalities and an org where nobody can decide.
+    headless = _pocket_org(100, leads_have_authority=False)
+    headless_context = scale_context(headless, _PARAMS)
+    assert headless_context.factors["u0_t0"] == headless_context.frame_factor
+    assert all(value == 0.0 for value in headless_context.inflow.values())
+    assert evaluate(headless).value < evaluate(large).value / 2

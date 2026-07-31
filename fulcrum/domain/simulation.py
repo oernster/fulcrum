@@ -24,9 +24,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from fulcrum.domain.authority_scale import (
+    ScaleContext,
     contest_scale_factor,
     frame_headcount,
     prince_scale_factor,
+    scale_context,
     scaled_authority_penalty,
     scaled_contested_penalty,
 )
@@ -46,6 +48,7 @@ __all__ = [
     "ClassificationThresholds",
     "CouplingIndex",
     "MoveClassification",
+    "ScaleContext",
     "SimulationParameters",
     "StructuralScore",
     "claim_load",
@@ -62,6 +65,7 @@ __all__ = [
     "influence_without_authority",
     "is_contested",
     "prince_scale_factor",
+    "scale_context",
     "scaled_authority_penalty",
     "scaled_contested_penalty",
     "team_arrivals",
@@ -185,17 +189,18 @@ def team_capacity(
 ) -> float:
     """Decisions a team can clear per turn, after structural penalties.
 
-    scale_factor is the prince factor for the frame's population; None
-    computes it from the org, and callers scoring many teams pass it once.
-    A contested team pays its full flat contest price up to the band and a
-    proportionally deepened one above it, so contest costs strictly more
-    than clean escalation at every scale.
+    scale_factor is this team's pricing factor: a clean escalating team is
+    priced at its resolution neighbourhood's population (scale_context);
+    None computes it from the org, and callers scoring many teams pass the
+    context's per-team value. A contested team pays its full flat contest
+    price up to the band and a proportionally deepened one above it, so
+    contest costs strictly more than clean escalation at every scale.
     """
-    factor = (
-        prince_scale_factor(frame_headcount(org), params)
-        if scale_factor is None
-        else scale_factor
-    )
+    if scale_factor is None:
+        # A hypothetical team outside the org prices at the frame factor.
+        context = scale_context(org, params)
+        scale_factor = context.factors.get(team.id, context.frame_factor)
+    factor = scale_factor
     capacity = params.base_capacity
     if is_contested(org, team, index):
         capacity *= scaled_contested_penalty(params, factor)
@@ -213,10 +218,18 @@ def team_arrivals(
     team: Team,
     params: SimulationParameters = DEFAULT_PARAMETERS,
     index: CouplingIndex | None = None,
+    inflow: float | None = None,
 ) -> float:
-    """Effective decisions arriving per turn, inflated by incoming delay."""
+    """Effective decisions arriving per turn, inflated by incoming delay.
+
+    inflow is the escalated load landing on this team's queue from the
+    teams that resolve through it (scale_context); None computes it from
+    the org, and callers scoring many teams pass the context's value.
+    """
+    if inflow is None:
+        inflow = scale_context(org, params).inflow.get(team.id, _ZERO)
     delay = incoming_delay(org, team.id, index)
-    return org.workload * (_UNIT + params.delay_arrival_weight * delay)
+    return org.workload * (_UNIT + params.delay_arrival_weight * delay) + inflow
 
 
 def team_imbalance(
@@ -225,9 +238,16 @@ def team_imbalance(
     params: SimulationParameters = DEFAULT_PARAMETERS,
     index: CouplingIndex | None = None,
     scale_factor: float | None = None,
+    inflow: float | None = None,
 ) -> float:
     """Per-turn backlog growth for a team (arrivals over capacity, floored)."""
-    arrivals = team_arrivals(org, team, params, index)
+    if scale_factor is None or inflow is None:
+        context = scale_context(org, params)
+        if scale_factor is None:
+            scale_factor = context.factors.get(team.id, context.frame_factor)
+        if inflow is None:
+            inflow = context.inflow.get(team.id, _ZERO)
+    arrivals = team_arrivals(org, team, params, index, inflow)
     return max(_ZERO, arrivals - team_capacity(org, team, params, index, scale_factor))
 
 
@@ -272,31 +292,36 @@ def evaluate(
 ) -> StructuralScore:
     """Fold the structural penalties into a single 0..100 health score.
 
-    The prince factor is computed once from the frame's population and
-    applied to every clean-concentration cost: the escalation share of
-    uncontested teams, their capacity penalty and the influence load. A
-    contested team cannot decide cleanly either (the meta-question of who
-    decides escalates even when the team formally holds local authority),
-    and its share is never attenuated, only amplified.
+    The scale context is built once for the frame: each clean escalating
+    team's charges (capacity penalty, escalation share, influence load)
+    are priced at its resolution neighbourhood's population and its shed
+    workload lands on its resolving authorities' queues, so a saturated
+    centre registers as latency. A contested team cannot decide cleanly
+    either (the meta-question of who decides escalates even when the team
+    formally holds local authority), and its share is never attenuated,
+    only amplified.
     """
     index = dependency_index(org)
-    factor = prince_scale_factor(frame_headcount(org), params)
-    contest_factor = contest_scale_factor(factor)
+    context = scale_context(org, params)
     team_count = len(org.teams)
-    total_arrivals = sum(team_arrivals(org, t, params, index) for t in org.teams)
+    total_arrivals = sum(
+        team_arrivals(org, t, params, index, context.inflow[t.id]) for t in org.teams
+    )
     total_imbalance = sum(
-        team_imbalance(org, t, params, index, factor) for t in org.teams
+        team_imbalance(
+            org, t, params, index, context.factors[t.id], context.inflow[t.id]
+        )
+        for t in org.teams
     )
     latency = total_imbalance / total_arrivals
-    contested_count = sum(1 for t in org.teams if is_contested(org, t, index))
-    clean_count = sum(
-        1
-        for t in org.teams
-        if not t.has_local_authority and not is_contested(org, t, index)
-    )
     escalation = min(
         _UNIT,
-        (clean_count * factor + contested_count * contest_factor) / team_count,
+        sum(
+            context.factors[t.id]
+            for t in org.teams
+            if not t.has_local_authority or is_contested(org, t, index)
+        )
+        / team_count,
     )
     rework = sum(t.incentive_skew for t in org.teams) / team_count
     penalty = (
@@ -305,9 +330,11 @@ def evaluate(
         + params.rework_weight * rework
     )
     value = params.max_score * (_UNIT - penalty)
-    value /= (
-        _UNIT + params.influence_weight * influence_load(org, params, index) * factor
+    weighted_influence = sum(
+        influence_without_authority(org, t, params, index) * context.factors[t.id]
+        for t in org.teams
     )
+    value /= _UNIT + params.influence_weight * weighted_influence
     value /= _UNIT + params.contested_weight * claim_load(org, index)
     return StructuralScore(
         value=max(_ZERO, min(params.max_score, value)),

@@ -24,13 +24,19 @@ keeps its full price below the horizon and amplifies above it.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from math import log10
 
-from fulcrum.domain.hierarchy import total_headcount
-from fulcrum.domain.models import OrgState
+from fulcrum.domain.hierarchy import (
+    domain_subtree_ids,
+    headcount_in_domain,
+    total_headcount,
+)
+from fulcrum.domain.models import OrgState, Team
 from fulcrum.domain.parameters import SimulationParameters
 
 _UNIT: float = 1.0
+_NO_INFLOW: float = 0.0
 
 
 def frame_headcount(org: OrgState) -> int:
@@ -93,3 +99,93 @@ def scaled_contested_penalty(params: SimulationParameters, factor: float) -> flo
     scaled = scaled_authority_penalty(params, factor)
     ratio = params.contested_penalty / params.authority_penalty
     return min(params.contested_penalty, scaled * ratio)
+
+
+@dataclass(frozen=True, slots=True)
+class ScaleContext:
+    """Per-team scale pricing for one scored frame.
+
+    factors holds each team's pricing factor: a clean escalating team is
+    priced at its resolution neighbourhood's population, a contested team
+    at the frame's contest factor and everyone else at the frame factor.
+    inflow holds the escalated arrivals landing on each clean authority's
+    queue. frame_factor is the prince factor at the frame's population.
+    """
+
+    factors: dict[str, float]
+    inflow: dict[str, float]
+    frame_factor: float
+
+
+def _authority_marked_domains(org: OrgState, clean_authorities: list[Team]) -> set[str]:
+    """Domains whose subtree holds a clean authority: each authority marks
+    its own domain and every ancestor, so a walk up from an escalating team
+    stops at the nearest enclosing unit that can resolve for it."""
+    parent_of = {d.id: d.parent_id for d in org.domains}
+    marked: set[str] = set()
+    for team in clean_authorities:
+        current = team.domain_id
+        while current is not None and current not in marked:
+            marked.add(current)
+            current = parent_of.get(current)
+    return marked
+
+
+def scale_context(org: OrgState, params: SimulationParameters) -> ScaleContext:
+    """Build the per-team scale pricing for a frame.
+
+    Resolution neighbourhoods: an escalating team resolves at the nearest
+    enclosing unit whose subtree holds a clean (uncontested, authoritative)
+    team, standing in for the line it escalates to. Its concentration
+    charges are priced at that unit's population, so a pocket whose lead
+    sits across the desk is forgiven whatever the whole organisation
+    weighs, and escalation_load_share of its workload lands on that unit's
+    clean authorities: the singularity is a queue and it prices itself.
+    The shed load is never attenuated by the prince band (the band forgives
+    friction, not bandwidth). A team with no resolving unit up its chain
+    resolves at the frame itself: it is priced at the frame's population
+    and sheds onto the frame's clean authorities; when no clean authority
+    exists anywhere it sheds nothing and its own capacity cut carries the
+    cost. Contest is priced at the frame's contest factor: a claim is
+    org-visible, not neighbourhood-local.
+    """
+    frame_factor = prince_scale_factor(total_headcount(org), params)
+    claimed = {c.subject for c in org.claims}
+    clean_authorities = [
+        t for t in org.teams if t.has_local_authority and t.id not in claimed
+    ]
+    factors: dict[str, float] = {}
+    inflow: dict[str, float] = {t.id: _NO_INFLOW for t in org.teams}
+    marked = _authority_marked_domains(org, clean_authorities)
+    parent_of = {d.id: d.parent_id for d in org.domains}
+    groups: dict[str | None, list[str]] = {}
+    for team in org.teams:
+        if team.id in claimed:
+            factors[team.id] = contest_scale_factor(frame_factor)
+            continue
+        if team.has_local_authority:
+            factors[team.id] = frame_factor
+            continue
+        scope = team.domain_id
+        while scope is not None and scope not in marked:
+            scope = parent_of.get(scope)
+        if scope is None:
+            factors[team.id] = frame_factor
+        else:
+            factors[team.id] = prince_scale_factor(
+                headcount_in_domain(org, scope), params
+            )
+        groups.setdefault(scope, []).append(team.id)
+    shed = params.escalation_load_share * org.workload
+    for scope, escalators in groups.items():
+        if scope is None:
+            recipients = clean_authorities
+        else:
+            inside = domain_subtree_ids(org, scope)
+            recipients = [t for t in clean_authorities if t.domain_id in inside]
+        if not recipients:
+            continue
+        per_recipient = shed * len(escalators) / len(recipients)
+        for recipient in recipients:
+            inflow[recipient.id] += per_recipient
+    return ScaleContext(factors=factors, inflow=inflow, frame_factor=frame_factor)

@@ -32,6 +32,12 @@ class SimulationParameters:
     to parity; above it the price grows with the log of the population by
     prince_amplification per decade, capped at prince_survivor_ceiling so
     concentration at scale is a graded penalty, never a prohibition.
+
+    escalation_load_share is the fraction of an escalating team's workload
+    that lands on its resolving authorities' queues. It is deliberately not
+    attenuated by the prince band: the band forgives communication friction
+    at small scale, never decision bandwidth, so a centre absorbing thirty
+    teams' escalations saturates however small the organisation is.
     """
 
     base_capacity: float = 12.0
@@ -54,6 +60,7 @@ class SimulationParameters:
     prince_attenuation: float = 0.3
     prince_amplification: float = 0.25
     prince_survivor_ceiling: float = 1.6
+    escalation_load_share: float = 0.25
 
     def __post_init__(self) -> None:
         if self.base_capacity <= _ZERO:
@@ -106,6 +113,8 @@ class SimulationParameters:
             raise InvalidOrgStateError(
                 "prince_survivor_ceiling must keep escalation capacity positive"
             )
+        if not _ZERO <= self.escalation_load_share <= _UNIT:
+            raise InvalidOrgStateError("escalation_load_share must be in [0, 1]")
 
 
 DEFAULT_PARAMETERS = SimulationParameters()

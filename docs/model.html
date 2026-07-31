@@ -93,6 +93,12 @@
               <td>Horizon and band edge from Dunbar's number; magnitudes engineering judgement; the positive-capacity cap on the ceiling is enforced in code</td>
             </tr>
             <tr>
+              <td><code>escalation_load_share</code> = 0.25</td>
+              <td>The fraction of an escalating team's workload that lands on its resolving authorities' queues. Each escalating team resolves at the nearest enclosing unit holding a clean authority: its concentration charges are priced at that unit's population (a desk-distance escalation is never priced at conglomerate scale) and its shed decisions load that unit's authorities, so a centre absorbing thirty teams' escalations saturates and prices itself. Deliberately not attenuated by the prince band: the band forgives communication friction at small scale, never decision bandwidth.</td>
+              <td><i>Decision Architecture</i> (over-centralisation as bottleneck); LatencyLab's placement result (the singularity is a queue and it prices itself); <i>Relativistic Decision Architecture</i> (authority placement within causal reach)</td>
+              <td>Engineering judgement (a centre saturates at roughly a dozen escalation lines at typical workloads)</td>
+            </tr>
+            <tr>
               <td><code>coupling_weight</code> = 0.6</td>
               <td>Divides capacity by 1 + 0.6 &times; the dependencies touching the team.</td>
               <td><i>Decision Architecture</i> (latency accumulation); <i>The Move Space</i> (coordination overload)</td>
@@ -204,17 +210,21 @@
           that, the score over-rewards removing queues relative to fixing incentives.</li>
         <li><b>Authority misplacement compounds.</b> A team without local authority is charged
           three times: its capacity is cut, it counts toward the escalation share and it drives
-          the influence divisor when others depend on it. If authority mattered less than this,
-          the delegation moves the guide favours would be systematically overpriced.</li>
+          the influence divisor when others depend on it. Its escalations also land as load on
+          the authorities it resolves through, so a saturated centre registers as latency. If
+          authority mattered less than this, the delegation moves the guide favours would be
+          systematically overpriced.</li>
         <li><b>Concentration is scale-relative (the prince band).</b> All three authority
-          charges are scaled by the frame's population: attenuated to 0.3 up to 150 people,
-          at parity by 200, then amplified with the log of the population and capped. This is
-          Machiavelli read structurally: the Prince governs the small state well and the durable
-          large state is a republic, with the survivor cap conceding that rare princes persist at
-          scale. If the Dunbar horizon is the wrong hinge (a hundred-person organisation that
-          already needs a republic, a founder who genuinely scales command past a thousand), the
-          score over-rewards small autocracies or over-punishes large ones in exactly that band.
-          Contested ownership is never attenuated by scale.</li>
+          charges are scaled by the population of the unit an escalation actually resolves in:
+          the nearest enclosing unit holding a clean authority, falling back to the whole frame.
+          The factor is attenuated to 0.3 up to 150 people, at parity by 200, then amplified
+          with the log of the population and capped. This is Machiavelli read structurally: the
+          Prince governs the small state well and the durable large state is a republic, or a
+          federation of Dunbar-sized principalities, with the survivor cap conceding that rare
+          princes persist at scale. If the Dunbar horizon is the wrong hinge (a hundred-person
+          organisation that already needs a republic, a founder who genuinely scales command
+          past a thousand), the score over-rewards small autocracies or over-punishes large
+          ones in exactly that band. Contested ownership is never attenuated by scale.</li>
         <li><b>Every dependency costs alike.</b> Coupling counts edges, not their nature; a
           well-interfaced, cheap dependency and a daily-friction dependency weigh the same. Where
           cheap dependencies are common, coupled organisations read worse than they are.</li>
@@ -311,13 +321,13 @@
         which scales every tunable coefficient by 0.8 and by 1.2 (the three composite penalty
         shares are renormalised to keep their enforced sum of 1.0, and the prince band's float
         coefficients are swept while its headcount edges, being structural counts, are not),
-        re-scores the ten shipped archetypes under each of the 30 perturbed configurations and
+        re-scores the ten shipped archetypes under each of the 32 perturbed configurations and
         checks five qualitative conclusions: the typical archetypes still collapse in order with scale, the well-designed
         archetypes keep their order, every well-designed archetype still outscores its typical
         counterpart and both canonical blunders (the approval layer and the matrix overlay) still
         lower the score on every typical archetype.</p>
       <p><b>All five conclusions survive every perturbation.</b> The baseline scores below
-        reproduce the published archetype numbers exactly; under all 30 perturbed configurations
+        reproduce the published archetype numbers exactly; under all 32 perturbed configurations
         the orderings, the typical-versus-well-designed gap and the signs of both blunders are
         unchanged. The qualitative results come from the structure of the model, not from the
         particular values of its coefficients.</p>
@@ -340,11 +350,11 @@
             <tr><th>Archetype</th><th>Typical</th><th>Well-designed</th></tr>
           </thead>
           <tbody>
-            <tr><td>Startup</td><td>90.6</td><td>98.7</td></tr>
-            <tr><td>Scale-up</td><td>47.8</td><td>91.0</td></tr>
-            <tr><td>Enterprise</td><td>17.2</td><td>78.7</td></tr>
-            <tr><td>Very large</td><td>12.2</td><td>68.8</td></tr>
-            <tr><td>Conglomerate</td><td>8.8</td><td>66.4</td></tr>
+            <tr><td>Startup</td><td>89.3</td><td>98.7</td></tr>
+            <tr><td>Scale-up</td><td>46.5</td><td>91.0</td></tr>
+            <tr><td>Enterprise</td><td>16.4</td><td>78.7</td></tr>
+            <tr><td>Very large</td><td>11.8</td><td>68.8</td></tr>
+            <tr><td>Conglomerate</td><td>8.6</td><td>66.4</td></tr>
           </tbody>
         </table>
       </div>

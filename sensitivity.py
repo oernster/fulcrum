@@ -111,6 +111,7 @@ INDEPENDENT_COEFFICIENTS = (
     "prince_attenuation",
     "prince_amplification",
     "prince_survivor_ceiling",
+    "escalation_load_share",
 )
 
 # A perturbed survivor ceiling must keep escalation capacity strictly

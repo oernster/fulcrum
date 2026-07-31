@@ -13,10 +13,9 @@ from fulcrum.domain.simulation import (
     DEFAULT_PARAMETERS,
     SimulationParameters,
     dependency_index,
-    frame_headcount,
     influence_load,
     is_contested,
-    prince_scale_factor,
+    scale_context,
     team_capacity,
     team_imbalance,
 )
@@ -153,12 +152,17 @@ def compute_signals(
 ) -> tuple[SignalReading, ...]:
     """Compute the current value of every signal for an org state."""
     index = dependency_index(org)
-    factor = prince_scale_factor(frame_headcount(org), params)
+    context = scale_context(org, params)
     team_count = len(org.teams)
     queue_age = (
         sum(
-            team_imbalance(org, t, params, index, factor)
-            / max(_MIN_CAPACITY, team_capacity(org, t, params, index, factor))
+            team_imbalance(
+                org, t, params, index, context.factors[t.id], context.inflow[t.id]
+            )
+            / max(
+                _MIN_CAPACITY,
+                team_capacity(org, t, params, index, context.factors[t.id]),
+            )
             for t in org.teams
         )
         / team_count
