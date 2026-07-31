@@ -22,6 +22,7 @@ from fulcrum.domain.models import OrgState
 from fulcrum.shared.text import count_noun
 from fulcrum.ui import ui_scale
 from fulcrum.ui.icons import button_icon
+from fulcrum.ui.theme_palettes import DEFAULT_THEME
 from fulcrum.ui.widgets.complete_map_view import CompleteMapView
 from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 from fulcrum.ui.widgets.org_map_view import OrgMapView
@@ -43,8 +44,9 @@ _DRILL_INDEX = 1
 class OrgOverviewDialog(NeutralDialog):
     """Shows the whole organisation, as a complete picture or a drill-down map."""
 
-    def __init__(self, org: OrgState, parent=None) -> None:
+    def __init__(self, org: OrgState, parent=None, theme: str | None = None) -> None:
         super().__init__(parent)
+        self._theme = theme if theme is not None else DEFAULT_THEME
         self.setWindowTitle(_TITLE)
         self.resize(ui_scale.px(_WIDTH), ui_scale.px(_HEIGHT))
         layout = QVBoxLayout(self)
@@ -98,7 +100,9 @@ class OrgOverviewDialog(NeutralDialog):
         glyph (press to see everything). The hover text says the same.
         """
         complete = self._stack.currentIndex() == _COMPLETE_INDEX
-        self._mode.setIcon(button_icon(_DRILL_ICON if complete else _COMPLETE_ICON))
+        self._mode.setIcon(
+            button_icon(_DRILL_ICON if complete else _COMPLETE_ICON, self._theme)
+        )
         tooltip = _SWITCH_TO_DRILL if complete else _SWITCH_TO_COMPLETE
         self._mode.setToolTip(tooltip)
         self._mode.setAccessibleName(tooltip)

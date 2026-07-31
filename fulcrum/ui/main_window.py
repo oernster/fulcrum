@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from random import Random
 
-from PySide6.QtCore import QSize, Qt, QUrl
-from PySide6.QtGui import QDesktopServices, QIcon
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
+    QApplication,
     QHBoxLayout,
     QMainWindow,
     QMessageBox,
@@ -21,20 +22,22 @@ from fulcrum.application.interfaces import (
     ExampleSource,
     OrgStore,
     PlanExporter,
+    SettingsStore,
     Simulator,
 )
 from fulcrum.application.org_guide import build_org_guide
 from fulcrum.domain.org_size import DEFAULT_BAND
 from fulcrum.shared.resources import (
-    find_about_png,
     find_model_licence,
     find_ui_licence,
 )
-from fulcrum.ui import ui_scale
+from fulcrum.ui import header_buttons
 from fulcrum.ui.guide_thread import OrgGuideThread
 from fulcrum.ui.icons import button_icon
 from fulcrum.ui.org_intake import OrgIntakeController
 from fulcrum.ui.plan_files import PlanFileActions
+from fulcrum.ui.theme import get_qss
+from fulcrum.ui.theme_palettes import DEFAULT_THEME, THEME_DARK, THEME_LIGHT
 from fulcrum.ui.widgets import disabled_cue
 from fulcrum.ui.widgets.about_dialog import AboutDialog, LicenceDialog
 from fulcrum.ui.widgets.board_view import BoardView
@@ -56,8 +59,6 @@ _PRESENTATION_TOOLTIP = "Create presentation"
 _MODEL_ORG_TOOLTIP = "Model my organisation"
 _EDIT_ORG_TOOLTIP = "Edit my org: reopen and edit the current organisation"
 _GUIDE_TOOLTIP = "Show the guide"
-_BUTTON_ICON_PX = 24
-_APP_ICON_PX = 28
 
 
 class MainWindow(QMainWindow):
@@ -71,11 +72,17 @@ class MainWindow(QMainWindow):
         rng: Random,
         examples: ExampleSource,
         org_store: OrgStore | None = None,
+        settings: SettingsStore | None = None,
         parent=None,
     ) -> None:
         super().__init__(parent)
         self._simulator = simulator
         self._org_store = org_store
+        self._settings = settings
+        self._theme = settings.load_theme() if settings is not None else DEFAULT_THEME
+        # The generated header icons carry a variant per theme; the toggle
+        # re-dresses each of these (button, icon name) pairs on switch.
+        self._themed_icon_buttons: list[tuple[QPushButton, str]] = []
         self._session: GameSession | None = None
         self._started = False
         self._intake = OrgIntakeController(
@@ -133,18 +140,9 @@ class MainWindow(QMainWindow):
         top.addStretch()
         # The app icon sits at the centre of the tray and opens the
         # organisation overview.
-        overview_button = QPushButton()
-        overview_button.setObjectName("IconLink")
-        icon_path = find_about_png()
-        if icon_path is not None:
-            overview_button.setIcon(QIcon(str(icon_path)))
-        overview_button.setIconSize(
-            QSize(ui_scale.px(_APP_ICON_PX), ui_scale.px(_APP_ICON_PX))
+        overview_button = header_buttons.app_icon_button(
+            _OVERVIEW_TOOLTIP, self._org_overview
         )
-        overview_button.setToolTip(_OVERVIEW_TOOLTIP)
-        overview_button.setAccessibleName(_OVERVIEW_TOOLTIP)
-        overview_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        overview_button.clicked.connect(self._org_overview)
         top.addWidget(overview_button)
         top.addStretch()
         presentation_link = QPushButton(_PRESENTATION_GLYPH)
@@ -154,6 +152,9 @@ class MainWindow(QMainWindow):
         presentation_link.clicked.connect(self._plan_files.export_html)
         presentation_link.setEnabled(False)
         self._board.historyChanged.connect(presentation_link.setEnabled)
+        self._theme_toggle = header_buttons.theme_toggle_button(self._toggle_theme)
+        header_buttons.dress_theme_toggle(self._theme_toggle, self._theme)
+        top.addWidget(self._theme_toggle)
         top.addWidget(presentation_link)
         glossary_link = QPushButton(_GLOSSARY_GLYPH)
         glossary_link.setObjectName("IconLink")
@@ -170,6 +171,7 @@ class MainWindow(QMainWindow):
                 edit_button,
                 guide_button,
                 overview_button,
+                self._theme_toggle,
                 presentation_link,
                 glossary_link,
             )
@@ -180,17 +182,18 @@ class MainWindow(QMainWindow):
             (self._presentation_action, self._undo_action),
         )
 
+    def _toggle_theme(self) -> None:
+        self._theme = THEME_LIGHT if self._theme == THEME_DARK else THEME_DARK
+        QApplication.instance().setStyleSheet(get_qss(self._theme))
+        if self._settings is not None:
+            self._settings.save_theme(self._theme)
+        header_buttons.dress_theme_toggle(self._theme_toggle, self._theme)
+        for button, name in self._themed_icon_buttons:
+            button.setIcon(button_icon(name, self._theme))
+
     def _icon_button(self, name: str, tooltip: str, handler) -> QPushButton:
-        """An icon-only header button whose old text lives on as the tooltip."""
-        button = QPushButton()
-        button.setIcon(button_icon(name))
-        button.setIconSize(
-            QSize(ui_scale.px(_BUTTON_ICON_PX), ui_scale.px(_BUTTON_ICON_PX))
-        )
-        button.setToolTip(tooltip)
-        button.setAccessibleName(tooltip)
-        button.setCursor(Qt.CursorShape.PointingHandCursor)
-        button.clicked.connect(handler)
+        button = header_buttons.icon_button(name, tooltip, handler, self._theme)
+        self._themed_icon_buttons.append((button, name))
         return button
 
     def _install_keyboard_nav(self, buttons) -> None:
@@ -308,7 +311,7 @@ class MainWindow(QMainWindow):
     def _org_overview(self) -> None:
         if self._session is None:
             return
-        OrgOverviewDialog(self._session.org, self).exec()
+        OrgOverviewDialog(self._session.org, self, theme=self._theme).exec()
 
     def _book_background(self) -> None:
         BookBackgroundDialog(self).exec()

@@ -106,6 +106,9 @@ A short tour and the books behind it are at <https://oernster.github.io/fulcrum/
   the organisation and the moves played on it.
 - Full keyboard navigation: the whole interface sits on one explicit focus ring,
   so every control is reachable without a mouse.
+- Light and dark themes, switched from the header's sun/moon toggle and
+  remembered between runs; the map keeps its dark board in both, since the
+  authority colours are calibrated against it.
 - Help built in: About, both licence texts, a decision glossary and a
   background page on the Decision Architecture books. Long help content
   reads itself down gently, holds at the end and rewinds; it yields the

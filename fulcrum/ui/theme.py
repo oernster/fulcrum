@@ -15,25 +15,15 @@ from PySide6.QtGui import QFontDatabase
 
 from fulcrum.shared.resources import find_data_file
 from fulcrum.ui import ui_scale
+from fulcrum.ui.theme_palettes import (
+    DARK,
+    DEFAULT_THEME,
+    PALETTES,
+    THEME_DARK,
+)
 
 _FALLBACK_FONT = "sans-serif"
 
-_BG = "#0d0f12"
-_SURFACE = "#1a1e24"
-_SURFACE_RAISED = "#222831"
-_BORDER = "#2c333d"
-_TEXT = "#e6e9ee"
-_TEXT_MUTED = "#9aa3af"
-_ACCENT = "#f59e0b"
-_ACCENT_BRIGHT = "#fbbf24"
-_DISABLED_TEXT = "#5b6470"
-# The one standard divider colour: every splitter bar in the app and both
-# scrollbar orientations use this token, so no divider-like line drifts.
-_DIVIDER = _TEXT_MUTED
-# Green ring: an enabled control under the mouse or holding keyboard focus.
-_RING_GREEN = "#22c55e"
-# Red ring: any disabled control, permanently, so unavailable is visible.
-_RING_RED = "#ef4444"
 
 _BASE_FONT_PT = 14
 _HEADING_SCALE = 1.5
@@ -57,7 +47,9 @@ def _arrow_image(filename: str) -> str:
     return f'url("{path.resolve().as_posix()}")'
 
 
-def get_dark_qss() -> str:
+def get_qss(theme: str = DEFAULT_THEME) -> str:
+    """The full application stylesheet for a theme (unknown names go dark)."""
+    p = PALETTES.get(theme, DARK)
     base_pt = round(_BASE_FONT_PT * ui_scale.factor())
     heading_pt = round(base_pt * _HEADING_SCALE)
     score_pt = round(base_pt * _SCORE_SCALE)
@@ -68,30 +60,30 @@ def get_dark_qss() -> str:
     down_arrow = _arrow_image(_SPIN_DOWN_FILE)
     return f"""
 QWidget {{
-    background-color: {_BG};
-    color: {_TEXT};
+    background-color: {p.bg};
+    color: {p.text};
     font-family: '{font_family}', {_FALLBACK_FONT};
     font-size: {base_pt}pt;
 }}
-QMainWindow, QDialog {{ background-color: {_BG}; }}
-QLabel {{ background: transparent; color: {_TEXT}; }}
-QLabel#Muted {{ color: {_TEXT_MUTED}; }}
+QMainWindow, QDialog {{ background-color: {p.bg}; }}
+QLabel {{ background: transparent; color: {p.text}; }}
+QLabel#Muted {{ color: {p.text_muted}; }}
 QLabel#Heading {{ font-size: {heading_pt}pt; font-weight: 600; }}
 QLabel#ScoreValue {{
-    font-size: {score_pt}pt; font-weight: 600; color: {_ACCENT_BRIGHT};
+    font-size: {score_pt}pt; font-weight: 600; color: {p.accent_bright};
 }}
 
 QPushButton {{
-    background-color: {_SURFACE_RAISED};
-    color: {_TEXT};
+    background-color: {p.surface_raised};
+    color: {p.text};
     border: 2px solid transparent;
     border-radius: 8px;
     padding: 8px 16px;
     font-weight: 600;
 }}
-QPushButton:enabled:hover {{ border-color: {_RING_GREEN}; }}
-QPushButton:enabled:focus {{ border-color: {_RING_GREEN}; outline: none; }}
-QPushButton:pressed {{ background-color: {_SURFACE}; }}
+QPushButton:enabled:hover {{ border-color: {p.ring_green}; }}
+QPushButton:enabled:focus {{ border-color: {p.ring_green}; outline: none; }}
+QPushButton:pressed {{ background-color: {p.surface}; }}
 /* Any button carrying a dropdown menu shares the spinbox arrow, so every
    disclosure cue in the app is the same glyph. */
 QPushButton::menu-indicator {{
@@ -103,9 +95,9 @@ QPushButton::menu-indicator {{
     right: 6px;
 }}
 QPushButton:disabled {{
-    color: {_DISABLED_TEXT};
-    background-color: {_SURFACE};
-    border-color: {_RING_RED};
+    color: {p.disabled_text};
+    background-color: {p.surface};
+    border-color: {p.ring_red};
 }}
 QPushButton#MoveButton {{
     text-align: left;
@@ -130,14 +122,14 @@ QPushButton#IconLink {{
     font-size: {glyph_pt}pt;
 }}
 QPushButton#IconLink:enabled:hover {{
-    border-color: {_RING_GREEN};
-    color: {_ACCENT_BRIGHT};
+    border-color: {p.ring_green};
+    color: {p.accent_bright};
 }}
 QPushButton#IconLink:enabled:focus {{
-    border-color: {_RING_GREEN};
-    color: {_ACCENT_BRIGHT};
+    border-color: {p.ring_green};
+    color: {p.accent_bright};
 }}
-QPushButton#IconLink:disabled {{ border-color: {_RING_RED}; }}
+QPushButton#IconLink:disabled {{ border-color: {p.ring_red}; }}
 QPushButton#PreviewButton {{
     background: transparent;
     border: 2px solid transparent;
@@ -145,24 +137,24 @@ QPushButton#PreviewButton {{
     font-size: {glyph_pt}pt;
 }}
 QPushButton#PreviewButton:enabled:hover {{
-    border-color: {_RING_GREEN};
-    color: {_ACCENT_BRIGHT};
+    border-color: {p.ring_green};
+    color: {p.accent_bright};
 }}
 QPushButton#PreviewButton:enabled:focus {{
-    border-color: {_RING_GREEN};
-    color: {_ACCENT_BRIGHT};
+    border-color: {p.ring_green};
+    color: {p.accent_bright};
 }}
 
 QFrame#Card, QFrame#Popover {{
-    background-color: {_SURFACE};
-    border: 1px solid {_BORDER};
+    background-color: {p.surface};
+    border: 1px solid {p.border};
     border-radius: 10px;
 }}
 
 QMenuBar {{
-    background-color: {_BG};
-    color: {_TEXT};
-    border-bottom: 1px solid {_BORDER};
+    background-color: {p.bg};
+    color: {p.text};
+    border-bottom: 1px solid {p.border};
 }}
 QMenuBar::item {{
     background: transparent;
@@ -170,11 +162,11 @@ QMenuBar::item {{
     border: 2px solid transparent;
     border-radius: 4px;
 }}
-QMenuBar::item:selected {{ border: 2px solid {_RING_GREEN}; color: {_TEXT}; }}
+QMenuBar::item:selected {{ border: 2px solid {p.ring_green}; color: {p.text}; }}
 QMenu {{
-    background-color: {_SURFACE};
-    color: {_TEXT};
-    border: 1px solid {_BORDER};
+    background-color: {p.surface};
+    color: {p.text};
+    border: 1px solid {p.border};
     border-radius: 6px;
     padding: 4px 0;
 }}
@@ -185,87 +177,87 @@ QMenu::item {{
     margin: 2px 4px;
 }}
 QMenu::item:selected {{
-    border: 2px solid {_RING_GREEN};
-    color: {_TEXT};
+    border: 2px solid {p.ring_green};
+    color: {p.text};
     background: transparent;
 }}
-QMenu::separator {{ height: 1px; background-color: {_BORDER}; margin: 4px 8px; }}
+QMenu::separator {{ height: 1px; background-color: {p.border}; margin: 4px 8px; }}
 
-QTextBrowser {{ background: transparent; border: none; color: {_TEXT}; }}
+QTextBrowser {{ background: transparent; border: none; color: {p.text}; }}
 QToolTip {{
-    background-color: {_SURFACE_RAISED};
-    color: {_TEXT};
-    border: 1px solid {_ACCENT};
+    background-color: {p.surface_raised};
+    color: {p.text};
+    border: 1px solid {p.accent};
     padding: 4px 8px;
 }}
 
 QTableWidget {{
-    background-color: {_SURFACE};
-    gridline-color: {_BORDER};
-    color: {_TEXT};
-    border: 1px solid {_BORDER};
+    background-color: {p.surface};
+    gridline-color: {p.border};
+    color: {p.text};
+    border: 1px solid {p.border};
 }}
 
 QTreeWidget {{
-    background-color: {_SURFACE};
-    color: {_TEXT};
-    border: 1px solid {_BORDER};
+    background-color: {p.surface};
+    color: {p.text};
+    border: 1px solid {p.border};
     border-radius: 6px;
 }}
 QTreeWidget::item {{ padding: 3px 4px; }}
 QTreeWidget::item:selected {{
-    background-color: {_SURFACE_RAISED};
-    color: {_ACCENT_BRIGHT};
+    background-color: {p.surface_raised};
+    color: {p.accent_bright};
 }}
 /* A visible splitter bar with clear space either side: the margins stay
    transparent inside the handle slot, so pane content never butts against
    the bar itself. */
-QSplitter::handle {{ background-color: {_DIVIDER}; border-radius: 2px; }}
+QSplitter::handle {{ background-color: {p.divider}; border-radius: 2px; }}
 QSplitter::handle:horizontal {{ width: 3px; margin: 0 10px; }}
 QSplitter::handle:vertical {{ height: 3px; margin: 10px 0; }}
 
-QLabel#BlockedReason {{ color: {_RING_RED}; }}
+QLabel#BlockedReason {{ color: {p.ring_red}; }}
 QPushButton#DiceButton {{ padding: 2px 8px; font-size: {glyph_pt}pt; }}
 QHeaderView::section {{
-    background-color: {_BG};
-    color: {_TEXT_MUTED};
-    border: 1px solid {_BORDER};
+    background-color: {p.bg};
+    color: {p.text_muted};
+    border: 1px solid {p.border};
     padding: 4px;
 }}
 
 QSpinBox, QDoubleSpinBox, QLineEdit, QComboBox {{
-    background-color: {_SURFACE_RAISED};
-    color: {_TEXT};
-    border: 1px solid {_BORDER};
+    background-color: {p.surface_raised};
+    color: {p.text};
+    border: 1px solid {p.border};
     border-radius: 4px;
     padding: 4px 8px;
 }}
 QSpinBox:focus, QDoubleSpinBox:focus, QLineEdit:focus, QComboBox:focus {{
-    border: 2px solid {_RING_GREEN};
+    border: 2px solid {p.ring_green};
 }}
 QSpinBox::up-button, QDoubleSpinBox::up-button {{
     subcontrol-origin: border;
     subcontrol-position: top right;
     width: 20px;
-    border-left: 1px solid {_BORDER};
+    border-left: 1px solid {p.border};
     border-top-right-radius: 4px;
-    background-color: {_SURFACE_RAISED};
+    background-color: {p.surface_raised};
 }}
 QSpinBox::down-button, QDoubleSpinBox::down-button {{
     subcontrol-origin: border;
     subcontrol-position: bottom right;
     width: 20px;
-    border-left: 1px solid {_BORDER};
+    border-left: 1px solid {p.border};
     border-bottom-right-radius: 4px;
-    background-color: {_SURFACE_RAISED};
+    background-color: {p.surface_raised};
 }}
 QSpinBox::up-button:hover, QSpinBox::down-button:hover,
 QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover {{
-    background-color: {_BORDER};
+    background-color: {p.border};
 }}
 QSpinBox::up-button:pressed, QSpinBox::down-button:pressed,
 QDoubleSpinBox::up-button:pressed, QDoubleSpinBox::down-button:pressed {{
-    background-color: {_ACCENT};
+    background-color: {p.accent};
 }}
 QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {{
     image: {up_arrow};
@@ -278,54 +270,61 @@ QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {{
     height: 8px;
 }}
 
-QCheckBox {{ spacing: 8px; color: {_TEXT}; background: transparent; }}
+QCheckBox {{ spacing: 8px; color: {p.text}; background: transparent; }}
 QCheckBox::indicator {{
     width: 16px;
     height: 16px;
-    border: 2px solid {_TEXT_MUTED};
+    border: 2px solid {p.text_muted};
     border-radius: 3px;
     background: transparent;
 }}
-QCheckBox::indicator:checked {{ background: {_ACCENT}; border-color: {_ACCENT}; }}
+QCheckBox::indicator:checked {{ background: {p.accent}; border-color: {p.accent}; }}
 
-QRadioButton {{ spacing: 8px; color: {_TEXT}; background: transparent; }}
+QRadioButton {{ spacing: 8px; color: {p.text}; background: transparent; }}
 QRadioButton::indicator {{
     width: 16px;
     height: 16px;
-    border: 2px solid {_TEXT_MUTED};
+    border: 2px solid {p.text_muted};
     border-radius: 10px;
     background: transparent;
 }}
-QRadioButton::indicator:checked {{ background: {_ACCENT}; border-color: {_ACCENT}; }}
-QRadioButton::indicator:enabled:hover {{ border-color: {_RING_GREEN}; }}
+QRadioButton::indicator:checked {{ background: {p.accent}; border-color: {p.accent}; }}
+QRadioButton::indicator:enabled:hover {{ border-color: {p.ring_green}; }}
 
-QSlider::groove:horizontal {{ height: 4px; background: {_BORDER}; border-radius: 2px; }}
+QSlider::groove:horizontal {{
+    height: 4px; background: {p.border}; border-radius: 2px;
+}}
 QSlider::handle:horizontal {{
     width: 16px;
-    background: {_ACCENT};
+    background: {p.accent};
     border-radius: 8px;
     margin: -6px 0;
 }}
 
 /* Both scrollbar orientations share the splitter bar's muted colour, so no
    native light strip breaks the theme and every divider-like line matches. */
-QScrollBar:vertical {{ background-color: {_SURFACE}; width: 8px; }}
-QScrollBar:horizontal {{ background-color: {_SURFACE}; height: 8px; }}
+QScrollBar:vertical {{ background-color: {p.surface}; width: 8px; }}
+QScrollBar:horizontal {{ background-color: {p.surface}; height: 8px; }}
 QScrollBar::handle:vertical {{
-    background-color: {_DIVIDER};
+    background-color: {p.divider};
     border-radius: 4px;
     min-height: 20px;
 }}
 QScrollBar::handle:horizontal {{
-    background-color: {_DIVIDER};
+    background-color: {p.divider};
     border-radius: 4px;
     min-width: 20px;
 }}
 QScrollBar::add-line, QScrollBar::sub-line {{ width: 0px; height: 0px; }}
 QScrollBar::add-page, QScrollBar::sub-page {{ background: none; }}
 QStatusBar {{
-    background-color: {_BG};
-    color: {_TEXT_MUTED};
-    border-top: 1px solid {_BORDER};
+    background-color: {p.bg};
+    color: {p.text_muted};
+    border-top: 1px solid {p.border};
 }}
 """
+
+
+def get_dark_qss() -> str:
+    """The dark stylesheet, kept as the historical entry point."""
+    return get_qss(THEME_DARK)

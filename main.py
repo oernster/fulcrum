@@ -12,11 +12,12 @@ from fulcrum.application.simulator import DeterministicSimulator
 from fulcrum.infrastructure.example_library import FileExampleLibrary
 from fulcrum.infrastructure.org_autosave import FileOrgStore
 from fulcrum.infrastructure.plan_exporter import FilePlanExporter
+from fulcrum.infrastructure.settings_store import FileSettingsStore
 from fulcrum.infrastructure.system_clock import SystemClock
 from fulcrum.shared.resources import find_app_icon, find_examples_dir
 from fulcrum.ui import ui_scale
 from fulcrum.ui.main_window import MainWindow
-from fulcrum.ui.theme import get_dark_qss
+from fulcrum.ui.theme import get_qss
 
 _UI_SCALE_REFERENCE_HEIGHT = 1260.0
 _MAX_UI_SCALE = 1.5
@@ -47,7 +48,8 @@ def main() -> int:
 
     avail = app.primaryScreen().availableGeometry()
     ui_scale.init(min(avail.height() / _UI_SCALE_REFERENCE_HEIGHT, _MAX_UI_SCALE))
-    app.setStyleSheet(get_dark_qss())
+    settings = FileSettingsStore()
+    app.setStyleSheet(get_qss(settings.load_theme()))
 
     icon_path = find_app_icon()
     icon = QIcon(str(icon_path)) if icon_path is not None else None
@@ -61,6 +63,7 @@ def main() -> int:
         rng=Random(),
         examples=FileExampleLibrary(find_examples_dir()),
         org_store=FileOrgStore(),
+        settings=settings,
     )
     if icon is not None:
         window.setWindowIcon(icon)

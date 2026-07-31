@@ -85,15 +85,19 @@ python generate_icons.py
 
 Renders the multi-size PNG set and the multi-resolution `fulcrum.ico` from
 `fulcrum.png`, used for the window, the taskbar and the packaged executable.
+The electric-glow treatment (transparent keying, colour lift, halo) is part
+of the script, so the raw master stays untouched and every emitted icon
+carries the shipped look.
 
 ```
 python generate_button_icons.py
 ```
 
-Draws the header-button icons (the org tree, the pencil and the guide's
-climbing arrow) deterministically into `assets/buttons` at the sizes the
-main window loads. Rerunning writes identical files; edit the script and
-rerun rather than editing the PNGs.
+Draws the header-button icons (the org tree, the pencil, the guide's
+climbing arrow and the overview's two view glyphs) deterministically into
+`assets/buttons` at the sizes the app loads, one variant per theme (dark
+strokes carry a `_light` suffix). Rerunning writes identical files; edit
+the script and rerun rather than editing the PNGs.
 
 ### Windows executable
 

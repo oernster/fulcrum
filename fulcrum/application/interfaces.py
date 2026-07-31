@@ -44,6 +44,14 @@ class OrgStore(Protocol):
     def load(self) -> SessionSnapshot | None: ...
 
 
+class SettingsStore(Protocol):
+    """Persists small user preferences (the theme) across app runs."""
+
+    def load_theme(self) -> str: ...
+
+    def save_theme(self, theme: str) -> None: ...
+
+
 class ExampleSource(Protocol):
     """Lists the bundled example organisations and loads one by key."""
 
