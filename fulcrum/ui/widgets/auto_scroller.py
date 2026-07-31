@@ -1,9 +1,10 @@
 """Gentle auto-scroll for long content, in the ClearBudget style.
 
-The cycle reads down slowly from the moment the surface opens, holds at the
-bottom so the tail can be read, rewinds to the top at a faster pace, holds
-briefly and starts over. Manual scrolling (wheel, click, dragging the
-scrollbar or the arrow keys) only suspends the cycle: once the reader has
+The cycle holds still for a moment when the surface opens, reads down
+slowly, holds at the bottom so the tail can be read, rewinds to the top
+at a faster pace, holds briefly and starts over. Manual scrolling (wheel,
+click, dragging the scrollbar or the arrow keys) only suspends the cycle:
+once the reader has
 been still for a moment it picks up from wherever they left it, so taking
 over by hand never switches the feature off for the rest of the surface's
 life. Focus entering the surface (keyboard navigation into a list of
@@ -38,6 +39,9 @@ class AutoScroller(QObject):
     # rewind takes it away.
     _BOTTOM_PAUSE_MS = 5000
     _TOP_PAUSE_MS = 2000
+    # A fresh surface holds still before its first descent, so the reader
+    # orients before anything starts to move.
+    _START_PAUSE_MS = 5000
     # Stillness required after a manual scroll before the cycle resumes.
     _RESUME_AFTER_MS = 2500
 
@@ -58,9 +62,10 @@ class AutoScroller(QObject):
         self._area = area
         self._bar = area.verticalScrollBar()
         self._down_countdown = self._DOWN_TICKS_PER_STEP
-        # Straight into the first descent: nothing is held back on opening.
-        self._phase = self._DOWN
-        self._wait_ms = 0
+        # Open holding still, then the first descent begins; the guard in
+        # the tick means the wait only counts down once content overflows.
+        self._phase = self._PAUSE_TOP
+        self._wait_ms = self._START_PAUSE_MS
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
         self._timer.start(self._TICK_MS)

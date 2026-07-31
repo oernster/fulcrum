@@ -849,12 +849,13 @@ class AutoScroller(QObject):
 
     A standalone copy of the application's scroller (the installer imports
     nothing from the fulcrum package), carrying the same app-wide pace: the
-    cycle reads down from the moment the surface opens, holds at the bottom,
-    rewinds fast, holds at the top and repeats. Any manual reading input
-    (wheel, click, key, scrollbar or focus entering the surface) suspends it
-    briefly; it resumes from wherever the reader left it, never switching
-    off. The widget becomes the scroller's Qt parent, so their lifetimes
-    match. The installer has no UI-scale helper, so the descent step is a
+    cycle holds still for a moment when the surface opens, reads down,
+    holds at the bottom, rewinds fast, holds at the top and repeats. Any
+    manual reading input (wheel, click, key, scrollbar or focus entering
+    the surface) suspends it briefly; it resumes from wherever the reader
+    left it, never switching off. The widget becomes the scroller's Qt
+    parent, so their lifetimes match.
+    The installer has no UI-scale helper, so the descent step is a
     plain pixel with the same 1px floor the app applies after scaling.
     """
 
@@ -869,6 +870,9 @@ class AutoScroller(QObject):
     # rewind takes it away.
     _BOTTOM_PAUSE_MS = 5000
     _TOP_PAUSE_MS = 2000
+    # A fresh surface holds still before its first descent, so the reader
+    # orients before anything starts to move.
+    _START_PAUSE_MS = 5000
     # Stillness required after a manual scroll before the cycle resumes.
     _RESUME_AFTER_MS = 2500
 
@@ -889,9 +893,10 @@ class AutoScroller(QObject):
         self._area = area
         self._bar = area.verticalScrollBar()
         self._down_countdown = self._DOWN_TICKS_PER_STEP
-        # Straight into the first descent: nothing is held back on opening.
-        self._phase = self._DOWN
-        self._wait_ms = 0
+        # Open holding still, then the first descent begins; the guard in
+        # the tick means the wait only counts down once content overflows.
+        self._phase = self._PAUSE_TOP
+        self._wait_ms = self._START_PAUSE_MS
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
         self._timer.start(self._TICK_MS)
