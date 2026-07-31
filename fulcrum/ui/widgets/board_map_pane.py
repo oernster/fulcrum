@@ -23,6 +23,7 @@ from fulcrum.ui.widgets.complete_map_layout import (
     summarized,
 )
 from fulcrum.ui.widgets.complete_map_view import CompleteMapView
+from fulcrum.ui.widgets.org_editor_widgets import glyph_button
 from fulcrum.ui.widgets.org_map_view import OrgMapView
 
 _ZOOM_BUTTON_PX = 30
@@ -61,9 +62,10 @@ class BoardMapPane(QStackedWidget):
         self._zoom_out.clicked.connect(self._on_zoom_out)
 
     def _zoom_button(self, glyph: str, tip: str) -> QPushButton:
-        button = QPushButton(glyph, self)
-        button.setObjectName("MapZoom")
-        button.setToolTip(tip)
+        # glyph_button paints the ink optically centred; plain button text
+        # sits visibly off-centre in a small square chip.
+        button = glyph_button(glyph, tip, "MapZoom")
+        button.setParent(self)
         button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         return button
 

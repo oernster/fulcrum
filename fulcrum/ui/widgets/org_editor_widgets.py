@@ -61,6 +61,18 @@ def labelled(label: QLabel) -> QLabel:
     return label
 
 
+def glyph_button(glyph: str, tip: str, object_name: str) -> QPushButton:
+    """A push button whose glyph is painted optically centred.
+
+    For any square or near-square control showing a lone glyph (+, -), where
+    Qt's line-box centring would leave the ink visibly off-centre.
+    """
+    button = _GlyphButton(glyph)
+    button.setObjectName(object_name)
+    button.setToolTip(tip)
+    return button
+
+
 def action_button(glyph: str, tip: str) -> QPushButton:
     """A compact +/- row-action button.
 
@@ -69,9 +81,7 @@ def action_button(glyph: str, tip: str) -> QPushButton:
     frame needs makes Qt clip it, which sliced the bottom border off the
     hover ring at some UI scales.
     """
-    button = _GlyphButton(glyph)
-    button.setObjectName(_TREE_ACTION)
-    button.setToolTip(tip)
+    button = glyph_button(glyph, tip, _TREE_ACTION)
     button.setFixedWidth(ui_scale.px(_ACTION_BUTTON_W))
     return button
 
