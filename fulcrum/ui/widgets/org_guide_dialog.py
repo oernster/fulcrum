@@ -11,7 +11,7 @@ is the view from that altitude, shown but never composed.
 from __future__ import annotations
 
 from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QBrush, QColor, QGuiApplication
 from PySide6.QtWidgets import (
     QCheckBox,
     QHBoxLayout,
@@ -32,6 +32,7 @@ from fulcrum.application.interfaces import Simulator
 from fulcrum.application.org_guide import GuideNode, OrgGuide
 from fulcrum.application.planner import GuideStep
 from fulcrum.ui import ui_scale
+from fulcrum.ui.theme_palettes import DEFAULT_THEME, PALETTES
 from fulcrum.ui.widgets.board_renderers import clear_layout, magnifier_button
 from fulcrum.ui.widgets.dialog_focus_ring import (
     GROUP_STOP,
@@ -43,6 +44,7 @@ from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 from fulcrum.ui.widgets.org_guide_text import (
     ALREADY_GOOD,
     GROW_TOGGLE_TEXT,
+    GROW_TOGGLE_TIP,
     GROWTH_SAME_FRAME_NOTE,
     GROWTH_SAME_NOTE,
     HINT,
@@ -81,8 +83,11 @@ class OrgGuideDialog(NeutralDialog):
         simulator: Simulator | None = None,
         on_play=None,
         parent=None,
+        theme: str | None = None,
     ) -> None:
         super().__init__(parent)
+        palette = PALETTES[theme if theme is not None else DEFAULT_THEME]
+        self._growth_brush = QBrush(QColor(palette.growth))
         self.setWindowTitle("Guide - path to a stronger org, level by level")
         self.setWindowFlag(Qt.WindowType.WindowMaximizeButtonHint, True)
         self.setMinimumSize(ui_scale.px(_MIN_WIDTH), ui_scale.px(_MIN_HEIGHT))
@@ -102,6 +107,8 @@ class OrgGuideDialog(NeutralDialog):
         self._summary.setWordWrap(True)
         layout.addWidget(self._summary)
         self._toggle = QCheckBox(GROW_TOGGLE_TEXT)
+        self._toggle.setObjectName("GrowToggle")
+        self._toggle.setToolTip(GROW_TOGGLE_TIP)
         self._toggle.toggled.connect(self._render_current)
         layout.addWidget(self._toggle)
 
@@ -193,6 +200,7 @@ class OrgGuideDialog(NeutralDialog):
 
     def _rebuild_tree(self, active: OrgGuide) -> None:
         remembered = self._selected_frame
+        mark_growth = self._toggle.isChecked()
         self._tree.blockSignals(True)
         self._tree.clear()
         to_select: list[QTreeWidgetItem] = []
@@ -201,6 +209,12 @@ class OrgGuideDialog(NeutralDialog):
             label = node.label if not node.category else f"{node.label}"
             item = QTreeWidgetItem([label, gain(node)])
             item.setData(0, _NODE_ROLE, node)
+            if mark_growth and self._growth_touched(node):
+                # The toggle's own on-colour marks every row whose line
+                # growth actually changes, so where growth has any effect
+                # is visible at a glance rather than found row by row.
+                item.setForeground(0, self._growth_brush)
+                item.setForeground(1, self._growth_brush)
             if parent is None:
                 self._tree.addTopLevelItem(item)
             else:
@@ -253,6 +267,19 @@ class OrgGuideDialog(NeutralDialog):
         for index, step in enumerate(node.guide.steps):
             self._rows.addWidget(self._step_row(node, index, step))
         self._rows.addStretch()
+
+    def _growth_touched(self, node: GuideNode) -> bool:
+        """Whether growth changes this frame's line at all.
+
+        The growth row exists only under growth; any other row is touched
+        when its line differs from the fixed tree's line for the same
+        frame, aggregate frames included (a split can be priced at the
+        top level only).
+        """
+        if node.grown_line:
+            return True
+        fixed = find_frame(self._guide, node.frame_id)
+        return fixed is None or line_of(fixed) != line_of(node)
 
     def _growth_unchanged_note(self, node: GuideNode) -> str:
         """With growth on, say in place when it changes nothing for a frame.

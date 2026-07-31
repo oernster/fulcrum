@@ -12,6 +12,10 @@ from fulcrum.application.planner import GuideStep
 from fulcrum.shared.text import SCORE_DECIMALS, count_noun
 
 GROW_TOGGLE_TEXT = "Allow the organisation to grow (split or add teams)"
+GROW_TOGGLE_TIP = (
+    "With growth on, rows in this toggle's colour are where growth "
+    "actually changes the line; every other row is unchanged by it."
+)
 GROWTH_SAME_NOTE = "Growth does not improve any line from this position."
 GROWTH_SAME_FRAME_NOTE = (
     "Growth changes nothing in this frame: no split or added owner would "

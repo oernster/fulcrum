@@ -280,6 +280,14 @@ QCheckBox::indicator {{
 }}
 QCheckBox::indicator:checked {{ background: {p.accent}; border-color: {p.accent}; }}
 
+/* The guide's grow toggle wears the growth accent when on: the same colour
+   marks the tree rows whose line growth changes, tying cause to effect. */
+QCheckBox#GrowToggle:checked {{ color: {p.growth}; }}
+QCheckBox#GrowToggle::indicator:checked {{
+    background: {p.growth};
+    border-color: {p.growth};
+}}
+
 QRadioButton {{ spacing: 8px; color: {p.text}; background: transparent; }}
 QRadioButton::indicator {{
     width: 16px;

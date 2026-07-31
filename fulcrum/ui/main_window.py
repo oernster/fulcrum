@@ -297,7 +297,7 @@ class MainWindow(QMainWindow):
         self._guide_busy.close()
         fixed, grown = guides
         OrgGuideDialog(
-            fixed, grown, self._simulator, self._play_from_guide, self
+            fixed, grown, self._simulator, self._play_from_guide, self, self._theme
         ).exec()
 
     def _play_from_guide(self, move, frame_id):

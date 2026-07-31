@@ -21,7 +21,11 @@ class _Palette:
     scrollbar orientations use it, so no divider-like line drifts. ring_green
     marks an enabled control under the mouse or holding keyboard focus;
     ring_red marks any disabled control, permanently, so unavailable is
-    visible. Amber stays the meaning colour in both themes.
+    visible. Amber stays the meaning colour in both themes. growth is the
+    guide's growth accent: the grow toggle wears it when on and the rows
+    whose line growth changes wear the same colour, so where growth has any
+    effect is visible at a glance; blue, so it never reads as a ring or as
+    the amber meaning colour.
     """
 
     bg: str
@@ -36,6 +40,7 @@ class _Palette:
     divider: str
     ring_green: str
     ring_red: str
+    growth: str
 
 
 DARK = _Palette(
@@ -51,6 +56,7 @@ DARK = _Palette(
     divider="#9aa3af",
     ring_green="#22c55e",
     ring_red="#ef4444",
+    growth="#3b82f6",
 )
 
 # The light palette keeps amber as the meaning colour, darkened so it reads
@@ -68,6 +74,7 @@ LIGHT = _Palette(
     divider="#b3bdc9",
     ring_green="#15803d",
     ring_red="#dc2626",
+    growth="#1d4ed8",
 )
 
 PALETTES = {THEME_DARK: DARK, THEME_LIGHT: LIGHT}
