@@ -15,6 +15,7 @@ from PySide6.QtGui import (
     QColor,
     QFont,
     QFontMetricsF,
+    QPainter,
     QPainterPath,
     QPen,
     QPolygonF,
@@ -28,6 +29,10 @@ KIND_DOMAIN = "domain"
 NODE_W = 240.0
 NODE_H = 88.0
 CORNER = 10.0
+# The action ring sits outside a node's own border; the view's fit margin
+# derives from these so a ringed edge node is never clipped.
+RING_INSET = 5.0
+RING_PEN = 3.0
 
 # Contested ownership outranks the authority gradient: any contest reads
 # violet (never red, which would read as an error and collide with the green
@@ -50,6 +55,10 @@ _ARM = 8.0
 _LEG = 6.0
 _LEG_DROP = 9.0
 _ESCALATE = "↑"
+_PREVIEW_INSET = 2
+_PREVIEW_TEXT_X = 8
+_PREVIEW_TEXT_Y = 6
+_PREVIEW_TEXT_DROP = 24
 
 # Text is elided to the inner width so a long label never spills the node; the
 # label row also leaves room for the person glyph on the right.
@@ -186,6 +195,46 @@ def draw_edges(scene: QGraphicsScene, edges, positions: dict) -> None:
             label = scene.addSimpleText(str(edge.weight), node_font())
             label.setBrush(map_palette().text_muted)
             label.setPos((start.x() + end.x()) / _HALF, (start.y() + end.y()) / _HALF)
+
+
+def grid_positions(nodes, gap_x: float, gap_y: float) -> dict:
+    """Lay a level's nodes on a near-square grid, left to right then down."""
+    columns = max(1, math.ceil(math.sqrt(max(1, len(nodes)))))
+    positions = {}
+    for index, node in enumerate(nodes):
+        row = index // columns
+        column = index % columns
+        positions[node.id] = QPointF(column * (NODE_W + gap_x), row * (NODE_H + gap_y))
+    return positions
+
+
+def draw_ring(scene_painter: QPainter, rect: QRectF) -> None:
+    """One ring model everywhere: the green action ring outside a node."""
+    outer = rect.adjusted(-RING_INSET, -RING_INSET, RING_INSET, RING_INSET)
+    radius = CORNER + RING_INSET
+    scene_painter.save()
+    scene_painter.setPen(QPen(map_palette().ring, RING_PEN))
+    scene_painter.setBrush(Qt.BrushStyle.NoBrush)
+    scene_painter.drawRoundedRect(outer, radius, radius)
+    scene_painter.restore()
+
+
+def draw_preview_frame(scene_painter: QPainter, viewport_rect) -> None:
+    """The amber Preview frame, drawn in viewport coordinates."""
+    scene_painter.save()
+    scene_painter.resetTransform()
+    frame = viewport_rect.adjusted(
+        _PREVIEW_INSET, _PREVIEW_INSET, -_PREVIEW_INSET, -_PREVIEW_INSET
+    )
+    scene_painter.setPen(QPen(map_palette().preview, 2))
+    scene_painter.setBrush(Qt.BrushStyle.NoBrush)
+    scene_painter.drawRect(frame)
+    scene_painter.drawText(
+        frame.adjusted(_PREVIEW_TEXT_X, _PREVIEW_TEXT_Y, 0, 0).topLeft()
+        + QPointF(0, _PREVIEW_TEXT_DROP).toPoint(),
+        "Preview",
+    )
+    scene_painter.restore()
 
 
 def draw_breadcrumb(scene: QGraphicsScene, parent_name: str) -> QRectF:

@@ -114,7 +114,7 @@ QPushButton#MoveButton {{
     font-size: {compact_pt}pt;
 }}
 QPushButton#SignalChip {{ padding: 6px 10px; font-size: {compact_pt}pt; }}
-QPushButton#TreeAction {{
+QPushButton#TreeAction, QPushButton#MapZoom {{
     padding: 0;
     min-width: 0;
     font-weight: 700;

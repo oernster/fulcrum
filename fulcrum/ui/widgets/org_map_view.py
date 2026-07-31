@@ -6,16 +6,15 @@ cursor drills into it, and the back chip or Backspace climbs out. A node's borde
 runs from amber (no local authority) to teal (fully authoritative); inter-node
 dependencies are drawn as arrows. Hovering a drillable domain or the back chip, or
 moving the keyboard cursor onto a domain, rings it to show it can be opened; each
-level is fit to the panel and navigation is by drilling in rather than zooming.
-Scene painting lives in org_map_painter; this view owns navigation and overlays.
+level is fit to the panel, with + and - stepping a per-level zoom over that fit.
+Scene painting, the ring and the preview frame live in org_map_painter; this
+view owns navigation, hit-testing and the overlay state.
 """
 
 from __future__ import annotations
 
-import math
-
 from PySide6.QtCore import QPointF, QRectF, Qt, Signal
-from PySide6.QtGui import QBrush, QColor, QPainter, QPen
+from PySide6.QtGui import QBrush, QPainter
 from PySide6.QtWidgets import QGraphicsScene, QGraphicsView
 
 from fulcrum.application.map_model import build_level
@@ -24,25 +23,23 @@ from fulcrum.ui import ui_scale
 from fulcrum.ui.map_palette import map_palette
 from fulcrum.ui.widgets import org_map_painter as painter
 
-# A section's outer ring: cyan on hover to show it opens, cyan again to mark a
-# changed node in a preview and amber for the current keyboard selection, which
-# sits as a second amber outline over the node's authority border by default.
 # One ring model everywhere: green marks the node you can act on, whether
 # reached by mouse (hover), keyboard (cursor) or affected by a change; muted
-# so the large surround does not shout.
+# so the large surround does not shout. The ring itself is painted by
+# org_map_painter.draw_ring.
 
 _MIN_HEIGHT = 340
 _GAP_X = 64.0
 _GAP_Y = 72.0
+# User zoom multiplies the level's fitted scale: 1.0 is the fit itself (the
+# floor the minus button returns to) and each step grows a quarter, capped
+# so a level never blows past readable into absurd.
+_FIT_ZOOM = 1.0
+_USER_ZOOM_STEP = 1.25
+_MAX_USER_ZOOM = 4.0
 _MARGIN = 44.0
-_DRILL_INSET = 5.0
-_DRILL_PEN = 3.0
-_FIT_MARGIN = _DRILL_INSET + _DRILL_PEN
+_FIT_MARGIN = painter.RING_INSET + painter.RING_PEN
 _CLICK_SLOP = 4
-_PREVIEW_INSET = 2
-_PREVIEW_TEXT_X = 8
-_PREVIEW_TEXT_Y = 6
-_PREVIEW_TEXT_DROP = 24
 
 
 class OrgMapView(QGraphicsView):
@@ -74,6 +71,7 @@ class OrgMapView(QGraphicsView):
         self._highlight: frozenset[str] = frozenset()
         self._cursor_id: str | None = None
         self._min_scale = 0.0
+        self._user_zoom = _FIT_ZOOM
         self.setMouseTracking(True)
         self.viewport().setMouseTracking(True)
 
@@ -124,7 +122,7 @@ class OrgMapView(QGraphicsView):
         if self._org is None:
             return
         nodes, edges = build_level(self._org, self._parent_id)
-        positions = self._positions(nodes)
+        positions = painter.grid_positions(nodes, _GAP_X, _GAP_Y)
         painter.draw_edges(self._scene, edges, positions)
         for node in nodes:
             rect = painter.draw_node(self._scene, node, positions[node.id])
@@ -141,6 +139,8 @@ class OrgMapView(QGraphicsView):
         signature = (self._parent_id, len(nodes))
         if signature != self._signature:
             self._signature = signature
+            # Each level opens at its own fit; zoom is a per-level choice.
+            self._user_zoom = _FIT_ZOOM
             self._fit()
 
     def _fit(self) -> None:
@@ -157,21 +157,28 @@ class OrgMapView(QGraphicsView):
             self.scale(self._min_scale, self._min_scale)
             self.horizontalScrollBar().setValue(self.horizontalScrollBar().minimum())
             self.verticalScrollBar().setValue(self.verticalScrollBar().minimum())
+        if self._user_zoom != _FIT_ZOOM:
+            self.scale(self._user_zoom, self._user_zoom)
+
+    def zoom_in(self) -> None:
+        """Step this level larger over its fitted scale."""
+        self._apply_user_zoom(min(self._user_zoom * _USER_ZOOM_STEP, _MAX_USER_ZOOM))
+
+    def zoom_out(self) -> None:
+        """Step back toward the level's fitted scale, which is the floor."""
+        self._apply_user_zoom(max(self._user_zoom / _USER_ZOOM_STEP, _FIT_ZOOM))
+
+    def _apply_user_zoom(self, target: float) -> None:
+        if target == self._user_zoom:
+            return
+        factor = target / self._user_zoom
+        self._user_zoom = target
+        self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorViewCenter)
+        self.scale(factor, factor)
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         self._fit()
-
-    def _positions(self, nodes) -> dict:
-        columns = max(1, math.ceil(math.sqrt(max(1, len(nodes)))))
-        positions = {}
-        for index, node in enumerate(nodes):
-            row = index // columns
-            column = index % columns
-            positions[node.id] = QPointF(
-                column * (painter.NODE_W + _GAP_X), row * (painter.NODE_H + _GAP_Y)
-            )
-        return positions
 
     def _domain_name(self, domain_id: str) -> str:
         for domain in self._org.domains:
@@ -232,6 +239,10 @@ class OrgMapView(QGraphicsView):
             self._step_cursor(1)
         elif key in (Qt.Key.Key_Left, Qt.Key.Key_Up):
             self._step_cursor(-1)
+        elif key in (Qt.Key.Key_Plus, Qt.Key.Key_Equal):
+            self.zoom_in()
+        elif key == Qt.Key.Key_Minus:
+            self.zoom_out()
         else:
             super().keyPressEvent(event)
 
@@ -316,50 +327,19 @@ class OrgMapView(QGraphicsView):
                 return rect
         return None
 
+    def _cursor_rect(self) -> QRectF | None:
+        if not self.hasFocus() or self._cursor_id is None:
+            return None
+        return self._rect_of(self._cursor_id)
+
     def drawForeground(self, scene_painter: QPainter, rect: QRectF) -> None:
-        # Amber keyboard-selection ring first, then the cyan hover ring over it,
-        # so hovering the selected section still shows the cyan open cue.
-        self._paint_cursor_ring(scene_painter)
-        self._paint_hover_ring(scene_painter)
+        # Keyboard-selection ring first, then the hover ring over it, so
+        # hovering the selected section still shows the open cue.
+        for target in (self._cursor_rect(), self._hover_rect()):
+            if target is not None:
+                painter.draw_ring(scene_painter, target)
         for node_rect, _kind, node_id in self._hot:
             if node_id in self._highlight:
-                self._draw_ring(scene_painter, node_rect, map_palette().ring)
-        if not self._preview:
-            return
-        scene_painter.save()
-        scene_painter.resetTransform()
-        frame = (
-            self.viewport()
-            .rect()
-            .adjusted(_PREVIEW_INSET, _PREVIEW_INSET, -_PREVIEW_INSET, -_PREVIEW_INSET)
-        )
-        scene_painter.setPen(QPen(painter.PREVIEW, 2))
-        scene_painter.setBrush(Qt.BrushStyle.NoBrush)
-        scene_painter.drawRect(frame)
-        scene_painter.drawText(
-            frame.adjusted(_PREVIEW_TEXT_X, _PREVIEW_TEXT_Y, 0, 0).topLeft()
-            + QPointF(0, _PREVIEW_TEXT_DROP).toPoint(),
-            "Preview",
-        )
-        scene_painter.restore()
-
-    def _paint_hover_ring(self, scene_painter: QPainter) -> None:
-        target = self._hover_rect()
-        if target is not None:
-            self._draw_ring(scene_painter, target, map_palette().ring)
-
-    def _paint_cursor_ring(self, scene_painter: QPainter) -> None:
-        if not self.hasFocus() or self._cursor_id is None:
-            return
-        target = self._rect_of(self._cursor_id)
-        if target is not None:
-            self._draw_ring(scene_painter, target, map_palette().ring)
-
-    def _draw_ring(self, scene_painter: QPainter, rect: QRectF, color: QColor) -> None:
-        outer = rect.adjusted(-_DRILL_INSET, -_DRILL_INSET, _DRILL_INSET, _DRILL_INSET)
-        radius = painter.CORNER + _DRILL_INSET
-        scene_painter.save()
-        scene_painter.setPen(QPen(color, _DRILL_PEN))
-        scene_painter.setBrush(Qt.BrushStyle.NoBrush)
-        scene_painter.drawRoundedRect(outer, radius, radius)
-        scene_painter.restore()
+                painter.draw_ring(scene_painter, node_rect)
+        if self._preview:
+            painter.draw_preview_frame(scene_painter, self.viewport().rect())

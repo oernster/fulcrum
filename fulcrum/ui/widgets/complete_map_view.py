@@ -130,8 +130,15 @@ class CompleteMapView(QGraphicsView):
             self.viewport().update()
 
     def keyPressEvent(self, event) -> None:
-        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Down):
+        key = event.key()
+        if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Down):
             self.drill_requested.emit()
+            return
+        if key in (Qt.Key.Key_Plus, Qt.Key.Key_Equal):
+            self.zoom_in()
+            return
+        if key == Qt.Key.Key_Minus:
+            self.zoom_out()
             return
         super().keyPressEvent(event)
 
@@ -185,9 +192,20 @@ class CompleteMapView(QGraphicsView):
         if delta == 0:
             return
         factor = _ZOOM_STEP if delta > 0 else _FULL / _ZOOM_STEP
+        self._zoom(factor, QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+
+    def zoom_in(self) -> None:
+        """Step the picture larger, anchored on the viewport centre."""
+        self._zoom(_ZOOM_STEP, QGraphicsView.ViewportAnchor.AnchorViewCenter)
+
+    def zoom_out(self) -> None:
+        """Step the picture smaller, anchored on the viewport centre."""
+        self._zoom(_FULL / _ZOOM_STEP, QGraphicsView.ViewportAnchor.AnchorViewCenter)
+
+    def _zoom(self, factor: float, anchor) -> None:
         target = self.transform().m11() * factor
         if _MIN_SCALE <= target <= _MAX_SCALE:
-            self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+            self.setTransformationAnchor(anchor)
             self.scale(factor, factor)
 
     def _render(self) -> None:
