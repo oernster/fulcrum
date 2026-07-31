@@ -13,10 +13,13 @@ _BUSY_RANGE = 0
 
 
 class BusyDialog(NeutralDialog):
-    """A modal, cancel-less 'working' dialog with an indeterminate bar.
+    """A modal, cancel-less 'working' dialog with a progress bar.
 
-    Shown without blocking the event loop (via show, not exec), so the worker
-    thread keeps running and its finished signal is still delivered.
+    The bar starts indeterminate; the first set_progress call turns it into
+    a real 0..total bar, so a worker that reports its sections shows a bar
+    that genuinely fills. Shown without blocking the event loop (via show,
+    not exec), so the worker thread keeps running and its finished signal
+    is still delivered.
     """
 
     def __init__(self, message: str, parent=None) -> None:
@@ -29,7 +32,13 @@ class BusyDialog(NeutralDialog):
         label = QLabel(message)
         label.setObjectName("Muted")
         layout.addWidget(label)
-        bar = QProgressBar()
-        bar.setRange(_BUSY_RANGE, _BUSY_RANGE)
-        bar.setTextVisible(False)
-        layout.addWidget(bar)
+        self._bar = QProgressBar()
+        self._bar.setRange(_BUSY_RANGE, _BUSY_RANGE)
+        self._bar.setTextVisible(False)
+        layout.addWidget(self._bar)
+
+    def set_progress(self, done: int, total: int) -> None:
+        """Advance the bar; the first call makes it determinate."""
+        if total > 0:
+            self._bar.setMaximum(total)
+            self._bar.setValue(done)

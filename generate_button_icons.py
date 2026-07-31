@@ -148,9 +148,60 @@ def guide() -> Image.Image:
     return img
 
 
+def view_complete() -> Image.Image:
+    """The complete-picture view: every node visible inside one frame."""
+    img = _canvas()
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle(
+        _s(140, 140, 884, 884), radius=60 * _SCALE, outline=_TEXT, width=40 * _SCALE
+    )
+    for cx in (300, 512, 724):
+        for cy in (300, 512, 724):
+            colour = _ACCENT if (cx, cy) == (512, 512) else _MUTED
+            _circle(d, cx, cy, 55, fill=colour)
+    return img
+
+
+def view_drill() -> Image.Image:
+    """The drill-down view: an arrow diving into a nested frame."""
+    img = _canvas()
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle(
+        _s(140, 140, 884, 884), radius=60 * _SCALE, outline=_TEXT, width=40 * _SCALE
+    )
+    d.rounded_rectangle(_s(470, 470, 810, 810), radius=40 * _SCALE, fill=_MUTED)
+    x0, y0, x1, y1 = 260, 260, 580, 580
+    ux, uy = _unit(x0, y0, x1, y1)
+    px, py = -uy, ux
+    d.line(_s(x0, y0, x1, y1), fill=_ACCENT, width=70 * _SCALE)
+    _circle(d, x0, y0, 35, fill=_ACCENT)
+    head_len = 180
+    half_width = 110
+    tip_x, tip_y = x1 + ux * 100, y1 + uy * 100
+    bx, by = tip_x - ux * head_len, tip_y - uy * head_len
+    d.polygon(
+        _s(
+            tip_x,
+            tip_y,
+            bx + px * half_width,
+            by + py * half_width,
+            bx - px * half_width,
+            by - py * half_width,
+        ),
+        fill=_ACCENT,
+    )
+    return img
+
+
 def main() -> int:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    icons = {"model_org": model_org(), "edit_org": edit_org(), "guide": guide()}
+    icons = {
+        "model_org": model_org(),
+        "edit_org": edit_org(),
+        "guide": guide(),
+        "view_complete": view_complete(),
+        "view_drill": view_drill(),
+    }
     for name, image in icons.items():
         for size in _SIZES:
             path = OUTPUT_DIR / f"{name}_{size}.png"

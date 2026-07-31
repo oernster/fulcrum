@@ -26,12 +26,13 @@ from fulcrum.application.interfaces import (
 from fulcrum.application.org_guide import build_org_guide
 from fulcrum.domain.org_size import DEFAULT_BAND
 from fulcrum.shared.resources import (
-    find_button_icon,
+    find_about_png,
     find_model_licence,
     find_ui_licence,
 )
 from fulcrum.ui import ui_scale
 from fulcrum.ui.guide_thread import OrgGuideThread
+from fulcrum.ui.icons import button_icon
 from fulcrum.ui.org_intake import OrgIntakeController
 from fulcrum.ui.plan_files import PlanFileActions
 from fulcrum.ui.widgets import disabled_cue
@@ -55,18 +56,8 @@ _PRESENTATION_TOOLTIP = "Create presentation"
 _MODEL_ORG_TOOLTIP = "Model my organisation"
 _EDIT_ORG_TOOLTIP = "Edit my org: reopen and edit the current organisation"
 _GUIDE_TOOLTIP = "Show the guide"
-_BUTTON_ICON_SIZES = (32, 64, 256)
 _BUTTON_ICON_PX = 24
-
-
-def _button_icon(name: str) -> QIcon:
-    """Build a QIcon from the generated per-size header-button PNGs."""
-    icon = QIcon()
-    for size in _BUTTON_ICON_SIZES:
-        path = find_button_icon(f"{name}_{size}.png")
-        if path is not None:
-            icon.addFile(str(path))
-    return icon
+_APP_ICON_PX = 28
 
 
 class MainWindow(QMainWindow):
@@ -140,6 +131,22 @@ class MainWindow(QMainWindow):
         top.addWidget(edit_button)
         top.addWidget(guide_button)
         top.addStretch()
+        # The app icon sits at the centre of the tray and opens the
+        # organisation overview.
+        overview_button = QPushButton()
+        overview_button.setObjectName("IconLink")
+        icon_path = find_about_png()
+        if icon_path is not None:
+            overview_button.setIcon(QIcon(str(icon_path)))
+        overview_button.setIconSize(
+            QSize(ui_scale.px(_APP_ICON_PX), ui_scale.px(_APP_ICON_PX))
+        )
+        overview_button.setToolTip(_OVERVIEW_TOOLTIP)
+        overview_button.setAccessibleName(_OVERVIEW_TOOLTIP)
+        overview_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        overview_button.clicked.connect(self._org_overview)
+        top.addWidget(overview_button)
+        top.addStretch()
         presentation_link = QPushButton(_PRESENTATION_GLYPH)
         presentation_link.setObjectName("IconLink")
         presentation_link.setToolTip(_PRESENTATION_TOOLTIP)
@@ -148,12 +155,6 @@ class MainWindow(QMainWindow):
         presentation_link.setEnabled(False)
         self._board.historyChanged.connect(presentation_link.setEnabled)
         top.addWidget(presentation_link)
-        overview_link = QPushButton(_OVERVIEW_GLYPH)
-        overview_link.setObjectName("IconLink")
-        overview_link.setToolTip(_OVERVIEW_TOOLTIP)
-        overview_link.setCursor(Qt.CursorShape.PointingHandCursor)
-        overview_link.clicked.connect(self._org_overview)
-        top.addWidget(overview_link)
         glossary_link = QPushButton(_GLOSSARY_GLYPH)
         glossary_link.setObjectName("IconLink")
         glossary_link.setToolTip(_GLOSSARY_TOOLTIP)
@@ -168,8 +169,8 @@ class MainWindow(QMainWindow):
                 model_button,
                 edit_button,
                 guide_button,
+                overview_button,
                 presentation_link,
-                overview_link,
                 glossary_link,
             )
         )
@@ -182,7 +183,7 @@ class MainWindow(QMainWindow):
     def _icon_button(self, name: str, tooltip: str, handler) -> QPushButton:
         """An icon-only header button whose old text lives on as the tooltip."""
         button = QPushButton()
-        button.setIcon(_button_icon(name))
+        button.setIcon(button_icon(name))
         button.setIconSize(
             QSize(ui_scale.px(_BUTTON_ICON_PX), ui_scale.px(_BUTTON_ICON_PX))
         )
@@ -273,6 +274,7 @@ class MainWindow(QMainWindow):
         self._guide_busy = BusyDialog("Planning every level...", self)
         self._guide_busy.show()
         self._guide_thread = OrgGuideThread(self._session.org, self._simulator)
+        self._guide_thread.progress.connect(self._guide_busy.set_progress)
         self._guide_thread.built.connect(self._on_guides_built)
         self._guide_thread.finished.connect(self._guide_thread.deleteLater)
         self._guide_thread.start()
