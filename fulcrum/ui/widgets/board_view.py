@@ -159,9 +159,9 @@ class BoardView(QWidget):
         self._moves_box.setContentsMargins(0, 0, ui_scale.px(_MOVES_RIGHT_PAD), 0)
         self._moves_holder.setLayout(self._moves_box)
         self._moves_scroll.setWidget(self._moves_holder)
-        # The moves list reads itself down gently when it overflows, holding
-        # still while hovered or focused so a button never moves under the
-        # cursor; any manual scroll suspends the cycle.
+        # The moves list reads itself down gently when it overflows, exactly
+        # as the help dialogs do; any manual scroll, click or focus entering
+        # the list suspends the cycle until the reader rests.
         self._moves_scroller = AutoScroller(self._moves_scroll)
         column.addWidget(self._moves_scroll, 1)
         signals_caption = QLabel("Signals to watch")

@@ -1,9 +1,9 @@
 """A large overview of the whole organisation.
 
 It offers two ways to see the org: a complete picture (every domain, sub-domain
-and team at once) and the navigable drill-down map, switched from a toggle
-button whose icon and label show the current mode (its tooltip names the
-switch, so the control reads as the mode indicator it is).
+and team at once) and the navigable drill-down map, switched from an icon-only
+toggle button that always shows the ACTION a press performs (the view you will
+switch to), with hover text saying the same.
 """
 
 from __future__ import annotations
@@ -27,8 +27,6 @@ from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 from fulcrum.ui.widgets.org_map_view import OrgMapView
 
 _TITLE = "Organisation overview"
-_COMPLETE = "Complete picture"
-_DRILL = "Drill down"
 _COMPLETE_HINT = "The whole organisation at full size. Drag to pan, scroll to zoom."
 _DRILL_HINT = "Drag to pan, scroll to zoom, click a domain to drill in."
 _COMPLETE_ICON = "view_complete"
@@ -53,6 +51,7 @@ class OrgOverviewDialog(NeutralDialog):
 
         controls = QHBoxLayout()
         self._mode = QPushButton()
+        self._mode.setObjectName("IconLink")
         self._mode.setIconSize(
             QSize(ui_scale.px(_TOGGLE_ICON_PX), ui_scale.px(_TOGGLE_ICON_PX))
         )
@@ -92,11 +91,17 @@ class OrgOverviewDialog(NeutralDialog):
         self._fit_current()
 
     def _apply_mode(self) -> None:
-        """Dress the toggle as the current mode; the tooltip names the switch."""
+        """Dress the toggle as the ACTION a press performs, never the state.
+
+        In the complete picture the button wears the drill-down glyph (press
+        to dive in); in the drill-down map it wears the complete-picture
+        glyph (press to see everything). The hover text says the same.
+        """
         complete = self._stack.currentIndex() == _COMPLETE_INDEX
-        self._mode.setIcon(button_icon(_COMPLETE_ICON if complete else _DRILL_ICON))
-        self._mode.setText(_COMPLETE if complete else _DRILL)
-        self._mode.setToolTip(_SWITCH_TO_DRILL if complete else _SWITCH_TO_COMPLETE)
+        self._mode.setIcon(button_icon(_DRILL_ICON if complete else _COMPLETE_ICON))
+        tooltip = _SWITCH_TO_DRILL if complete else _SWITCH_TO_COMPLETE
+        self._mode.setToolTip(tooltip)
+        self._mode.setAccessibleName(tooltip)
         self._hint.setText(_COMPLETE_HINT if complete else _DRILL_HINT)
 
     def showEvent(self, event) -> None:

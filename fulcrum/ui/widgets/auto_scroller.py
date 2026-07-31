@@ -6,9 +6,8 @@ briefly and starts over. Manual scrolling (wheel, click, dragging the
 scrollbar or the arrow keys) only suspends the cycle: once the reader has
 been still for a moment it picks up from wherever they left it, so taking
 over by hand never switches the feature off for the rest of the surface's
-life. While the pointer hovers the surface the cycle holds still, so a
-control inside it never moves away from under the cursor, and focus
-entering the surface (keyboard navigation into a list) suspends it too.
+life. Focus entering the surface (keyboard navigation into a list of
+buttons) suspends it the same way, so the cycle never fights the reader.
 """
 
 from __future__ import annotations
@@ -55,7 +54,6 @@ class AutoScroller(QObject):
         # Straight into the first descent: nothing is held back on opening.
         self._phase = self._DOWN
         self._wait_ms = 0
-        self._hovered = False
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
         self._timer.start(self._TICK_MS)
@@ -88,18 +86,9 @@ class AutoScroller(QObject):
     def eventFilter(self, obj, event) -> bool:
         if event.type() in self._MANUAL_EVENTS:
             self.suspend()
-        elif event.type() == QEvent.Type.Enter:
-            self._hovered = True
-        elif event.type() == QEvent.Type.Leave:
-            # Resume a moment after the pointer leaves, from where it rests.
-            self._hovered = False
-            self.suspend()
         return False
 
     def _tick(self) -> None:
-        # A hovered surface holds still, so nothing moves under the cursor.
-        if self._hovered:
-            return
         maximum = self._bar.maximum()
         if maximum <= 0:
             return
