@@ -29,6 +29,9 @@ class AutoScroller(QObject):
 
     _TICK_MS = 40
     _DOWN_STEP_PX = 1
+    # The descent advances one step every second tick: the app's standard
+    # reading pace, gentle enough for dense content on every surface.
+    _DOWN_TICKS_PER_STEP = 2
     _UP_STEP_PX = 6
     _BOTTOM_PAUSE_MS = 4000
     _TOP_PAUSE_MS = 2000
@@ -51,6 +54,7 @@ class AutoScroller(QObject):
         super().__init__(area)
         self._area = area
         self._bar = area.verticalScrollBar()
+        self._down_countdown = self._DOWN_TICKS_PER_STEP
         # Straight into the first descent: nothing is held back on opening.
         self._phase = self._DOWN
         self._wait_ms = 0
@@ -98,6 +102,10 @@ class AutoScroller(QObject):
                 self._phase = self._resumed_phase(maximum)
             return
         if self._phase == self._DOWN:
+            self._down_countdown -= 1
+            if self._down_countdown > 0:
+                return
+            self._down_countdown = self._DOWN_TICKS_PER_STEP
             value = self._bar.value() + max(1, ui_scale.px(self._DOWN_STEP_PX))
             if value >= maximum:
                 self._bar.setValue(maximum)
