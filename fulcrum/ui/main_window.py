@@ -181,22 +181,6 @@ class MainWindow(QMainWindow):
 
     def _build_menu(self) -> None:
         file_menu = self.menuBar().addMenu("File")
-        file_menu.addAction("New random organisation...", self._intake.new_random_org)
-        file_menu.addAction("Model my organisation...", self._intake.model_org)
-        file_menu.addAction("Edit my org...", self._intake.edit_org)
-        file_menu.addAction("Quick org (wizard)...", self._intake.quick_org)
-        example_menu = file_menu.addMenu("Open example organisation")
-        example_menu.setToolTipsVisible(True)
-        for summary in self._intake.example_entries():
-            action = example_menu.addAction(
-                summary.label,
-                lambda checked=False, s=summary: self._intake.open_example(s),
-            )
-            if summary.note:
-                action.setToolTip(summary.note)
-                action.setStatusTip(summary.note)
-        example_menu.menuAction().setEnabled(not example_menu.isEmpty())
-        file_menu.addSeparator()
         self._presentation_action = file_menu.addAction(
             "Create presentation...", self._plan_files.export_html
         )
@@ -207,6 +191,23 @@ class MainWindow(QMainWindow):
         file_menu.addAction("Export...", self._plan_files.export_json)
         file_menu.addSeparator()
         file_menu.addAction("Exit", self.close)
+
+        org_menu = self.menuBar().addMenu("Organisation")
+        org_menu.addAction("New random organisation...", self._intake.new_random_org)
+        org_menu.addAction("Model my organisation...", self._intake.model_org)
+        org_menu.addAction("Edit my org...", self._intake.edit_org)
+        org_menu.addAction("Quick org (wizard)...", self._intake.quick_org)
+        example_menu = org_menu.addMenu("Open example organisation")
+        example_menu.setToolTipsVisible(True)
+        for summary in self._intake.example_entries():
+            action = example_menu.addAction(
+                summary.label,
+                lambda checked=False, s=summary: self._intake.open_example(s),
+            )
+            if summary.note:
+                action.setToolTip(summary.note)
+                action.setStatusTip(summary.note)
+        example_menu.menuAction().setEnabled(not example_menu.isEmpty())
 
         edit_menu = self.menuBar().addMenu("Edit")
         self._undo_action = edit_menu.addAction(
