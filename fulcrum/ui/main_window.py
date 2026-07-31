@@ -204,6 +204,7 @@ class MainWindow(QMainWindow):
             (*buttons, undo_button, map_view, level_button),
             (moves_group, signals_group),
             map_view,
+            neutral_start=self._focus_start,
         )
 
     def _build_menu(self) -> None:

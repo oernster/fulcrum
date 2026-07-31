@@ -9,11 +9,17 @@ then walks its items. The map keeps its own arrow keys for node navigation (so
 Right and Left are left to it; Tab still carries focus out), and Up and Down move
 within a focused list. Installed as an application event filter, active only while
 the main window is foreground.
+
+A focus ring appears only where the user put it. When the toolkit hands focus
+to a ring control without the user asking (restoring focus after a menu or a
+dialog closes, reactivating the window), the navigator bounces it to the
+neutral start widget, so no control wears a ring uninvited. Tab, Shift+Tab,
+a shortcut and a genuine mouse click on the control keep their rings.
 """
 
 from __future__ import annotations
 
-from PySide6.QtCore import QEvent, QObject, Qt
+from PySide6.QtCore import QEvent, QObject, Qt, QTimer
 from PySide6.QtWidgets import QApplication, QPushButton, QWidget
 
 _MENU = "menu"
@@ -22,17 +28,34 @@ _GROUP = "group"
 _FORWARD = 1
 _BACK = -1
 
+# The focus reasons a user causes directly; every other reason is the toolkit
+# reassigning focus on its own initiative.
+_USER_FOCUS_REASONS = (
+    Qt.FocusReason.TabFocusReason,
+    Qt.FocusReason.BacktabFocusReason,
+    Qt.FocusReason.MouseFocusReason,
+    Qt.FocusReason.ShortcutFocusReason,
+)
+
 
 class KeyboardNavigator(QObject):
     """An application event filter that drives the main window's focus ring."""
 
     def __init__(
-        self, window, menubar, menu_actions, widget_stops, groups, map_view
+        self,
+        window,
+        menubar,
+        menu_actions,
+        widget_stops,
+        groups,
+        map_view,
+        neutral_start=None,
     ) -> None:
         super().__init__(window)
         self._window = window
         self._menubar = menubar
         self._map = map_view
+        self._neutral = neutral_start
         self._menu_actions = list(menu_actions)
         self._groups = list(groups)
         self._stops = [(_MENU, action) for action in self._menu_actions]
@@ -41,6 +64,16 @@ class KeyboardNavigator(QObject):
         QApplication.instance().installEventFilter(self)
 
     def eventFilter(self, obj, event) -> bool:
+        if event.type() == QEvent.Type.FocusIn:
+            if (
+                self._neutral is not None
+                and isinstance(obj, QWidget)
+                and event.reason() not in _USER_FOCUS_REASONS
+                and self._is_ring_widget(obj)
+            ):
+                # Neutralise after the restore settles, never inside it.
+                QTimer.singleShot(0, self._neutralise)
+            return False
         if event.type() != QEvent.Type.KeyPress or not self._window.isActiveWindow():
             return False
         if QApplication.activeModalWidget() is not None:
@@ -104,6 +137,19 @@ class KeyboardNavigator(QObject):
             return True
         return key == Qt.Key.Key_Left
 
+    def _is_ring_widget(self, widget) -> bool:
+        for kind, target in self._stops:
+            if kind == _WIDGET and target is widget:
+                return True
+            if kind == _GROUP and (target is widget or target.isAncestorOf(widget)):
+                return True
+        return False
+
+    def _neutralise(self) -> None:
+        focus = QApplication.focusWidget()
+        if focus is not None and self._is_ring_widget(focus):
+            self._neutral.setFocus(Qt.FocusReason.OtherFocusReason)
+
     def _within(self, widget) -> bool:
         if widget is self._menubar:
             return True
@@ -147,9 +193,10 @@ class KeyboardNavigator(QObject):
             if kind == _MENU:
                 if active is not None and target is active:
                     return index
-            elif focus is not None and kind == _WIDGET and target is focus:
-                return index
-            elif focus is not None and kind == _GROUP and target.isAncestorOf(focus):
+            elif focus is not None and (
+                (kind == _WIDGET and target is focus)
+                or (kind == _GROUP and target.isAncestorOf(focus))
+            ):
                 return index
         return -1
 
