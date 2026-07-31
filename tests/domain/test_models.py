@@ -63,8 +63,6 @@ def test_origin_values():
     assert Origin.GENERATED.value == "generated"
     assert Origin.IMPORTED.value == "imported"
     assert Origin.MODELLED.value == "modelled"
-    # Legacy origin: files written before the wizard was retired still load.
-    assert Origin.WIZARD.value == "wizard"
 
 
 def test_org_state_valid_accessors():

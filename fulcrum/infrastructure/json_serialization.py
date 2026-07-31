@@ -13,14 +13,19 @@ from fulcrum.domain.models import (
     AuthorityClaim,
     Dependency,
     Domain,
-    Origin,
     OrgState,
+    Origin,
     Team,
 )
 from fulcrum.domain.moves import Move, MoveKind
 
 _DEFAULT_SIZE = 1
 _DEFAULT_OWNER = ""
+
+# Origins written by retired features, normalised here so old files load
+# without the domain carrying dead members. The quick-org wizard built orgs
+# by hand, so its files read as modelled.
+_LEGACY_ORIGINS: dict[str, str] = {"wizard": Origin.MODELLED.value}
 
 
 def _team_to_dict(team: Team) -> dict:
@@ -114,7 +119,7 @@ def org_from_dict(data: dict) -> OrgState:
         teams=teams,
         dependencies=dependencies,
         workload=data["workload"],
-        origin=Origin(data["origin"]),
+        origin=Origin(_LEGACY_ORIGINS.get(data["origin"], data["origin"])),
         domains=domains,
         claims=claims,
     )

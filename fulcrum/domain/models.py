@@ -51,9 +51,6 @@ class Origin(str, Enum):
     GENERATED = "generated"
     IMPORTED = "imported"
     MODELLED = "modelled"
-    # Legacy: the retired quick-org wizard's origin, kept so autosaves and
-    # exports written before its removal still load. Nothing creates it.
-    WIZARD = "wizard"
 
 
 @dataclass(frozen=True, slots=True)
