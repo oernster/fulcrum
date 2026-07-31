@@ -16,6 +16,7 @@ from PySide6.QtWidgets import QStackedWidget
 from fulcrum.application.game_session import GameSession
 from fulcrum.domain.hierarchy import TOP_LEVEL_FOCUS, domain_has_teams
 from fulcrum.domain.models import OrgState
+from fulcrum.ui.widgets.auto_scroller import AutoScroller
 from fulcrum.ui.widgets.complete_map_layout import (
     skipped_wrapper_id,
     summarized,
@@ -38,6 +39,10 @@ class BoardMapPane(QStackedWidget):
         self._complete = CompleteMapView()
         self._complete.domain_clicked.connect(self._drill_from_complete)
         self._complete.drill_requested.connect(self._enter_drill_mode)
+        # A picture taller than the pane reads itself down at the app's
+        # standard pace, exactly as the help dialogs do; the wheel, a drag,
+        # a click or focus entering the map suspends the cycle in place.
+        self._complete_scroller = AutoScroller(self._complete)
         self._map = OrgMapView()
         self._map.drilled.connect(self._on_drilled)
         self.addWidget(self._complete)

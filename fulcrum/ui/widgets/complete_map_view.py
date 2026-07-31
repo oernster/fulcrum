@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import math
 
-from PySide6.QtCore import QPointF, QRectF, Qt, Signal
+from PySide6.QtCore import QPointF, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import (
     QBrush,
     QColor,
@@ -105,12 +105,24 @@ class CompleteMapView(QGraphicsView):
         self._summarize = False
         self._domain_rects: dict[str, QRectF] = {}
         self._press_pos = None
+        self._anchor_on_show = False
 
     def set_org(self, org: OrgState) -> None:
         self._org = org
         self._summarize = len(org.teams) > SUMMARY_MAX_TEAMS
         self._render()
         self.show_full_size()
+        # The viewport may not have its real size yet (the board builds
+        # before the window shows), which left the picture anchored mid
+        # scene with the top and bottom entities cut off; re-anchor at the
+        # next show so the topmost entity is where reading starts.
+        self._anchor_on_show = True
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        if self._anchor_on_show:
+            self._anchor_on_show = False
+            QTimer.singleShot(0, self.show_full_size)
 
     def apply_map_theme(self) -> None:
         """Repaint the canvas and scene in the current map palette."""
