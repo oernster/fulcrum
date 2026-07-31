@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 
 from fulcrum.shared.resources import find_about_png
 from fulcrum.ui import ui_scale
+from fulcrum.ui.widgets.auto_scroller import AutoScroller
 from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 from fulcrum.version import APP_AUTHOR, APP_NAME, APP_TAGLINE, __version__
 
@@ -29,8 +30,10 @@ _LICENCE_MIN_HEIGHT = 520
 _CREDITS = (
     "<li><b>Python</b> - Python Software Foundation Licence.</li>",
     "<li><b>PySide6 (Qt for Python)</b> - LGPL-3.0.</li>",
-    "<li><b>pytest, pytest-cov, pytest-qt, black, flake8</b> - MIT Licence "
-    "(development).</li>",
+    (
+        "<li><b>pytest, pytest-cov, pytest-qt, black, flake8</b> - MIT Licence "
+        "(development).</li>"
+    ),
     "<li><b>Pillow</b> - HPND Licence (icon build).</li>",
     "<li><b>Nuitka</b> - Apache-2.0 Licence (Windows and macOS packaging).</li>",
     "<li><b>create-dmg</b> - MIT Licence (macOS disk image).</li>",
@@ -97,6 +100,7 @@ class AboutDialog(NeutralDialog):
         )
         body.setMinimumHeight(ui_scale.px(_BODY_MIN_HEIGHT))
         layout.addWidget(body)
+        self._scroller = AutoScroller(body)
         layout.addLayout(_close_row(self))
 
 
@@ -114,6 +118,7 @@ class LicenceDialog(NeutralDialog):
         browser.setLineWrapMode(QTextBrowser.LineWrapMode.WidgetWidth)
         browser.setPlainText(_read_licence(path))
         layout.addWidget(browser)
+        self._scroller = AutoScroller(browser)
         layout.addLayout(_close_row(self))
 
 

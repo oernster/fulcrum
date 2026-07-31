@@ -25,6 +25,7 @@ from fulcrum.application.books import build_book_showcase
 from fulcrum.domain.books import BookEntry
 from fulcrum.shared.resources import find_book_cover
 from fulcrum.ui import ui_scale
+from fulcrum.ui.widgets.auto_scroller import AutoScroller
 from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 
 _ACCENT = "#f59e0b"
@@ -140,6 +141,7 @@ class BookBackgroundDialog(NeutralDialog):
 
         scroll.setWidget(body)
         outer.addWidget(scroll, 1)
+        self._scroller = AutoScroller(scroll)
 
         button_row = QHBoxLayout()
         close_button = QPushButton("Close")

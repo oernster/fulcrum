@@ -15,8 +15,9 @@ from PySide6.QtWidgets import (
 
 from fulcrum.application.glossary import build_glossary
 from fulcrum.ui import ui_scale
-from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
+from fulcrum.ui.widgets.auto_scroller import AutoScroller
 from fulcrum.ui.widgets.book_background_dialog import BookBackgroundDialog
+from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 
 _MIN_WIDTH = 640
 _MIN_HEIGHT = 560
@@ -51,6 +52,7 @@ class GlossaryDialog(NeutralDialog):
         browser.anchorClicked.connect(self._open_books)
         browser.setHtml(_glossary_html())
         layout.addWidget(browser)
+        self._scroller = AutoScroller(browser)
 
         row = QHBoxLayout()
         close_button = QPushButton("Close")
