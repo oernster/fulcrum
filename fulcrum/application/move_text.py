@@ -8,14 +8,23 @@ from __future__ import annotations
 
 from fulcrum.domain.models import OrgState
 from fulcrum.domain.moves import Move, MoveKind
+from fulcrum.shared.text import count_noun
 
 _STABILISE_TEXT = "Stabilise all interfaces"
 _APPROVAL_TEXT = "Add an approval layer"
 _OVERLAY_TEXT = "Impose a matrix overlay"
+# A frame-translated move can act on dozens of real teams; naming them all
+# turns the last-move note into a wall of text, so the enumeration stops
+# here and the rest is counted.
+_MAX_NAMED_TARGETS = 3
 
 
 def _named(org: OrgState, ids: tuple[str, ...]) -> str:
-    return " + ".join(org.team(team_id).name for team_id in ids)
+    names = [org.team(team_id).name for team_id in ids]
+    if len(names) <= _MAX_NAMED_TARGETS:
+        return " + ".join(names)
+    shown = " + ".join(names[:_MAX_NAMED_TARGETS])
+    return f"{shown} and {count_noun(len(names) - _MAX_NAMED_TARGETS, 'more team')}"
 
 
 def _actor_name(org: OrgState, actor_id: str) -> str:

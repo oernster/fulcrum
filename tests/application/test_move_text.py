@@ -94,3 +94,21 @@ def test_move_note_covers_every_kind():
         assert move_note(kind)
     assert "not centralisation" in move_note(MoveKind.COLLAPSE_BOUNDARY)
     assert "blunder" in move_note(MoveKind.ADD_APPROVAL_LAYER)
+
+
+def test_many_targets_are_capped_with_an_honest_count():
+    """A wide move names a few teams and counts the rest, never a wall."""
+    teams = tuple(Team(f"t{i}", f"T{i}", False, 0.0) for i in range(5))
+    org = OrgState(teams=teams, workload=1)
+    move = Move(MoveKind.DELEGATE_AUTHORITY, tuple(t.id for t in teams))
+    assert (
+        describe_move(org, move)
+        == "Delegate authority to T0 + T1 + T2 and 2 more teams"
+    )
+
+
+def test_exactly_the_cap_is_named_in_full():
+    teams = tuple(Team(f"t{i}", f"T{i}", False, 0.0) for i in range(3))
+    org = OrgState(teams=teams, workload=1)
+    move = Move(MoveKind.DELEGATE_AUTHORITY, tuple(t.id for t in teams))
+    assert describe_move(org, move) == "Delegate authority to T0 + T1 + T2"

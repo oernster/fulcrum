@@ -197,28 +197,41 @@ class GameSession:
             moves = tuple(m for m in moves if m.kind in AGGREGATE_MOVE_KINDS)
         return self._simulator.valuate_moves(active, moves)
 
-    def _labelled(self, move: Move, org: OrgState) -> Move:
-        """The move named against the org it acts on, for the record.
+    def _frame_label(self, move: Move, org: OrgState) -> str:
+        """The text the move was played under, in its frame's own terms.
 
         History outlives the position it was played in (it persists across
         runs and a collapse renames its targets), so the description is
-        captured at play time, when the names are still there to read.
+        captured at play time. It is the SAME text the player clicked: a
+        top-level delegate reads as its unit, never as the list of real
+        teams the translation expands it to.
         """
-        if move.label:
-            return move
-        return Move(move.kind, move.targets, describe_move(org, move))
+        return move.label or describe_move(org, move)
+
+    def _org_for_frame(self, frame_id: str | None) -> OrgState:
+        """The org a frame shows, for naming a move in the frame's terms.
+
+        A synthetic direct-teams frame translates as a pass-through (its
+        moves already target real teams), so it names against the real org.
+        """
+        if frame_id == TOP_LEVEL_FOCUS:
+            return top_level_section(self._org)
+        if frame_id is not None and domain_has_teams(self._org, frame_id):
+            return focused_suborg(self._org, frame_id)
+        return self._org
 
     def play(self, move: Move) -> None:
         # Apply before snapshotting so a move that cannot apply leaves the
         # session untouched (no orphaned undo snapshot). Store the translated
         # move so the history replays cleanly from the start org; a focused
-        # move's raw target can be a domain rather than a real team.
+        # move's raw target can be a domain rather than a real team. The
+        # label is the frame's own text, captured before translation.
+        label = self._frame_label(move, self._active_org())
         real = translate_focused_move(self._org, self._focus_id, move)
-        labelled = self._labelled(real, self._org)
         new_org = apply_move(self._org, real)
         self._past.append(self._org)
         self._org = new_org
-        self._history.append(labelled)
+        self._history.append(Move(real.kind, real.targets, label))
 
     @property
     def can_take_back(self) -> bool:
@@ -263,10 +276,16 @@ class GameSession:
             new_org = apply_move(self._org, real)
         except FulcrumError:
             return False
-        labelled = self._labelled(real, self._org)
+        # Label only once the move is known to apply, in the frame's own
+        # terms; a move whose names outrun the frame (a pass-through onto
+        # real teams) falls back to naming the translated act.
+        try:
+            label = self._frame_label(move, self._org_for_frame(frame_id))
+        except FulcrumError:
+            label = self._frame_label(real, self._org)
         self._past.append(self._org)
         self._org = new_org
-        self._history.append(labelled)
+        self._history.append(Move(real.kind, real.targets, label))
         return True
 
     def preview(self, move: Move) -> OrgState:

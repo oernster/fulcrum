@@ -1,34 +1,17 @@
 """Tests for the game session coordinator, using Protocol fakes."""
 
-from fulcrum.application.dto import MoveValuation, SessionSnapshot
+from session_support import FakeSimulator as _FakeSimulator
+from session_support import flat_org as _org
+from session_support import nested_org as _nested_org
+
 from fulcrum.application.game_session import (
     MAX_PLAYABLE_TEAMS,
     GameSession,
     enumerate_moves,
-    restore_session,
 )
 from fulcrum.domain.hierarchy import AGGREGATE_MOVE_KINDS, TOP_LEVEL_FOCUS
 from fulcrum.domain.models import AuthorityClaim, Dependency, Domain, OrgState, Team
 from fulcrum.domain.moves import Move, MoveKind
-from fulcrum.domain.simulation import MoveClassification, StructuralScore
-
-
-class _FakeSimulator:
-    def score(self, org):
-        return StructuralScore(50.0, 0.0, 0.0, 0.0)
-
-    def valuate_moves(self, org, moves):
-        return tuple(
-            MoveValuation(m, 50.0, 55.0, MoveClassification.GOOD) for m in moves
-        )
-
-
-def _org():
-    return OrgState(
-        teams=(Team("a", "A", True, 0.0), Team("b", "B", False, 0.5)),
-        dependencies=(Dependency("a", "b", 3),),
-        workload=2,
-    )
 
 
 def test_enumerate_moves_offers_each_kind():
@@ -200,23 +183,6 @@ def test_large_scope_is_not_playable_and_skips_valuation():
     assert session.candidate_valuations() == ()
 
 
-def _nested_org():
-    return OrgState(
-        teams=(
-            Team("a", "A", False, 0.5, domain_id="d1"),
-            Team("b", "B", False, 0.5, domain_id="d1"),
-            Team("c", "C", True, 0.0, domain_id="d2"),
-        ),
-        dependencies=(Dependency("a", "b", 2), Dependency("b", "c", 2)),
-        workload=2,
-        domains=(
-            Domain("root", "Org"),
-            Domain("d1", "Dept One", parent_id="root"),
-            Domain("d2", "Dept Two", parent_id="root"),
-        ),
-    )
-
-
 def test_aggregate_scope_offers_only_translatable_moves():
     session = GameSession(_nested_org(), _FakeSimulator())
     session.focus("root")
@@ -322,60 +288,3 @@ def test_focus_top_level_falls_back_to_flat_without_domains():
     session = GameSession(_org(), _FakeSimulator())
     session.focus(TOP_LEVEL_FOCUS)
     assert session.focused_on is None
-
-
-def test_snapshot_captures_start_moves_and_result():
-    session = GameSession(_org(), _FakeSimulator())
-    session.play(Move(MoveKind.DELEGATE_AUTHORITY, ("b",)))
-    snapshot = session.snapshot()
-    assert snapshot.initial_org == _org()
-    assert snapshot.moves == session.history
-    assert snapshot.org == session.org
-
-
-def test_mark_history_as_prior_counts_and_take_back_clamps():
-    session = GameSession(_org(), _FakeSimulator())
-    session.play(Move(MoveKind.DELEGATE_AUTHORITY, ("b",)))
-    session.mark_history_as_prior()
-    assert session.prior_history_count == 1
-    session.play(Move(MoveKind.REALIGN_INCENTIVES, ("b",)))
-    assert session.prior_history_count == 1
-    session.take_back()
-    assert session.prior_history_count == 1
-    session.take_back()
-    assert session.prior_history_count == 0
-    assert session.history == ()
-
-
-def test_restore_session_replays_and_rebuilds_the_undo_stack():
-    original = GameSession(_org(), _FakeSimulator())
-    original.play(Move(MoveKind.DELEGATE_AUTHORITY, ("b",)))
-    original.play(Move(MoveKind.REALIGN_INCENTIVES, ("b",)))
-    restored = restore_session(original.snapshot(), _FakeSimulator())
-    assert restored.org == original.org
-    assert restored.history == original.history
-    assert restored.prior_history_count == 2
-    assert restored.can_take_back
-    restored.take_back()
-    restored.take_back()
-    assert restored.org == _org()
-    assert not restored.can_take_back
-
-
-def test_restore_session_falls_back_when_a_move_cannot_replay():
-    snapshot = SessionSnapshot(
-        _org(), (Move(MoveKind.DELEGATE_AUTHORITY, ("ghost",)),), _org()
-    )
-    restored = restore_session(snapshot, _FakeSimulator())
-    assert restored.org == _org()
-    assert restored.history == ()
-    assert restored.prior_history_count == 0
-
-
-def test_played_moves_are_named_for_the_record():
-    session = GameSession(_org(), _FakeSimulator())
-    session.play(Move(MoveKind.DELEGATE_AUTHORITY, ("b",)))
-    assert session.history[0].label == "Delegate authority to B"
-    already = Move(MoveKind.REALIGN_INCENTIVES, ("b",), "Custom label")
-    session.play(already)
-    assert session.history[1].label == "Custom label"
