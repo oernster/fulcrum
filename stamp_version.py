@@ -9,7 +9,8 @@ render time, so they instead carry a delimited token:
     <!--VERSION-->0.2.0<!--/VERSION-->
 
 This script reads VERSION and rewrites whatever sits between every such token's
-delimiters, across the root Markdown and the GitHub Pages site under docs/. It
+delimiters, across the GitHub Pages site under docs/. No documentation outside
+the site carries version data, so the site is the whole stamped surface. It
 is idempotent: stamping an already-current file changes nothing. Static files
 are stamped from VERSION, never hand-edited, so a version cannot drift.
 
@@ -53,10 +54,10 @@ def read_version() -> str:
 def target_files() -> list[Path]:
     """Return the static files that may carry a version token, deduplicated.
 
-    The surface is the root-level Markdown plus the GitHub Pages site under
-    docs/ (its HTML and any Markdown).
+    The surface is the GitHub Pages site under docs/ (its HTML and any
+    Markdown). Documentation outside the site carries no version data.
     """
-    candidates: set[Path] = set(PROJECT_ROOT.glob("*.md"))
+    candidates: set[Path] = set()
     if DOCS_DIR.is_dir():
         candidates.update(DOCS_DIR.rglob("*.html"))
         candidates.update(DOCS_DIR.rglob("*.md"))

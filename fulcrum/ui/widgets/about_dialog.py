@@ -31,10 +31,10 @@ _CREDITS = (
     "<li><b>Python</b> - Python Software Foundation Licence.</li>",
     "<li><b>PySide6 (Qt for Python)</b> - LGPL-3.0.</li>",
     (
-        "<li><b>pytest, pytest-cov, pytest-qt, black, flake8</b> - MIT Licence "
-        "(development).</li>"
+        "<li><b>pytest, pytest-cov, pytest-qt, black, flake8, ruff</b> - MIT "
+        "Licence (development).</li>"
     ),
-    "<li><b>Pillow</b> - HPND Licence (icon build).</li>",
+    "<li><b>Pillow</b> - MIT-CMU Licence (icon build).</li>",
     "<li><b>Nuitka</b> - Apache-2.0 Licence (Windows and macOS packaging).</li>",
     "<li><b>create-dmg</b> - MIT Licence (macOS disk image).</li>",
 )

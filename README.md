@@ -10,7 +10,7 @@ or ask for a guide to a stronger structure.
 It is a local-first desktop app: everything runs on your machine and nothing
 leaves it.
 
-A short tour and the books behind it are at <https://oernster.github.io/fulcrum/>.
+A short tour and the books behind it are at <https://ernster.dev/fulcrum/>.
 
 ## Who it is for
 
