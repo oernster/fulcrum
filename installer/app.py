@@ -39,7 +39,7 @@ from ctypes import wintypes
 from pathlib import Path
 from types import TracebackType
 
-from PySide6.QtCore import QSize, Qt, QTimer
+from PySide6.QtCore import QEvent, QObject, QSize, Qt, QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QApplication,
@@ -835,8 +835,158 @@ def _licence_view_width(view: QTextEdit, text: str) -> int:
     return widest + scrollbar + chrome + _WIDTH_SAFETY_PX
 
 
+class AutoScroller(QObject):
+    """Cycles a scrollable widget: down slowly, pause, rewind fast, repeat.
+
+    A standalone copy of the application's scroller (the installer imports
+    nothing from the fulcrum package), carrying the same app-wide pace: the
+    cycle reads down from the moment the surface opens, holds at the bottom,
+    rewinds fast, holds at the top and repeats. Any manual reading input
+    (wheel, click, key, scrollbar or focus entering the surface) suspends it
+    briefly; it resumes from wherever the reader left it, never switching
+    off. The widget becomes the scroller's Qt parent, so their lifetimes
+    match. The installer has no UI-scale helper, so the descent step is a
+    plain pixel with the same 1px floor the app applies after scaling.
+    """
+
+    _TICK_MS = 40
+    _DOWN_STEP_PX = 1
+    # The descent advances one step every second tick: the app's standard
+    # reading pace, gentle enough for dense content on every surface.
+    _DOWN_TICKS_PER_STEP = 2
+    # The rewind is a reposition, not a reading pass, so it travels fast.
+    _UP_STEP_PX = 15
+    # Hold at the end long enough to finish reading the tail before the
+    # rewind takes it away.
+    _BOTTOM_PAUSE_MS = 5000
+    _TOP_PAUSE_MS = 2000
+    # Stillness required after a manual scroll before the cycle resumes.
+    _RESUME_AFTER_MS = 2500
+
+    _DOWN = "down"
+    _UP = "up"
+    _PAUSE_TOP = "pause_top"
+    _PAUSE_BOTTOM = "pause_bottom"
+    _MANUAL = "manual"
+    _WAITING = (_PAUSE_TOP, _PAUSE_BOTTOM, _MANUAL)
+    _MANUAL_EVENTS = (
+        QEvent.Type.Wheel,
+        QEvent.Type.MouseButtonPress,
+        QEvent.Type.KeyPress,
+    )
+
+    def __init__(self, area) -> None:
+        super().__init__(area)
+        self._area = area
+        self._bar = area.verticalScrollBar()
+        self._down_countdown = self._DOWN_TICKS_PER_STEP
+        # Straight into the first descent: nothing is held back on opening.
+        self._phase = self._DOWN
+        self._wait_ms = 0
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self._tick)
+        self._timer.start(self._TICK_MS)
+        # The viewport sees the wheel and clicks, the widget sees the keys.
+        area.installEventFilter(self)
+        area.viewport().installEventFilter(self)
+        self._bar.sliderPressed.connect(self.suspend)
+        self._bar.sliderReleased.connect(self.suspend)
+        self._bar.sliderMoved.connect(self._on_slider_moved)
+        # Keyboard focus entering the surface or a child is reading by hand
+        # too; a child never sees this filter, so watch the application's
+        # focus instead.
+        QApplication.instance().focusChanged.connect(self._on_focus_changed)
+
+    def suspend(self) -> None:
+        """Hand the content to the reader and start counting down to resume."""
+        self._phase = self._MANUAL
+        self._wait_ms = self._RESUME_AFTER_MS
+
+    def _on_slider_moved(self, _value: int) -> None:
+        """Dragging the scrollbar counts as reading by hand."""
+        self.suspend()
+
+    def _on_focus_changed(self, _old, new) -> None:
+        if isinstance(new, QWidget) and (
+            new is self._area or self._area.isAncestorOf(new)
+        ):
+            self.suspend()
+
+    def eventFilter(self, obj, event) -> bool:
+        if event.type() in self._MANUAL_EVENTS:
+            self.suspend()
+        return False
+
+    def _tick(self) -> None:
+        maximum = self._bar.maximum()
+        if maximum <= 0:
+            return
+        if self._phase in self._WAITING:
+            self._wait_ms -= self._TICK_MS
+            if self._wait_ms <= 0:
+                self._phase = self._resumed_phase(maximum)
+            return
+        if self._phase == self._DOWN:
+            self._down_countdown -= 1
+            if self._down_countdown > 0:
+                return
+            self._down_countdown = self._DOWN_TICKS_PER_STEP
+            value = self._bar.value() + max(1, self._DOWN_STEP_PX)
+            if value >= maximum:
+                self._bar.setValue(maximum)
+                self._phase = self._PAUSE_BOTTOM
+                self._wait_ms = self._BOTTOM_PAUSE_MS
+            else:
+                self._bar.setValue(value)
+            return
+        value = self._bar.value() - max(1, self._UP_STEP_PX)
+        if value <= 0:
+            self._bar.setValue(0)
+            self._phase = self._PAUSE_TOP
+            self._wait_ms = self._TOP_PAUSE_MS
+        else:
+            self._bar.setValue(value)
+
+    def _resumed_phase(self, maximum: int) -> str:
+        """The direction to travel once a wait ends.
+
+        After the bottom hold the cycle rewinds. After a manual scroll it
+        reads onward from wherever the reader stopped, unless they are
+        already at the end, in which case rewinding is the only way on.
+        """
+        if self._phase == self._PAUSE_BOTTOM:
+            return self._UP
+        if self._phase == self._MANUAL and self._bar.value() >= maximum:
+            return self._UP
+        return self._DOWN
+
+
+class _NeutralStart(QWidget):
+    """A 0x0 focus sink so the dialog opens with nothing ringed.
+
+    Without it Qt hands the dialog's first focus to the licence view, which
+    would suspend the auto-scroll the moment the dialog opens. It leaves
+    the tab chain as soon as focus moves on, so the cycle that follows
+    holds only real controls.
+    """
+
+    def __init__(self, parent: QWidget) -> None:
+        super().__init__(parent)
+        self.setFixedSize(0, 0)
+        self.setFocusPolicy(Qt.FocusPolicy.TabFocus)
+
+    def focusOutEvent(self, event) -> None:
+        super().focusOutEvent(event)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
+
 class LicenceDialog(QDialog):
-    """A themed, scrollable view of a licence text."""
+    """A themed, scrollable view of a licence text that reads itself.
+
+    The licence descends at the app's standard reading pace from the moment
+    the dialog opens; any manual scroll or focus into the view suspends the
+    cycle briefly and it resumes in place.
+    """
 
     def __init__(
         self,
@@ -855,12 +1005,19 @@ class LicenceDialog(QDialog):
         )
         layout.setSpacing(_BUTTON_GAP)
 
+        # First in the tab chain, so opening the dialog focuses the sink
+        # rather than the view and the descent starts unsuspended.
+        self._start = _NeutralStart(self)
+        layout.addWidget(self._start)
+        self._started = False
+
         view = QTextEdit()
         view.setObjectName("LicenceView")
         view.setReadOnly(True)
         view.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
         view.setPlainText(licence_text)
         layout.addWidget(view)
+        AutoScroller(view)
 
         view_width = _licence_view_width(view, licence_text)
         view.setMinimumWidth(view_width)
@@ -873,6 +1030,12 @@ class LicenceDialog(QDialog):
         row.addStretch()
         row.addWidget(close)
         layout.addLayout(row)
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        if not self._started:
+            self._started = True
+            self._start.setFocus()
 
 
 class InstallerWindow(QWidget):
