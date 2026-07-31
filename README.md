@@ -48,17 +48,22 @@ A short tour and the books behind it are at <https://ernster.dev/fulcrum/>.
 - Matrix and dual-reporting structure, drawn honestly: an authority claim
   records another actor (a team, a unit or an unmodelled label such as a
   chapter lead) asserting the right to decide for a team. A claimed team is
-  contested, reads red on the maps, carries its own watched signal and opens
+  contested, reads violet on the maps, carries its own watched signal and opens
   its own repair moves: resolve the class to a single owner, or downgrade a
   claimant to an explicitly priced consulted dependency. Claims live in the
   editor beside the dependency table and round-trip through JSON.
 - The board opens as the complete picture: every domain and team at once,
   with a click on any domain drilling straight into that section on the
   navigable map and a synthetic dashed Shell tier grouping a multi-company
-  top level without asserting a modelled roof. Every level of the map is
+  top level without asserting a modelled roof. Hovering a section rings it
+  in green to show a click opens it. Every level of the map is
   playable, the top level included: "Play this level" scores the top-level
   units as one actor each, so dependencies between them are priced, then
   "Score the whole org" returns to the complete picture.
+- Both maps zoom: corner + and - chips (or the + and - keys on the focused
+  map) step the view larger and smaller, with each drill level opening at
+  its own fit and zooming over it, so a wide level's small type is one
+  press from readable.
 - A live move record behind the central header button: every move to date,
   earlier runs marked, each showing the organisation before and after it;
   the record survives restarts and rides along in JSON export and import.
@@ -114,7 +119,9 @@ A short tour and the books behind it are at <https://ernster.dev/fulcrum/>.
 - Light and dark themes, switched from the header's sun/moon toggle and
   remembered between runs; the whole interface follows, the organisation
   map included, with the authority colours re-weighted per theme so green,
-  amber and red keep their meaning on either surface.
+  amber and violet keep their meaning on either surface (violet marks
+  contested ownership rather than red, so it stays distinct from the green
+  hover ring under red-green colour blindness).
 - Help built in: About, both licence texts, a decision glossary and a
   background page on the Decision Architecture books. Long help content
   reads itself down gently, holds at the end and rewinds; it yields the

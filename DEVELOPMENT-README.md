@@ -85,9 +85,11 @@ python generate_icons.py
 
 Renders the multi-size PNG set and the multi-resolution `fulcrum.ico` from
 `fulcrum.png`, used for the window, the taskbar and the packaged executable.
-The electric-glow treatment (transparent keying, colour lift, halo) is part
-of the script, so the raw master stays untouched and every emitted icon
-carries the shipped look.
+The electric-glow treatment (transparent keying, colour lift, halo) and a
+mass-based trim (the art is cropped to the box holding almost all of its
+ink, then squared with a thin margin, so the mark fills the taskbar tile)
+are part of the script, so the raw master stays untouched and every
+emitted icon carries the shipped look.
 
 ```
 python generate_button_icons.py
