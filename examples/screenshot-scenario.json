@@ -1,0 +1,210 @@
+{
+  "teams": [
+    {
+      "id": "team_1",
+      "name": "Team 1",
+      "has_local_authority": true,
+      "incentive_skew": 0.31,
+      "domain_id": "domain_2",
+      "size": 1,
+      "owner": "Sarah Whitmore",
+      "headcount": 4
+    },
+    {
+      "id": "team_2",
+      "name": "Team 2",
+      "has_local_authority": false,
+      "incentive_skew": 0.78,
+      "domain_id": "domain_2",
+      "size": 1,
+      "owner": "Pavel Novak",
+      "headcount": 11
+    },
+    {
+      "id": "team_3",
+      "name": "Team 3",
+      "has_local_authority": false,
+      "incentive_skew": 0.61,
+      "domain_id": "domain_2",
+      "size": 1,
+      "owner": "Matthew Corbridge",
+      "headcount": 5
+    },
+    {
+      "id": "team_4",
+      "name": "Team 4",
+      "has_local_authority": false,
+      "incentive_skew": 0.8,
+      "domain_id": "domain_2",
+      "size": 1,
+      "owner": "Meera Krishnan",
+      "headcount": 6
+    },
+    {
+      "id": "team_5",
+      "name": "Team 5",
+      "has_local_authority": true,
+      "incentive_skew": 0.35,
+      "domain_id": "domain_3",
+      "size": 1,
+      "owner": "Megan Colfax",
+      "headcount": 5
+    },
+    {
+      "id": "team_6",
+      "name": "Team 6",
+      "has_local_authority": false,
+      "incentive_skew": 0.53,
+      "domain_id": "domain_3",
+      "size": 1,
+      "owner": "Bethany Croft",
+      "headcount": 9
+    },
+    {
+      "id": "team_7",
+      "name": "Team 7",
+      "has_local_authority": false,
+      "incentive_skew": 0.58,
+      "domain_id": "domain_3",
+      "size": 1,
+      "owner": "Morgan Traherne",
+      "headcount": 9
+    },
+    {
+      "id": "team_8",
+      "name": "Team 8",
+      "has_local_authority": false,
+      "incentive_skew": 0.8,
+      "domain_id": "domain_3",
+      "size": 1,
+      "owner": "Niamh Byrne",
+      "headcount": 5
+    },
+    {
+      "id": "team_9",
+      "name": "Team 9",
+      "has_local_authority": false,
+      "incentive_skew": 0.64,
+      "domain_id": "domain_3",
+      "size": 1,
+      "owner": "Zara Hussain",
+      "headcount": 5
+    }
+  ],
+  "dependencies": [
+    {
+      "upstream": "team_1",
+      "downstream": "team_2",
+      "propagation_delay": 5
+    },
+    {
+      "upstream": "team_1",
+      "downstream": "team_3",
+      "propagation_delay": 5
+    },
+    {
+      "upstream": "team_1",
+      "downstream": "team_4",
+      "propagation_delay": 4
+    },
+    {
+      "upstream": "team_2",
+      "downstream": "team_3",
+      "propagation_delay": 4
+    },
+    {
+      "upstream": "team_2",
+      "downstream": "team_4",
+      "propagation_delay": 5
+    },
+    {
+      "upstream": "team_3",
+      "downstream": "team_4",
+      "propagation_delay": 5
+    },
+    {
+      "upstream": "team_5",
+      "downstream": "team_6",
+      "propagation_delay": 4
+    },
+    {
+      "upstream": "team_5",
+      "downstream": "team_7",
+      "propagation_delay": 6
+    },
+    {
+      "upstream": "team_5",
+      "downstream": "team_8",
+      "propagation_delay": 6
+    },
+    {
+      "upstream": "team_5",
+      "downstream": "team_9",
+      "propagation_delay": 5
+    },
+    {
+      "upstream": "team_6",
+      "downstream": "team_7",
+      "propagation_delay": 6
+    },
+    {
+      "upstream": "team_6",
+      "downstream": "team_8",
+      "propagation_delay": 6
+    },
+    {
+      "upstream": "team_6",
+      "downstream": "team_9",
+      "propagation_delay": 4
+    },
+    {
+      "upstream": "team_7",
+      "downstream": "team_8",
+      "propagation_delay": 4
+    },
+    {
+      "upstream": "team_7",
+      "downstream": "team_9",
+      "propagation_delay": 5
+    },
+    {
+      "upstream": "team_8",
+      "downstream": "team_9",
+      "propagation_delay": 5
+    },
+    {
+      "upstream": "team_4",
+      "downstream": "team_9",
+      "propagation_delay": 5
+    }
+  ],
+  "workload": 7,
+  "origin": "generated",
+  "domains": [
+    {
+      "id": "domain_1",
+      "name": "Operations",
+      "parent_id": null,
+      "lead": "Ade Solanke",
+      "category": "Department",
+      "headcount": 0
+    },
+    {
+      "id": "domain_2",
+      "name": "Infrastructure",
+      "parent_id": "domain_1",
+      "lead": "Yasmin Al-Sayed",
+      "category": "Domain",
+      "headcount": 0
+    },
+    {
+      "id": "domain_3",
+      "name": "Security",
+      "parent_id": "domain_1",
+      "lead": "Chloe Aldridge",
+      "category": "Domain",
+      "headcount": 0
+    }
+  ],
+  "claims": []
+}
