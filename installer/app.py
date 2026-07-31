@@ -173,6 +173,11 @@ _TEXT = "#e6e9ee"
 _TEXT_MUTED = "#9aa3af"
 _ACCENT = "#f59e0b"
 _ACCENT_BRIGHT = "#fbbf24"
+# Buttons never wear the amber: the green hover ring is hard to read against
+# an amber fill, so the filled primary and the uninstall caption use a light
+# blue the ring stays legible against. The amber remains on the headings only.
+_BUTTON_BLUE = "#7fb0ff"
+_BUTTON_BLUE_BRIGHT = "#a8c8ff"
 _DISABLED_TEXT = "#5b6470"
 # The app's ring model: no ring at rest, a green ring while an enabled
 # control is hovered or focused and a permanent red ring while disabled.
@@ -211,12 +216,12 @@ QPushButton#LicenceButton {{
     padding: 8px 16px; border-radius: 16px; font-weight: 600;
 }}
 QPushButton#PrimaryAction {{
-    background: {_ACCENT}; color: {_BACKGROUND};
+    background: {_BUTTON_BLUE}; color: {_BACKGROUND};
     padding: 12px 28px; border-radius: 22px; font-size: 14px;
     font-weight: 700; min-width: 150px;
 }}
 QPushButton#PrimaryAction:enabled:hover {{
-    background: {_ACCENT_BRIGHT}; border-color: {_HOVER_GREEN};
+    background: {_BUTTON_BLUE_BRIGHT}; border-color: {_HOVER_GREEN};
 }}
 QPushButton#PrimaryAction:disabled {{
     background: {_SURFACE_RAISED}; color: {_DISABLED_TEXT};
@@ -230,7 +235,7 @@ QPushButton#SecondaryAction:disabled {{
     background: {_SURFACE_RAISED}; color: {_DISABLED_TEXT};
 }}
 QPushButton#DangerAction {{
-    background: {_SURFACE_RAISED}; color: {_ACCENT};
+    background: {_SURFACE_RAISED}; color: {_BUTTON_BLUE};
     padding: 12px 22px; border-radius: 22px; font-size: 13px;
     font-weight: 600;
 }}
