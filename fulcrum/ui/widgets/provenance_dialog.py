@@ -19,8 +19,10 @@ from fulcrum.application.provenance import (
     fragility_text,
     intro_text,
 )
+from fulcrum.shared.resources import find_provenance_png
 from fulcrum.ui import ui_scale
 from fulcrum.ui.widgets.auto_scroller import AutoScroller
+from fulcrum.ui.widgets.dialog_banner import banner_row
 from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 
 _TITLE = "What grounds the numbers"
@@ -29,7 +31,8 @@ _MIN_HEIGHT = 560
 
 
 def _provenance_html() -> str:
-    parts = [f"<h2>{_TITLE}</h2>", f"<p>{intro_text()}</p>"]
+    # The title lives in the identity banner above the browser.
+    parts = [f"<p>{intro_text()}</p>"]
     parts.append("<h3>The numbers, one by one</h3>")
     for entry in build_provenance():
         parts.append(
@@ -50,6 +53,9 @@ class ProvenanceDialog(NeutralDialog):
         self.setWindowTitle(_TITLE)
         self.setMinimumSize(ui_scale.px(_MIN_WIDTH), ui_scale.px(_MIN_HEIGHT))
         layout = QVBoxLayout(self)
+        # The identity banner: the golden kin beside the accent title, in
+        # the same manner as the move record's banner.
+        layout.addLayout(banner_row(find_provenance_png(), _TITLE))
         browser = QTextBrowser()
         browser.setHtml(_provenance_html())
         layout.addWidget(browser)

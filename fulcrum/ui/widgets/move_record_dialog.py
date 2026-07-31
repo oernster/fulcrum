@@ -10,7 +10,7 @@ position and carries its own keyboard focus ring.
 from __future__ import annotations
 
 from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QBrush, QColor, QGuiApplication, QPixmap
+from PySide6.QtGui import QBrush, QColor, QGuiApplication
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -33,6 +33,7 @@ from fulcrum.ui import ui_scale
 from fulcrum.ui.theme_palettes import DEFAULT_THEME, PALETTES
 from fulcrum.ui.widgets.auto_scroller import AutoScroller
 from fulcrum.ui.widgets.complete_map_view import CompleteMapView
+from fulcrum.ui.widgets.dialog_banner import banner_row
 from fulcrum.ui.widgets.dialog_focus_ring import WIDGET_STOP, DialogFocusRing
 from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 
@@ -54,9 +55,6 @@ _LATER_TIP = "Show the later position"
 _ORIGINAL_CAPTION = "The original position"
 _ORIGINAL_CHANGE = "The organisation as it started, before any move."
 _ORIGINAL_ROW = f"0. {_ORIGINAL_CAPTION}"
-# The identity banner: the glowing mark that opened the dialog, at the same
-# full presence the header tray gives it, beside the accent title.
-_BANNER_ICON_PX = 40
 
 
 class MoveRecordDialog(NeutralDialog):
@@ -87,7 +85,9 @@ class MoveRecordDialog(NeutralDialog):
         palette = PALETTES[theme if theme is not None else DEFAULT_THEME]
         self._earlier_brush = QBrush(QColor(palette.text_muted))
         layout = QVBoxLayout(self)
-        layout.addLayout(self._banner_row())
+        # The identity banner: the glowing mark that opened the dialog
+        # beside the accent title, shared with the provenance page.
+        layout.addLayout(banner_row(find_about_png(), _TITLE))
 
         if not history:
             empty = QLabel(_EMPTY_TEXT)
@@ -157,27 +157,6 @@ class MoveRecordDialog(NeutralDialog):
         self._focus_ring = DialogFocusRing(self, self._ring, self._list_owns_updown)
         self.finished.connect(lambda _result: self._focus_ring.detach())
         self._render_position()
-
-    def _banner_row(self) -> QHBoxLayout:
-        row = QHBoxLayout()
-        icon_path = find_about_png()
-        if icon_path is not None:
-            badge = QLabel()
-            side = ui_scale.px(_BANNER_ICON_PX)
-            badge.setPixmap(
-                QPixmap(str(icon_path)).scaled(
-                    side,
-                    side,
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation,
-                )
-            )
-            row.addWidget(badge)
-        title = QLabel(_TITLE)
-        title.setObjectName("RecordTitle")
-        row.addWidget(title)
-        row.addStretch()
-        return row
 
     def _arrow_button(self, glyph: str, tip: str, delta: int) -> QPushButton:
         button = QPushButton(glyph)
