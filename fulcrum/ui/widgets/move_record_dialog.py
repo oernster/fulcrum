@@ -104,7 +104,8 @@ class MoveRecordDialog(NeutralDialog):
         self._toggle.clicked.connect(self._flip)
         header.addWidget(self._toggle)
         map_column.addLayout(header)
-        self._view = CompleteMapView()
+        # Display-only: nothing listens for a drill here, so no open cue.
+        self._view = CompleteMapView(drillable=False)
         map_column.addWidget(self._view, 1)
 
         panes = QSplitter(Qt.Orientation.Horizontal)
