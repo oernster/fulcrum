@@ -65,7 +65,7 @@ LIGHT = _Palette(
     accent="#d97706",
     accent_bright="#b45309",
     disabled_text="#9aa3af",
-    divider="#5b6470",
+    divider="#b3bdc9",
     ring_green="#15803d",
     ring_red="#dc2626",
 )
