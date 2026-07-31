@@ -1073,16 +1073,17 @@ class InstallerWindow(QWidget):
         self._uninstall = QPushButton("Uninstall")
         self._uninstall.setObjectName("DangerAction")
         self._shown = False
+        # A 0x0 focus sink: launch is neutral, exactly like the app's main
+        # window, so nothing wears a ring until the keyboard or the mouse
+        # asks for it; the first Tab enters the ring at the first control.
+        self._start = _NeutralStart(self)
         self._build_ui()
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
         if not self._shown:
             self._shown = True
-            # Launch focuses the primary action (Install, Upgrade or
-            # Reinstall): the intuitive next step, rather than whichever
-            # licence button happens to sit first in the tab order.
-            self._primary.setFocus()
+            self._start.setFocus()
 
     def keyPressEvent(self, event) -> None:
         # Enter activates the focused control exactly as Space does; a plain
