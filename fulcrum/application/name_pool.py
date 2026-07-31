@@ -1,6 +1,6 @@
 """A pool of full names for leads and owners, so no name is ever blank.
 
-Every path that creates a lead or an owner (the editor, the wizard and random
+Every path that creates a lead or an owner (the editor and random
 generation) draws from this one pool, so a freshly modelled or generated org
 always carries plausible names the user overtypes with real ones. The pool is
 gender balanced and culturally varied, weighted toward UK names without being

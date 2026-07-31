@@ -1,9 +1,9 @@
 """Compile a plain org blueprint into a validated domain OrgState and back.
 
-The wizard and every importer produce an OrgBlueprint; this is the single place
+The editor and every importer produce an OrgBlueprint; this is the single place
 that turns one into a domain object, so all three origins share one validation
 path. The reverse direction serialises a live org back to a blueprint, which is
-how "Edit my org" reopens any model (wizard-built, imported, generated or a
+how "Edit my org" reopens any model (hand-modelled, imported, generated or a
 previous edit) in the editor with nothing lost.
 """
 

@@ -7,8 +7,8 @@ from fulcrum.domain.models import (
     DEFAULT_HEADCOUNT,
     Dependency,
     Domain,
-    Origin,
     OrgState,
+    Origin,
     Team,
 )
 
@@ -62,6 +62,8 @@ def test_dependency_invalid(args):
 def test_origin_values():
     assert Origin.GENERATED.value == "generated"
     assert Origin.IMPORTED.value == "imported"
+    assert Origin.MODELLED.value == "modelled"
+    # Legacy origin: files written before the wizard was retired still load.
     assert Origin.WIZARD.value == "wizard"
 
 
@@ -70,7 +72,7 @@ def test_org_state_valid_accessors():
         teams=(_team("a"), _team("b")),
         dependencies=(Dependency("a", "b", 1),),
         workload=3,
-        origin=Origin.WIZARD,
+        origin=Origin.MODELLED,
     )
     assert org.team_ids == ("a", "b")
     assert org.team("a").id == "a"

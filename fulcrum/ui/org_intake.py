@@ -1,4 +1,4 @@
-"""Session-creating actions: model, edit, wizard and random generation.
+"""Session-creating actions: model, edit and random generation.
 
 Everything that replaces the current session with a new org lives here, split
 from the main window so each module stays within the structural line limit.
@@ -26,7 +26,6 @@ from fulcrum.ui.generation_thread import GenerationThread
 from fulcrum.ui.widgets.busy_dialog import BusyDialog
 from fulcrum.ui.widgets.org_editor import OrgEditorDialog
 from fulcrum.ui.widgets.org_size_picker import OrgSizePicker
-from fulcrum.ui.widgets.org_wizard import OrgWizard
 
 # Show the busy dialog only if generation outlasts this, so small bands that
 # build in a few milliseconds never flash it.
@@ -79,7 +78,7 @@ class OrgIntakeController:
         editor = OrgEditorDialog(self._window, rng=self._rng)
         if editor.exec() != QDialog.DialogCode.Accepted:
             return
-        self._load_blueprint(editor.to_blueprint(), Origin.WIZARD)
+        self._load_blueprint(editor.to_blueprint(), Origin.MODELLED)
 
     def edit_org(self) -> None:
         session = self._session_of()
@@ -116,12 +115,6 @@ class OrgIntakeController:
             QMessageBox.warning(self._window, "Could not open example", str(error))
             return
         self._set_session(GameSession(org, self._simulator))
-
-    def quick_org(self) -> None:
-        wizard = OrgWizard(self._window, rng=self._rng)
-        if wizard.exec() != QDialog.DialogCode.Accepted:
-            return
-        self._load_blueprint(wizard.to_blueprint(), Origin.WIZARD)
 
     def shutdown(self) -> None:
         """Wait for a running generation so the app closes without a crash."""

@@ -50,6 +50,9 @@ class Origin(str, Enum):
 
     GENERATED = "generated"
     IMPORTED = "imported"
+    MODELLED = "modelled"
+    # Legacy: the retired quick-org wizard's origin, kept so autosaves and
+    # exports written before its removal still load. Nothing creates it.
     WIZARD = "wizard"
 
 
@@ -82,7 +85,7 @@ class Team:
                 f"team headcount must be at least {_MIN_HEADCOUNT}"
             )
 
-    def with_authority(self, value: bool) -> "Team":
+    def with_authority(self, value: bool) -> Team:
         return Team(
             self.id,
             self.name,
@@ -94,7 +97,7 @@ class Team:
             self.headcount,
         )
 
-    def with_incentive_skew(self, value: float) -> "Team":
+    def with_incentive_skew(self, value: float) -> Team:
         return Team(
             self.id,
             self.name,
@@ -106,7 +109,7 @@ class Team:
             self.headcount,
         )
 
-    def with_size(self, value: int) -> "Team":
+    def with_size(self, value: int) -> Team:
         return Team(
             self.id,
             self.name,
@@ -118,7 +121,7 @@ class Team:
             self.headcount,
         )
 
-    def with_headcount(self, value: int) -> "Team":
+    def with_headcount(self, value: int) -> Team:
         return Team(
             self.id,
             self.name,
@@ -130,7 +133,7 @@ class Team:
             value,
         )
 
-    def with_owner(self, value: str) -> "Team":
+    def with_owner(self, value: str) -> Team:
         return Team(
             self.id,
             self.name,
@@ -162,7 +165,7 @@ class Dependency:
     def touches(self, team_id: str) -> bool:
         return self.upstream == team_id or self.downstream == team_id
 
-    def with_delay(self, value: int) -> "Dependency":
+    def with_delay(self, value: int) -> Dependency:
         return Dependency(self.upstream, self.downstream, value)
 
 

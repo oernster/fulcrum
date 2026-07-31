@@ -1,4 +1,4 @@
-"""The Fulcrum main window: menus, the prominent wizard button and the board."""
+"""The Fulcrum main window: menus, the header tray and the board."""
 
 from __future__ import annotations
 
@@ -245,7 +245,6 @@ class MainWindow(QMainWindow):
         org_menu.addAction("New random organisation...", self._intake.new_random_org)
         org_menu.addAction("Model my organisation...", self._intake.model_org)
         org_menu.addAction("Edit my org...", self._intake.edit_org)
-        org_menu.addAction("Quick org (wizard)...", self._intake.quick_org)
         example_menu = org_menu.addMenu("Open example organisation")
         example_menu.setToolTipsVisible(True)
         for summary in self._intake.example_entries():

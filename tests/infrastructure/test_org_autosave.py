@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from fulcrum.application.dto import SessionSnapshot
-from fulcrum.domain.models import Origin, OrgState, Team
+from fulcrum.domain.models import OrgState, Origin, Team
 from fulcrum.domain.moves import Move, MoveKind, apply_move
 from fulcrum.infrastructure.json_serialization import org_to_dict
 from fulcrum.infrastructure.org_autosave import FileOrgStore, default_autosave_path
@@ -14,7 +14,7 @@ def _org() -> OrgState:
     return OrgState(
         teams=(Team("a", "A", False, 0.2, owner="Priya Sharma"),),
         workload=4,
-        origin=Origin.WIZARD,
+        origin=Origin.MODELLED,
     )
 
 

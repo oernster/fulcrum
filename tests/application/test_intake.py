@@ -19,8 +19,8 @@ def test_build_org_state_valid():
         dependencies=(DependencySpec("a", "b", 2),),
         workload=4,
     )
-    org = build_org_state(blueprint, Origin.WIZARD)
-    assert org.origin == Origin.WIZARD
+    org = build_org_state(blueprint, Origin.MODELLED)
+    assert org.origin == Origin.MODELLED
     assert org.team_ids == ("a", "b")
     assert org.dependencies[0].propagation_delay == 2
 
@@ -41,7 +41,7 @@ def test_build_org_state_with_domains():
             DomainSpec("pay", "Payments", parent_id="core", lead="Dana"),
         ),
     )
-    org = build_org_state(blueprint, Origin.WIZARD)
+    org = build_org_state(blueprint, Origin.MODELLED)
     assert org.team("a").domain_id == "core"
     assert tuple(d.id for d in org.domains) == ("core", "pay")
     assert org.domains[1].lead == "Dana"
@@ -49,7 +49,7 @@ def test_build_org_state_with_domains():
 
 def test_build_org_state_carries_headcount():
     blueprint = OrgBlueprint(teams=(TeamSpec("a", "A", True, 0.0, headcount=300),))
-    org = build_org_state(blueprint, Origin.WIZARD)
+    org = build_org_state(blueprint, Origin.MODELLED)
     assert org.team("a").headcount == 300
 
 
@@ -89,6 +89,6 @@ def test_org_to_blueprint_inverts_build_org_state():
             ),
         ),
     )
-    org = build_org_state(blueprint, Origin.WIZARD)
-    rebuilt = build_org_state(org_to_blueprint(org), Origin.WIZARD)
+    org = build_org_state(blueprint, Origin.MODELLED)
+    rebuilt = build_org_state(org_to_blueprint(org), Origin.MODELLED)
     assert rebuilt == org

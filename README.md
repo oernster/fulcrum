@@ -39,8 +39,7 @@ A short tour and the books behind it are at <https://ernster.dev/fulcrum/>.
   shows a live people-and-teams rollup and an empty unit carries a warning
   badge on its own row that explains itself on hover. The dialog opens at
   nearly the size of the app window and can be maximised, so a large
-  organisation gets a workspace to match. A quick wizard is also there for a
-  fast first position.
+  organisation gets a workspace to match.
 - Dependencies between any two items: team to team, unit to unit or across
   levels (a division blocked on a single platform team). An edge counts in
   whichever frame shows both its endpoints as nodes: it merges into the
@@ -64,12 +63,12 @@ A short tour and the books behind it are at <https://ernster.dev/fulcrum/>.
   earlier runs marked, each showing the organisation before and after it;
   the record survives restarts and rides along in JSON export and import.
 - "Edit my org": reopen the current organisation in the same editor at any
-  time, whatever its origin (wizard, JSON import, random generation or a
+  time, whatever its origin (hand-modelled, JSON import, random generation or a
   previous edit), change it and rescore. The current org autosaves, so the
   model survives closing the app.
 - Leads and owners are never blank: every group and team gets a plausible name
   from a built-in pool (overtype it in one motion, or roll the dice for
-  another), across the editor, the wizard and random generation.
+  another), across the editor and random generation.
 - Per-team headcount that rolls up through the domain hierarchy to a whole-org
   total, so a 100k-person structure is as workable as a handful of teams. The
   rolled-up population sets the scale at which each frame prices concentrated
