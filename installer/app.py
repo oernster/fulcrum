@@ -206,7 +206,7 @@ QPushButton:enabled:hover {{
     border-color: {_HOVER_GREEN};
 }}
 QPushButton:enabled:focus {{
-    border-color: {_HOVER_GREEN};
+    border-color: {_HOVER_GREEN}; outline: none;
 }}
 QPushButton:disabled {{
     border-color: {_DISABLED_BORDER};
