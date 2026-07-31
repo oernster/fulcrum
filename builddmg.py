@@ -83,7 +83,11 @@ BUNDLED_DATA = [
 # find_book_cover resolves them in the frozen build.
 BOOK_COVER_DIR = "assets/books"
 
-# Calibration examples offered by File > Open example organisation.
+# Generated header-button icons, staged under assets/buttons so
+# find_button_icon resolves them in the frozen build.
+BUTTON_ICON_DIR = "assets/buttons"
+
+# Calibration examples offered by Organisation > Open example organisation.
 EXAMPLES_DIR = "examples/calibration"
 
 DEVELOPER_ID = os.environ.get(
@@ -132,7 +136,7 @@ def check_platform() -> None:
     if sys.platform != "darwin":
         sys.exit("ERROR: This script must run on macOS.")
     result = subprocess.run(
-        ["sw_vers", "-productVersion"], capture_output=True, text=True
+        ["sw_vers", "-productVersion"], capture_output=True, text=True, check=False
     )
     print(f"  macOS {result.stdout.strip()}")
     try:
@@ -195,6 +199,10 @@ def build_app_bundle(icns_path: Path | None = None) -> Path:
     if books.is_dir():
         for cover in sorted(books.glob("*.png")):
             cmd.append(f"--include-data-file={cover}={BOOK_COVER_DIR}/{cover.name}")
+    buttons = root / "assets" / "buttons"
+    if buttons.is_dir():
+        for icon in sorted(buttons.glob("*.png")):
+            cmd.append(f"--include-data-file={icon}={BUTTON_ICON_DIR}/{icon.name}")
     calibration = root / "examples" / "calibration"
     if calibration.is_dir():
         for example in sorted(calibration.glob("*.json")):

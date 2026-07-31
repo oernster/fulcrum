@@ -66,6 +66,11 @@ ASSET_FILES = (
 # them the same way in the frozen build as in the dev tree.
 BOOK_COVER_DIR = PROJECT_ROOT / "assets" / "books"
 BOOK_COVER_TARGET = "assets/books"
+
+# The generated header-button icons, bundled under assets/buttons so the
+# resource resolver finds them the same way in the frozen build.
+BUTTON_ICON_DIR = PROJECT_ROOT / "assets" / "buttons"
+BUTTON_ICON_TARGET = "assets/buttons"
 EXAMPLES_DIR = PROJECT_ROOT / "examples" / "calibration"
 EXAMPLES_TARGET = "examples/calibration"
 
@@ -251,8 +256,15 @@ def build_exe() -> int:
             nuitka_args.append(f"--include-data-file={cover}={target}")
             print(f"[buildexe] Bundling cover: {cover} -> {target}")
 
-    # Ship the calibration examples so File | Open example organisation can
-    # offer them in the installed app.
+    # Ship the header-button icons under assets/buttons.
+    if BUTTON_ICON_DIR.is_dir():
+        for icon in sorted(BUTTON_ICON_DIR.glob("*.png")):
+            target = f"{BUTTON_ICON_TARGET}/{icon.name}"
+            nuitka_args.append(f"--include-data-file={icon}={target}")
+            print(f"[buildexe] Bundling button icon: {icon} -> {target}")
+
+    # Ship the calibration examples so Organisation | Open example
+    # organisation can offer them in the installed app.
     if EXAMPLES_DIR.is_dir():
         for example in sorted(EXAMPLES_DIR.glob("*.json")):
             target = f"{EXAMPLES_TARGET}/{example.name}"
@@ -265,7 +277,7 @@ def build_exe() -> int:
     for part in nuitka_args:
         print("  ", part)
 
-    result = subprocess.run(nuitka_args, cwd=str(PROJECT_ROOT))
+    result = subprocess.run(nuitka_args, cwd=str(PROJECT_ROOT), check=False)
     if result.returncode != 0:
         print(
             f"[buildexe] ERROR: Nuitka build failed (exit {result.returncode}).",

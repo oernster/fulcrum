@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from random import Random
 
-from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtCore import QSize, Qt, QUrl
+from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QMainWindow,
@@ -25,7 +25,12 @@ from fulcrum.application.interfaces import (
 )
 from fulcrum.application.org_guide import build_org_guide
 from fulcrum.domain.org_size import DEFAULT_BAND
-from fulcrum.shared.resources import find_model_licence, find_ui_licence
+from fulcrum.shared.resources import (
+    find_button_icon,
+    find_model_licence,
+    find_ui_licence,
+)
+from fulcrum.ui import ui_scale
 from fulcrum.ui.guide_thread import OrgGuideThread
 from fulcrum.ui.org_intake import OrgIntakeController
 from fulcrum.ui.plan_files import PlanFileActions
@@ -47,7 +52,21 @@ _OVERVIEW_GLYPH = "\N{WORLD MAP}\N{VARIATION SELECTOR-16}"
 _OVERVIEW_TOOLTIP = "Organisation overview"
 _PRESENTATION_GLYPH = "\N{CHART WITH UPWARDS TREND}"
 _PRESENTATION_TOOLTIP = "Create presentation"
-_EDIT_ORG_TOOLTIP = "Reopen and edit the current organisation"
+_MODEL_ORG_TOOLTIP = "Model my organisation"
+_EDIT_ORG_TOOLTIP = "Edit my org: reopen and edit the current organisation"
+_GUIDE_TOOLTIP = "Show the guide"
+_BUTTON_ICON_SIZES = (32, 64, 256)
+_BUTTON_ICON_PX = 24
+
+
+def _button_icon(name: str) -> QIcon:
+    """Build a QIcon from the generated per-size header-button PNGs."""
+    icon = QIcon()
+    for size in _BUTTON_ICON_SIZES:
+        path = find_button_icon(f"{name}_{size}.png")
+        if path is not None:
+            icon.addFile(str(path))
+    return icon
 
 
 class MainWindow(QMainWindow):
@@ -110,19 +129,15 @@ class MainWindow(QMainWindow):
         self._focus_start.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         layout = QVBoxLayout(central)
         top = QHBoxLayout()
-        model_button = QPushButton("Model my organisation")
-        model_button.setObjectName("Primary")
-        model_button.clicked.connect(self._intake.model_org)
-        edit_button = QPushButton("Edit my org")
-        edit_button.setToolTip(_EDIT_ORG_TOOLTIP)
-        edit_button.clicked.connect(self._intake.edit_org)
-        new_button = QPushButton("New random organisation")
-        new_button.clicked.connect(self._intake.new_random_org)
-        guide_button = QPushButton("Show the guide")
-        guide_button.clicked.connect(self._show_guide)
+        model_button = self._icon_button(
+            "model_org", _MODEL_ORG_TOOLTIP, self._intake.model_org
+        )
+        edit_button = self._icon_button(
+            "edit_org", _EDIT_ORG_TOOLTIP, self._intake.edit_org
+        )
+        guide_button = self._icon_button("guide", _GUIDE_TOOLTIP, self._show_guide)
         top.addWidget(model_button)
         top.addWidget(edit_button)
-        top.addWidget(new_button)
         top.addWidget(guide_button)
         top.addStretch()
         presentation_link = QPushButton(_PRESENTATION_GLYPH)
@@ -152,7 +167,6 @@ class MainWindow(QMainWindow):
             (
                 model_button,
                 edit_button,
-                new_button,
                 guide_button,
                 presentation_link,
                 overview_link,
@@ -164,6 +178,19 @@ class MainWindow(QMainWindow):
             (presentation_link, self._undo_button),
             (self._presentation_action, self._undo_action),
         )
+
+    def _icon_button(self, name: str, tooltip: str, handler) -> QPushButton:
+        """An icon-only header button whose old text lives on as the tooltip."""
+        button = QPushButton()
+        button.setIcon(_button_icon(name))
+        button.setIconSize(
+            QSize(ui_scale.px(_BUTTON_ICON_PX), ui_scale.px(_BUTTON_ICON_PX))
+        )
+        button.setToolTip(tooltip)
+        button.setAccessibleName(tooltip)
+        button.setCursor(Qt.CursorShape.PointingHandCursor)
+        button.clicked.connect(handler)
+        return button
 
     def _install_keyboard_nav(self, buttons) -> None:
         undo_button, map_view, level_button, moves_group, signals_group = (

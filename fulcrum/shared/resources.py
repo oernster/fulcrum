@@ -24,6 +24,7 @@ _LICENSE_FILENAME = "LICENSE"
 _MODEL_LICENCE_FILENAME = "LICENSE-GPL-3.0.txt"
 _UI_LICENCE_FILENAME = "LICENSE-LGPL-3.0.txt"
 _BOOK_COVER_SUBDIR = ("assets", "books")
+_BUTTON_ICON_SUBDIR = ("assets", "buttons")
 _EXAMPLES_SUBDIR = ("examples", "calibration")
 
 
@@ -83,6 +84,15 @@ def find_book_cover(filename: str) -> Path | None:
     """Locate a bundled book-cover PNG by filename (dev tree or frozen build)."""
     for root in _candidate_roots():
         candidate = root.joinpath(*_BOOK_COVER_SUBDIR, filename)
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def find_button_icon(filename: str) -> Path | None:
+    """Locate a bundled header-button icon PNG by filename."""
+    for root in _candidate_roots():
+        candidate = root.joinpath(*_BUTTON_ICON_SUBDIR, filename)
         if candidate.is_file():
             return candidate
     return None
