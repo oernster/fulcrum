@@ -106,6 +106,13 @@ A short tour and the books behind it are at <https://ernster.dev/fulcrum/>.
   as its last composable row, frames whose real teams carry the load may
   split them or add owners and a frame growth cannot improve says so. Every
   step shows its before and after score and previews and plays in place.
+- Guide planning that uses the whole machine: on a large organisation the
+  heavy pricing spreads across every processor core, with one core left to
+  keep the interface painting, so an enterprise of thousands plans in
+  seconds rather than minutes. The parallel build is deterministic and
+  identical to the single-core one down to the last digit; small
+  organisations plan in-process because they finish faster than worker
+  processes take to start.
 - Move history that survives closing the app: the session autosaves the
   starting org and every move, the next launch restores it by replay and
   Take a move back steps through earlier runs' moves too, from the board or
