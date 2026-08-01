@@ -109,11 +109,28 @@ class SessionSnapshot:
 
 
 @dataclass(frozen=True, slots=True)
+class FrameAssessment:
+    """A move judged within its own frame: the unit it acted inside.
+
+    A locally great repair is worth almost nothing at whole-org scale, so
+    the report carries this second verdict alongside the org-wide one for
+    any move whose targets all sit inside one unit's subtree.
+    """
+
+    frame_label: str
+    classification: MoveClassification
+    score_before: float
+    score_after: float
+
+
+@dataclass(frozen=True, slots=True)
 class PlanStep:
     """One move in a plan, with its effect, attribution and justification.
 
     historic marks a move carried over from an earlier run of the app, so
-    the report can separate the current run's work from the record.
+    the report can separate the current run's work from the record. local
+    is the move's verdict within its own frame, or None for an org-wide
+    act with no frame of its own.
     """
 
     description: str
@@ -125,6 +142,7 @@ class PlanStep:
     lead: str
     rationale: str
     historic: bool = False
+    local: FrameAssessment | None = None
 
 
 @dataclass(frozen=True, slots=True)

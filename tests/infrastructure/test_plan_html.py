@@ -48,6 +48,25 @@ def test_html_is_self_contained_and_addressed_per_domain():
     assert "moves from earlier runs" not in html
 
 
+def test_html_carries_the_frame_verdict_for_local_moves():
+    org = _org()
+    moves = (Move(MoveKind.DELEGATE_AUTHORITY, ("a",)),)
+    report = build_plan_report(org, moves, DeterministicSimulator())
+    html = render_plan_html(report, org, _final(org, moves), "2026-06-18T10:00:00")
+    assert 'class="local"' in html
+    assert "within <b>R&amp;D</b>: section health" in html
+    assert "Each move carries two verdicts" in html
+
+
+def test_html_omits_the_frame_verdict_for_org_wide_plans():
+    org = _org()
+    moves = (Move(MoveKind.ADD_APPROVAL_LAYER),)
+    report = build_plan_report(org, moves, DeterministicSimulator())
+    html = render_plan_html(report, org, _final(org, moves), "2026-06-18T10:00:00")
+    assert 'class="local"' not in html
+    assert "Each move carries two verdicts" not in html
+
+
 def test_html_separates_earlier_runs_from_this_run():
     org = _org()
     moves = (

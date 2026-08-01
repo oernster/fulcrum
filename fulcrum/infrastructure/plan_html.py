@@ -40,6 +40,7 @@ _STYLE = (
     "font-weight:600;font-size:12px}"
     ".score{color:#9aa3af;margin-left:8px}"
     ".rationale{color:#9aa3af;margin-top:4px}"
+    ".local{color:#9aa3af;margin-top:4px}"
     ".score-line{font-size:18px}"
     # Earlier runs read as the record: muted text behind a grey rail; the
     # current run keeps full colour behind an amber rail.
@@ -57,6 +58,13 @@ _LEGEND = (
     "moves from earlier runs&nbsp;&nbsp;&nbsp;"
     '<span class="rail" style="background:#f59e0b"></span>'
     "moves from this run</p>"
+)
+
+_FRAME_NOTE = (
+    '<p class="muted">Each move carries two verdicts where it acted inside '
+    "one unit: its effect on the whole organisation and its effect within "
+    "that unit's own frame. A locally good repair can read neutral at "
+    "whole-org scale; the frame verdict is where its value shows.</p>"
 )
 
 
@@ -97,6 +105,8 @@ def _summary_html(
             f'<p class="muted">{count_noun(historic, "move")} from earlier '
             f'runs, {count_noun(current, "move")} this run.</p>{_LEGEND}'
         )
+    if any(step.local is not None for step in report.steps):
+        breakdown += _FRAME_NOTE
     return "".join(
         [
             '<div class="card">',
@@ -149,7 +159,29 @@ def _step_html(step: PlanStep, split: bool) -> str:
                 f'<span class="score">{step.score_before:.{SCORE_DECIMALS}f} &rarr; '
                 f"{step.score_after:.{SCORE_DECIMALS}f}</span>"
             ),
+            _local_html(step),
             f'<div class="rationale">{escape(step.rationale)}</div>',
             "</li>",
+        ]
+    )
+
+
+def _local_html(step: PlanStep) -> str:
+    """The move's verdict within its own frame, when it has one."""
+    local = step.local
+    if local is None:
+        return ""
+    colour = _BADGE.get(local.classification.value, _BADGE_DEFAULT)
+    return "".join(
+        [
+            '<div class="local">',
+            f'<span class="badge" style="background:{colour}">',
+            f"{escape(local.classification.value)}</span> ",
+            f"within <b>{escape(local.frame_label)}</b>: section health ",
+            (
+                f"{local.score_before:.{SCORE_DECIMALS}f} &rarr; "
+                f"{local.score_after:.{SCORE_DECIMALS}f}"
+            ),
+            "</div>",
         ]
     )
