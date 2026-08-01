@@ -140,8 +140,13 @@ def test_domain_has_teams():
 def test_focused_suborg_flattens_and_keeps_internal_deps():
     focus = hierarchy.focused_suborg(_org(), "pay")
     assert {t.id for t in focus.teams} == {"b", "c"}
-    assert all(t.domain_id is None for t in focus.teams)
-    assert focus.domains == ()
+    # The frame keeps its enclosing unit as the roof, cut loose from the
+    # world outside the frame: without it, every edge between two
+    # sovereigns would read as roofless fragmentation in-frame while the
+    # whole-org score prices the identical edge as roofed.
+    assert all(t.domain_id == "pay" for t in focus.teams)
+    assert tuple(d.id for d in focus.domains) == ("pay",)
+    assert focus.domains[0].parent_id is None
     pairs = sorted((d.upstream, d.downstream) for d in focus.dependencies)
     assert pairs == [("b", "c")]
     assert focus.workload == 5
@@ -261,7 +266,11 @@ def test_aggregate_frame_keeps_the_parents_direct_teams():
     assert set(nodes) == {"sub", "direct"}
     assert nodes["direct"].has_local_authority is False
     assert nodes["direct"].incentive_skew == 0.6
-    assert nodes["direct"].domain_id is None
+    # Both the direct team and the rolled unit node sit under the parent's
+    # own roof, so unit-to-unit edges price as roofed in this frame.
+    assert nodes["direct"].domain_id == "mix"
+    assert nodes["sub"].domain_id == "mix"
+    assert tuple(d.id for d in focus.domains) == ("mix",)
     assert focus.dependencies == (Dependency("direct", "sub", 4),)
 
 
@@ -279,7 +288,8 @@ def test_direct_teams_section_is_a_leaf_frame_of_the_parents_own_teams():
     org = _mixed_org()
     section = hierarchy.direct_teams_section(org, "mix")
     assert tuple(t.id for t in section.teams) == ("direct",)
-    assert section.teams[0].domain_id is None
+    assert section.teams[0].domain_id == "mix"
+    assert tuple(d.id for d in section.domains) == ("mix",)
     assert section.dependencies == ()
     assert section.claims == (AuthorityClaim("boss", "direct"),)
     loose = hierarchy.direct_teams_section(org, None)

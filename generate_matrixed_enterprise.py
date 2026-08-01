@@ -3,13 +3,15 @@
 
 The case models a ~6,000-person organisation as a real drillable hierarchy:
 the company roof holds a leadership unit plus seven delivery units, each unit
-holds sub-units and every sub-unit holds small teams of three to eight people
-with varied sizes. Unit and sub-unit lead teams hold local authority on paper
-but the matrix overlay (a programme office and an engineering chapter, both
-unmodelled claimants) claims every one of them, so no decision class in the
-delivery organisation resolves cleanly and queues cascade toward the one
-clean executive team. Cross-unit dependencies carry the original case's
-delayed chain at team level.
+holds sub-units, an oversized sub-unit splits into led groups and every leaf
+holds a handful of teams of three to eight people with varied sizes, so no
+lead anywhere coordinates more than a sane span. Line lead teams (unit,
+sub-unit and group) hold local authority on paper but the matrix overlay (a
+programme office and an engineering chapter, both unmodelled claimants)
+claims every one of them, so no decision class in the delivery organisation
+resolves cleanly and queues cascade toward the one clean executive team.
+Cross-unit dependencies carry the original case's delayed chain at team
+level.
 
 The generator is deterministic: the same seed writes byte-identical JSON, so
 the committed case is reproducible from this script alone. Run it from the
@@ -53,6 +55,13 @@ _SKEW_DECIMALS = 2
 _EXEC_TO_UNIT_DELAY = 3
 _LEAD_TO_SUB_DELAY = 2
 _SUB_TO_TEAM_DELAY = 2
+_SUB_TO_GROUP_DELAY = 1
+
+# A sub-unit bigger than this splits into groups, each with its own lead
+# and a handful of teams: one lead coordinating thirty-odd teams in a flat
+# leaf is not a hierarchy, it is a queue wearing one's clothes, and the
+# case models a drillable organisation, not a caricature.
+_MAX_LEAF_PEOPLE = 45
 
 _PMO = "pmo"
 _CHAPTER_ENG = "chapter_eng"
@@ -283,24 +292,66 @@ def build() -> dict:
             )
             if claimant is not None:
                 claims.append({"claimant": claimant, "subject": sub_lead_id})
-            for number, heads in enumerate(
-                _team_sizes(rng, sub_population - sub_lead_heads), start=1
-            ):
-                team_id = f"{sub_id}_t{number}"
-                teams.append(
-                    _team(
-                        team_id,
-                        f"{theme} team {number}",
-                        False,
-                        _skew(rng, base_skew),
-                        sub_id,
-                        heads,
+            remaining_sub = sub_population - sub_lead_heads
+            group_count = -(-remaining_sub // _MAX_LEAF_PEOPLE)
+            if group_count == 1:
+                parents = [(sub_id, sub_lead_id, remaining_sub)]
+            else:
+                # An oversized sub-unit splits into led groups, so every
+                # leaf keeps a handful of teams under a lead with a sane
+                # span instead of dozens hanging off one hub.
+                parents = []
+                group_share, group_extra = divmod(remaining_sub, group_count)
+                for group in range(1, group_count + 1):
+                    group_people = group_share + (1 if group <= group_extra else 0)
+                    group_id = f"{sub_id}_g{group}"
+                    domains.append(
+                        _domain(
+                            group_id, f"{theme} group {group}", sub_id, "Department"
+                        )
                     )
-                )
-                dependencies.append(
-                    _dependency(sub_lead_id, team_id, _SUB_TO_TEAM_DELAY)
-                )
-                delivery_by_unit[unit_id].append(team_id)
+                    group_lead_id = f"{group_id}_lead"
+                    group_lead_heads = rng.randint(_LEAD_MIN, _LEAD_MAX)
+                    teams.append(
+                        _team(
+                            group_lead_id,
+                            f"{theme} group {group} lead",
+                            True,
+                            _lead_skew(base_skew),
+                            group_id,
+                            group_lead_heads,
+                        )
+                    )
+                    dependencies.append(
+                        _dependency(sub_lead_id, group_lead_id, _SUB_TO_GROUP_DELAY)
+                    )
+                    if claimant is not None:
+                        # The matrix claims line leadership all the way
+                        # down: a group lead is as dual-reported as the
+                        # sub-unit lead above it.
+                        claims.append({"claimant": claimant, "subject": group_lead_id})
+                    parents.append(
+                        (group_id, group_lead_id, group_people - group_lead_heads)
+                    )
+            number = 0
+            for parent_id, parent_lead_id, people in parents:
+                for heads in _team_sizes(rng, people):
+                    number += 1
+                    team_id = f"{sub_id}_t{number}"
+                    teams.append(
+                        _team(
+                            team_id,
+                            f"{theme} team {number}",
+                            False,
+                            _skew(rng, base_skew),
+                            parent_id,
+                            heads,
+                        )
+                    )
+                    dependencies.append(
+                        _dependency(parent_lead_id, team_id, _SUB_TO_TEAM_DELAY)
+                    )
+                    delivery_by_unit[unit_id].append(team_id)
     for up_unit, down_unit, delay, count in _CROSS_UNIT_EDGES:
         ups = rng.sample(delivery_by_unit[up_unit], count)
         downs = rng.sample(delivery_by_unit[down_unit], count)

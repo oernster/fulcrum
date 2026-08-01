@@ -8,6 +8,8 @@ and played on its own, which is how the CTO drills into a domain to decide.
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from fulcrum.domain.models import AuthorityClaim, Dependency, Domain, OrgState, Team
 from fulcrum.domain.move_base import Move, MoveKind
 
@@ -136,6 +138,7 @@ def _rolled_children(
                 child.name,
                 _has_majority_authority(teams),
                 skew,
+                domain_id=parent_id,
                 headcount=headcount_in_domain(org, child.id),
             )
         )
@@ -148,10 +151,33 @@ def _rolled_children(
                     team.name,
                     team.has_local_authority,
                     team.incentive_skew,
+                    domain_id=parent_id,
                     headcount=team.headcount,
                 )
             )
     return nodes, node_of
+
+
+def _frame_domains(org: OrgState, root_id: str) -> tuple[Domain, ...]:
+    """The focused subtree's domain rows, with the root cut loose.
+
+    A frame must keep its enclosing units: without them every edge between
+    two sovereign teams reads as roofless fragmentation inside the frame
+    while the whole-org score prices the identical edge as roofed. The
+    root's own parent lies outside the frame, so its parent_id is cleared.
+    """
+    ids = domain_subtree_ids(org, root_id)
+    return tuple(
+        replace(d, parent_id=None) if d.id == root_id else d
+        for d in org.domains
+        if d.id in ids
+    )
+
+
+def _parent_roof(org: OrgState, parent_id: str) -> tuple[Domain, ...]:
+    """The parent's own domain row as a frame's single roof, cut loose."""
+    parent = next(d for d in org.domains if d.id == parent_id)
+    return (replace(parent, parent_id=None),)
 
 
 def has_direct_teams(org: OrgState, parent_id: str | None) -> bool:
@@ -189,6 +215,7 @@ def _aggregate_section(org: OrgState, parent_id: str) -> OrgState:
         dependencies=_aggregate_deps(org, node_of),
         workload=org.workload,
         origin=org.origin,
+        domains=_parent_roof(org, parent_id),
         claims=_direct_team_claims(org, parent_id),
     )
 
@@ -228,6 +255,7 @@ def direct_teams_section(org: OrgState, parent_id: str | None) -> OrgState:
             t.name,
             t.has_local_authority,
             t.incentive_skew,
+            domain_id=t.domain_id,
             headcount=t.headcount,
         )
         for t in org.teams
@@ -242,6 +270,7 @@ def direct_teams_section(org: OrgState, parent_id: str | None) -> OrgState:
         dependencies=deps,
         workload=org.workload,
         origin=org.origin,
+        domains=() if parent_id is None else _parent_roof(org, parent_id),
         claims=tuple(c for c in org.claims if c.subject in inside),
     )
 
@@ -264,6 +293,7 @@ def focused_suborg(org: OrgState, domain_id: str) -> OrgState:
             t.name,
             t.has_local_authority,
             t.incentive_skew,
+            domain_id=t.domain_id,
             headcount=t.headcount,
         )
         for t in org.teams
@@ -283,6 +313,7 @@ def focused_suborg(org: OrgState, domain_id: str) -> OrgState:
         dependencies=deps,
         workload=org.workload,
         origin=org.origin,
+        domains=_frame_domains(org, domain_id),
         claims=claims,
     )
 

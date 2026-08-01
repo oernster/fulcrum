@@ -7,11 +7,17 @@ the whole organisation even after the sibling lines land (dropped).
 
 import pytest
 
-from fulcrum.application.org_guide import build_org_guide, compose_leaf_lines
-from fulcrum.application.org_guide_compose import replay_line
+from fulcrum.application.org_guide import (
+    GuideNode,
+    build_org_guide,
+    compose_leaf_lines,
+)
+from fulcrum.application.org_guide_compose import guard_leaf_lines, replay_line
+from fulcrum.application.planner import Guide, GuideStep
 from fulcrum.application.simulator import DeterministicSimulator
 from fulcrum.domain.models import Dependency, Domain, OrgState, Team
-from fulcrum.domain.simulation import SimulationParameters
+from fulcrum.domain.moves import Move, MoveKind
+from fulcrum.domain.simulation import MoveClassification, SimulationParameters
 
 # Composition mechanics are pinned at flat authority pricing: attenuation 1
 # with amplification 0 makes the prince factor 1 at every scale, so these
@@ -58,16 +64,6 @@ def _hub_edges():
     )
 
 
-def _repairable_org():
-    """The sibling's one problem is fixed by its own leaf line."""
-    return OrgState(
-        teams=_platform_teams() + (_t("app", False, 0.0, "product"),),
-        dependencies=_hub_edges(),
-        workload=9,
-        domains=(Domain("platform", "Platform"), Domain("product", "Product")),
-    )
-
-
 def _residual_org(platform_parent=None):
     """The sibling keeps unrepaired problems beyond the planner's horizon."""
     product = tuple(
@@ -92,43 +88,106 @@ def _leaf(guide, label):
     return next(n for n in guide.leaf_nodes() if n.label == label)
 
 
+# The guard scenarios are driven with hand-built lines so the dilution
+# wedge is explicit: an officer-roofed sovereign pair whose collapse costs
+# only the sibling's per-team shares (escalation and rework dilution),
+# beside a sibling frame whose own line may or may not repair it. Under
+# honest frame pricing the planner rarely authors such a line unaided,
+# but imported plans and future planners can, and the guard is the last
+# line of defence either way.
+def _guard_org():
+    return OrgState(
+        teams=(
+            _t("a", True, 0.0, "platform"),
+            _t("b", True, 0.0, "platform"),
+            _t("c", True, 0.0, "platform"),
+            _t("s", False, 0.5, "product"),
+        ),
+        dependencies=(Dependency("a", "b", 1),),
+        workload=7,
+        domains=(Domain("platform", "Platform"), Domain("product", "Product")),
+    )
+
+
+def _line(org, *moves):
+    steps = tuple(
+        GuideStep(move, MoveClassification.NEUTRAL, 0.0, org, 0.0) for move in moves
+    )
+    return Guide(0.0, 0.0, steps)
+
+
+def _node(label, frame_id, line, children=(), leaf=True):
+    return GuideNode(
+        frame_id=frame_id,
+        label=label,
+        category="",
+        is_leaf=leaf,
+        playable=True,
+        guide=line,
+        children=children,
+    )
+
+
+def _collapse_node(org):
+    return _node(
+        "Platform", "platform", _line(org, Move(MoveKind.COLLAPSE_BOUNDARY, ("a", "b")))
+    )
+
+
 def test_negative_badge_line_composes_when_it_helps_the_composed_position():
-    guide = build_org_guide(_repairable_org(), _SIM)
-    platform = _leaf(guide, "Platform")
-    # Applied alone the collapse dilutes the sibling's escalation share, so
-    # the badge is honestly negative; after the sibling repairs itself the
-    # same line is pure gain and dropping it would cost the headline.
-    assert platform.org_delta < 0
-    assert platform.composes is True
-    assert platform.compose_cost == 0.0
-    assert all(node.composes for node in guide.leaf_nodes())
-    assert guide.flat_after > guide.flat_before
+    # Applied alone the collapse only dilutes the sibling's per-team
+    # shares, so the badge is honestly negative; after the sibling's line
+    # fully repairs its own frame the same collapse costs nothing and
+    # dropping it would be wrong.
+    org = _guard_org()
+    platform = _collapse_node(org)
+    product = _node(
+        "Product",
+        "product",
+        _line(
+            org,
+            Move(MoveKind.DELEGATE_AUTHORITY, ("s",)),
+            Move(MoveKind.REALIGN_INCENTIVES, ("s",)),
+        ),
+    )
+    alone = _SIM.score(replay_line(org, platform.guide)).value
+    assert alone < _SIM.score(org).value
+    nodes, composed = guard_leaf_lines(org, _SIM, (platform, product))
+    assert all(node.composes for node in nodes)
+    assert all(node.compose_cost == 0.0 for node in nodes)
+    assert _SIM.score(composed).value > _SIM.score(org).value
+
+
+def _harmful_nodes(org):
+    """The collapse beside a sibling line that leaves its frame broken."""
+    platform = _collapse_node(org)
+    product = _node(
+        "Product", "product", _line(org, Move(MoveKind.REALIGN_INCENTIVES, ("s",)))
+    )
+    return platform, product
 
 
 def test_net_harmful_line_is_dropped_from_the_headline():
-    org = _residual_org()
-    guide = build_org_guide(org, _SIM)
-    platform = _leaf(guide, "Platform")
-    assert platform.org_delta < 0
-    assert platform.composes is False
-    assert platform.compose_cost > 0
-    # The badge still tells the applied-alone truth on the dropped row.
-    assert platform.guide.steps
-    product = _leaf(guide, "Product")
-    assert product.composes is True
+    org = _guard_org()
+    platform, product = _harmful_nodes(org)
+    nodes, composed = guard_leaf_lines(org, _SIM, (platform, product))
+    marked = next(n for n in nodes if n.label == "Platform")
+    assert marked.composes is False
+    assert marked.compose_cost > 0
+    # The dropped row keeps its line: the badge still tells the truth.
+    assert marked.guide.steps
+    assert next(n for n in nodes if n.label == "Product").composes is True
 
 
 def test_dropping_the_harmful_line_raises_the_headline():
-    org = _residual_org()
-    guide = build_org_guide(org, _SIM)
-    platform = _leaf(guide, "Platform")
-    with_all = org
-    for node in guide.leaf_nodes():
-        with_all = replay_line(with_all, node.guide)
-    assert guide.flat_after == pytest.approx(
-        _SIM.score(with_all).value + platform.compose_cost
-    )
-    assert guide.flat_after > _SIM.score(with_all).value
+    org = _guard_org()
+    platform, product = _harmful_nodes(org)
+    nodes, composed = guard_leaf_lines(org, _SIM, (platform, product))
+    marked = next(n for n in nodes if n.label == "Platform")
+    with_all = replay_line(replay_line(org, platform.guide), product.guide)
+    headline = _SIM.score(composed).value
+    assert headline == pytest.approx(_SIM.score(with_all).value + marked.compose_cost)
+    assert headline > _SIM.score(with_all).value
 
 
 def test_headline_matches_the_composition_it_advertises():
@@ -140,10 +199,12 @@ def test_headline_matches_the_composition_it_advertises():
 
 
 def test_a_dropped_line_nested_under_an_aggregate_is_marked_in_place():
-    org = _residual_org(platform_parent="eng")
-    guide = build_org_guide(org, _SIM)
-    engineering = next(n for n in guide.nodes if n.label == "Engineering")
-    assert engineering.is_leaf is False
-    platform = next(c for c in engineering.children if c.label == "Platform")
-    assert platform.composes is False
-    assert platform.compose_cost > 0
+    org = _guard_org()
+    platform, product = _harmful_nodes(org)
+    engineering = _node("Engineering", "eng", Guide(0.0, 0.0, ()), (platform,), False)
+    nodes, _ = guard_leaf_lines(org, _SIM, (engineering, product))
+    marked_parent = next(n for n in nodes if n.label == "Engineering")
+    assert marked_parent.is_leaf is False
+    marked = next(c for c in marked_parent.children if c.label == "Platform")
+    assert marked.composes is False
+    assert marked.compose_cost > 0
