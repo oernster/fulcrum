@@ -9,11 +9,11 @@ an owner); left off, it plans at a fixed size, the 'do not grow' path.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 from fulcrum.application.game_session import enumerate_moves
-from fulcrum.application.interfaces import Simulator
+from fulcrum.application.interfaces import GuideWorkerPool, Simulator
 from fulcrum.application.move_text import describe_move
 from fulcrum.domain.models import OrgState
 from fulcrum.domain.moves import Move, MoveKind, apply_move
@@ -65,10 +65,13 @@ class ImprovementPlanner:
         allowed_kinds: tuple[MoveKind, ...] | None = None,
         move_filter: Callable[[Move], bool] | None = None,
         progress: Callable[[int], None] | None = None,
+        workers: GuideWorkerPool | None = None,
     ) -> Guide:
         """Plan the greedy line; progress, if given, receives the number of
         candidates valuated after each chunk, so a caller can keep a bar
-        alive through a step that valuates hundreds of moves."""
+        alive through a step that valuates hundreds of moves. Candidate
+        valuations are independent, so a worker pool, when given, prices
+        each step's candidates in parallel with identical results."""
         start = self.simulator.score(org).value
         current = org
         current_score = start
@@ -88,7 +91,7 @@ class ImprovementPlanner:
             if not moves:
                 break
             best = max(
-                self._valuate(current, moves, progress),
+                self._valuate(current, moves, progress, workers),
                 key=lambda valuation: valuation.delta,
             )
             if best.delta < self.min_gain:
@@ -115,7 +118,10 @@ class ImprovementPlanner:
         org: OrgState,
         moves: tuple[Move, ...],
         progress: Callable[[int], None] | None,
+        workers: GuideWorkerPool | None = None,
     ):
+        if workers is not None:
+            return workers.valuate_moves(self.simulator, org, moves, progress)
         if progress is None:
             return self.simulator.valuate_moves(org, moves)
         valuations = []

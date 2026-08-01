@@ -6,6 +6,7 @@ path move to a faster kernel later without touching the domain or the UI.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Protocol
 
 from fulcrum.application.dto import (
@@ -27,6 +28,33 @@ class Simulator(Protocol):
 
     def valuate_moves(
         self, org: OrgState, moves: tuple[Move, ...]
+    ) -> tuple[MoveValuation, ...]: ...
+
+
+class GuideWorkerPool(Protocol):
+    """Prices the guide's independent workloads on worker processes.
+
+    An implementation must be bit-identical to the serial loop it stands
+    in for: the same values in the same order, with only the wall-clock
+    differing, so the guide's published numbers never depend on whether
+    a pool was available.
+    """
+
+    def price_lines(
+        self,
+        simulator: Simulator,
+        org: OrgState,
+        full: float,
+        line_moves: tuple[tuple[Move, ...], ...],
+        progress: Callable[[], None] | None,
+    ) -> tuple[float, ...]: ...
+
+    def valuate_moves(
+        self,
+        simulator: Simulator,
+        org: OrgState,
+        moves: tuple[Move, ...],
+        progress: Callable[[int], None] | None,
     ) -> tuple[MoveValuation, ...]: ...
 
 

@@ -38,7 +38,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from fulcrum.application.game_session import MAX_PLAYABLE_TEAMS
-from fulcrum.application.interfaces import Simulator
+from fulcrum.application.interfaces import GuideWorkerPool, Simulator
 from fulcrum.application.org_guide_compose import (
     compose_leaf_lines,
     guard_leaf_lines,
@@ -136,9 +136,14 @@ def build_org_guide(
     simulator: Simulator,
     allow_growth: bool = False,
     progress: ProgressCallback | None = None,
+    workers: GuideWorkerPool | None = None,
 ) -> OrgGuide:
-    """Plan every frame of the org and compose the leaf lines into a headline."""
-    builder = _Builder(org, simulator, allow_growth, progress)
+    """Plan every frame of the org and compose the leaf lines into a headline.
+
+    workers, when given, prices the guard's lines and growth's candidate
+    valuations on a process pool; the guide is identical either way.
+    """
+    builder = _Builder(org, simulator, allow_growth, progress, workers)
     return builder.build()
 
 
@@ -151,12 +156,14 @@ class _Builder:
         simulator: Simulator,
         allow_growth: bool,
         progress: ProgressCallback | None,
+        workers: GuideWorkerPool | None = None,
     ) -> None:
         self._org = org
         self._simulator = simulator
         self._full = ImprovementPlanner(simulator, allow_growth=allow_growth)
         self._aggregate = ImprovementPlanner(simulator)
         self._progress = progress
+        self._workers = workers
         self._grown = allow_growth
         self._done = 0
         self._total = 0
@@ -200,12 +207,17 @@ class _Builder:
             )
         nodes = nodes + tuple(self._unit_node(d) for d in roots)
         nodes, composed = guard_leaf_lines(
-            self._org, self._simulator, nodes, self._pulse
+            self._org, self._simulator, nodes, self._pulse, self._workers
         )
         flat_after = self._simulator.score(composed).value
         if self._grown:
             node, flat_after = plan_growth_node(
-                self._simulator, self._full, composed, flat_after, self._tick
+                self._simulator,
+                self._full,
+                composed,
+                flat_after,
+                self._tick,
+                self._workers,
             )
             if node is not None:
                 nodes = nodes + (node,)

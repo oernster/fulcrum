@@ -19,7 +19,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import replace
 
-from fulcrum.application.interfaces import Simulator
+from fulcrum.application.interfaces import GuideWorkerPool, Simulator
 from fulcrum.application.org_guide_model import GuideNode, OrgGuide
 from fulcrum.application.planner import Guide
 from fulcrum.domain.errors import FulcrumError
@@ -64,6 +64,7 @@ def guard_leaf_lines(
     simulator: Simulator,
     nodes: tuple[GuideNode, ...],
     progress: Callable[[], None] | None = None,
+    workers: GuideWorkerPool | None = None,
 ) -> tuple[tuple[GuideNode, ...], OrgState]:
     """Drop net-harmful leaf lines; return the marked tree and composed org.
 
@@ -75,24 +76,51 @@ def guard_leaf_lines(
 
     Pricing a line replays every other line against the whole organisation,
     so on a large org this loop is minutes of work: progress, if given, is
-    called once per line priced, keeping a bar alive through it.
+    called once per line priced, keeping a bar alive through it. Each
+    line's price is independent of the others', so a worker pool, when
+    given, prices a pass in parallel with identical results.
     """
     while True:
         tree = OrgGuide(nodes, _NO_COST, _NO_COST, False)
         lines = tuple(n for n in tree.leaf_nodes() if n.composes and n.guide.steps)
         composed = compose_leaf_lines(org, tree)
         full = simulator.score(composed).value
+        marginals = _price_all(org, simulator, full, lines, progress, workers)
         worst: GuideNode | None = None
         worst_marginal = _NO_COST
-        for line in lines:
-            marginal = full - simulator.score(_without(org, lines, line)).value
-            if progress is not None:
-                progress()
+        for line, marginal in zip(lines, marginals):
             if marginal < worst_marginal:
                 worst, worst_marginal = line, marginal
         if worst is None:
             return nodes, composed
         nodes = _mark_non_composing(nodes, worst, -worst_marginal)
+
+
+def _price_all(
+    org: OrgState,
+    simulator: Simulator,
+    full: float,
+    lines: tuple[GuideNode, ...],
+    progress: Callable[[], None] | None,
+    workers: GuideWorkerPool | None,
+) -> tuple[float, ...]:
+    """Every line's marginal price, in line order.
+
+    The pool path ships each line as its moves alone (a guide's steps
+    carry org snapshots that would dwarf the payload) and prices exactly
+    what the serial loop prices, so the values are identical either way.
+    """
+    if workers is not None:
+        line_moves = tuple(
+            tuple(step.move for step in line.guide.steps) for line in lines
+        )
+        return workers.price_lines(simulator, org, full, line_moves, progress)
+    marginals = []
+    for line in lines:
+        marginals.append(full - simulator.score(_without(org, lines, line)).value)
+        if progress is not None:
+            progress()
+    return tuple(marginals)
 
 
 def _without(

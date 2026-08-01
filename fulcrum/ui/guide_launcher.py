@@ -16,7 +16,7 @@ from PySide6.QtWidgets import QApplication
 
 from fulcrum.application.game_session import GameSession
 from fulcrum.application.interfaces import Simulator
-from fulcrum.application.org_guide import build_org_guide
+from fulcrum.application.org_guide_parallel import build_org_guide_auto
 from fulcrum.ui.guide_thread import OrgGuideThread
 from fulcrum.ui.widgets.busy_dialog import BusyDialog
 from fulcrum.ui.widgets.org_guide_dialog import OrgGuideDialog
@@ -105,4 +105,4 @@ class GuideLauncher:
             )
             return None
         self._on_played()
-        return build_org_guide(session.org, self._simulator)
+        return build_org_guide_auto(session.org, self._simulator)

@@ -12,7 +12,7 @@ from __future__ import annotations
 from PySide6.QtCore import QThread, Signal
 
 from fulcrum.application.interfaces import Simulator
-from fulcrum.application.org_guide import build_org_guide
+from fulcrum.application.org_guide_parallel import build_org_guide_auto
 from fulcrum.domain.models import OrgState
 
 
@@ -41,7 +41,10 @@ class OrgGuideThread(QThread):
         self._allow_growth = allow_growth
 
     def run(self) -> None:
-        guide = build_org_guide(
+        # A large organisation gets a worker pool for the guard's line
+        # pricing and growth's valuations; the guide is identical either
+        # way, so only the wall-clock changes.
+        guide = build_org_guide_auto(
             self._org,
             self._simulator,
             allow_growth=self._allow_growth,
