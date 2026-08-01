@@ -283,9 +283,16 @@ modules:
         path: spin_up.png
       - type: file
         path: spin_down.png
+      - type: file
+        path: fulcrum_provenance_256.png
       - type: dir
         path: fulcrum
         dest: fulcrum
+      # Only the calibration cases are shipped; they are what
+      # find_examples_dir() resolves for File > Open example organisation.
+      - type: dir
+        path: examples/calibration
+        dest: examples/calibration
       - type: dir
         path: assets
         dest: assets
