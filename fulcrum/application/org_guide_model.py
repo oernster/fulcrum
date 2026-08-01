@@ -13,7 +13,6 @@ from dataclasses import dataclass
 
 from fulcrum.application.planner import Guide
 
-TOP_FRAME_LABEL = "Top level (units as actors)"
 WHOLE_ORG_LABEL = "Whole organisation"
 GROWTH_FRAME_LABEL = "Growth (whole organisation)"
 LOOSE_TEAMS_LABEL = "Teams directly at the top level"
@@ -36,7 +35,7 @@ class GuideNode:
     """One frame's row in the hierarchy guide.
 
     frame_id is what a play translates against: None for the flat whole-org
-    row, TOP_LEVEL_FOCUS for the top-level frame and a domain id for a unit.
+    row and a domain id for a unit.
     A direct-teams leaf row carries a synthetic id (direct_teams_frame or
     LOOSE_TEAMS_FRAME at the top level) that translates as a pass-through,
     since its moves already target real teams.

@@ -7,7 +7,6 @@ from fulcrum.application.org_guide import (
     GROWTH_FRAME_LABEL,
     LOOSE_TEAMS_FRAME,
     LOOSE_TEAMS_LABEL,
-    TOP_FRAME_LABEL,
     WHOLE_ORG_LABEL,
     GuideNode,
     OrgGuide,
@@ -17,7 +16,7 @@ from fulcrum.application.org_guide import (
 )
 from fulcrum.application.planner import Guide, GuideStep
 from fulcrum.application.simulator import DeterministicSimulator
-from fulcrum.domain.hierarchy import AGGREGATE_MOVE_KINDS
+from fulcrum.domain.hierarchy import AGGREGATE_MOVE_KINDS, TOP_LEVEL_FOCUS
 from fulcrum.domain.models import Dependency, Domain, OrgState, Team
 from fulcrum.domain.moves import Move, MoveKind
 from fulcrum.domain.simulation import MoveClassification
@@ -78,10 +77,10 @@ def test_flat_org_gets_a_single_composable_row():
 
 def test_hierarchy_plans_every_frame_and_skips_empty_units():
     guide = build_org_guide(_hierarchical_org(), _SIM)
-    assert guide.nodes[0].label == TOP_FRAME_LABEL
-    assert guide.nodes[0].is_leaf is False
     labels = {node.label for node in guide.nodes}
-    assert labels == {TOP_FRAME_LABEL, "Platform", "Product"}
+    assert labels == {"Platform", "Product"}
+    # No top-frame row: nothing sits above the top level to make a move.
+    assert all(node.frame_id != TOP_LEVEL_FOCUS for node in guide.nodes)
     product = next(n for n in guide.nodes if n.label == "Product")
     assert product.is_leaf is False
     assert {c.label for c in product.children} == {"Web", "Mobile"}
@@ -90,9 +89,9 @@ def test_hierarchy_plans_every_frame_and_skips_empty_units():
 
 def test_aggregate_rows_only_offer_translatable_kinds():
     guide = build_org_guide(_hierarchical_org(), _SIM)
-    for node in (guide.nodes[0], guide.nodes[2]):
-        kinds = {step.move.kind for step in node.guide.steps}
-        assert kinds <= set(AGGREGATE_MOVE_KINDS)
+    product = next(n for n in guide.nodes if n.label == "Product")
+    kinds = {step.move.kind for step in product.guide.steps}
+    assert kinds <= set(AGGREGATE_MOVE_KINDS)
 
 
 def test_leaf_lines_compose_to_a_stronger_flat_score():
@@ -149,8 +148,8 @@ def test_progress_reports_every_planned_section():
         _SIM,
         progress=lambda done, total: seen.append((done, total)),
     )
-    # Top frame, Platform, Product, Web, Mobile: five sections.
-    assert seen == [(1, 5), (2, 5), (3, 5), (4, 5), (5, 5)]
+    # Platform, Product, Web, Mobile: four sections.
+    assert seen == [(1, 4), (2, 4), (3, 4), (4, 4)]
 
 
 def test_growth_flag_is_carried_on_the_result():
@@ -200,11 +199,10 @@ def test_grown_guide_appends_a_whole_org_growth_row():
     )
 
 
-def test_top_frame_offers_growth_for_real_teams_when_growing():
-    # All edges are unit-level, so the flat org has no internal deps and
-    # the whole-org growth row cannot fire; the top frame is the only place
-    # those edges are priced and must propose growth for the real loose
-    # team standing in it, never for a rolled unit node.
+def test_the_top_frame_gets_no_row_even_when_growing():
+    # No authority sits above the top level to make a move there, so no
+    # top-frame row is planned in either mode; a loose team's own repairs
+    # live in the loose-teams leaf row instead.
     org = OrgState(
         teams=(
             _t("a", authority=True, skew=0.2, domain_id="da"),
@@ -221,15 +219,41 @@ def test_top_frame_offers_growth_for_real_teams_when_growing():
     )
     fixed = build_org_guide(org, _SIM)
     grown = build_org_guide(org, _SIM, allow_growth=True)
+    for guide in (fixed, grown):
+        assert all(node.frame_id != TOP_LEVEL_FOCUS for node in guide.nodes)
+        loose = next(n for n in guide.nodes if n.label == LOOSE_TEAMS_LABEL)
+        targets = {t for s in loose.guide.steps for t in s.move.targets}
+        assert targets <= {"hub"}
+
+
+def test_an_aggregate_unit_frame_keeps_growth_to_real_teams_when_growing():
+    # A mixed unit's frame holds a coupled direct team beside coupled rolled
+    # nodes; with growth on, the planner sees growth candidates for both and
+    # must keep only the real team's (a rolled node cannot grow as one act).
+    org = OrgState(
+        teams=(
+            _t("direct", skew=0.6, domain_id="mix"),
+            _t("s1a", domain_id="s1"),
+            _t("s2a", domain_id="s2"),
+        ),
+        dependencies=(
+            Dependency("s1", "direct", 2),
+            Dependency("s2", "direct", 2),
+            Dependency("s1", "s2", 2),
+        ),
+        workload=6,
+        domains=(
+            Domain("mix", "Mixed"),
+            Domain("s1", "SubOne", parent_id="mix"),
+            Domain("s2", "SubTwo", parent_id="mix"),
+        ),
+    )
+    grown = build_org_guide(org, _SIM, allow_growth=True)
+    mixed = next(n for n in grown.nodes if n.label == "Mixed")
     growth_kinds = {MoveKind.SPLIT_TEAM, MoveKind.ADD_TEAM}
-    fixed_top = {step.move.kind for step in fixed.nodes[0].guide.steps}
-    assert not fixed_top & growth_kinds
-    grown_top = [
-        step for step in grown.nodes[0].guide.steps if step.move.kind in growth_kinds
-    ]
-    assert grown_top
-    for step in grown_top:
-        assert all(org.has_team(target) for target in step.move.targets)
+    for step in mixed.guide.steps:
+        if step.move.kind in growth_kinds:
+            assert all(org.has_team(target) for target in step.move.targets)
 
 
 def test_growth_row_is_absent_when_growth_gains_nothing():
@@ -270,9 +294,9 @@ def test_progress_counts_the_growth_pass_when_growing():
         allow_growth=True,
         progress=lambda done, total: seen.append((done, total)),
     )
-    # Five sections plus the whole-org growth pass.
-    assert seen[0] == (1, 6)
-    assert seen[-1] == (6, 6)
+    # Four sections plus the whole-org growth pass.
+    assert seen[0] == (1, 5)
+    assert seen[-1] == (5, 5)
 
 
 def _mixed_org():
@@ -306,7 +330,7 @@ def test_a_mixed_unit_gets_a_composable_direct_teams_row():
 
 def test_loose_top_level_teams_get_a_composable_row():
     guide = build_org_guide(_mixed_org(), _SIM)
-    loose = guide.nodes[1]
+    loose = guide.nodes[0]
     assert loose.label == LOOSE_TEAMS_LABEL
     assert loose.frame_id == LOOSE_TEAMS_FRAME
     assert loose.is_leaf and loose.org_delta > 0
@@ -327,8 +351,8 @@ def test_progress_counts_direct_and_loose_rows():
     build_org_guide(
         _mixed_org(), _SIM, progress=lambda done, total: seen.append((done, total))
     )
-    # Top frame, loose row, Mixed, its direct row, Sub: five sections.
-    assert seen == [(1, 5), (2, 5), (3, 5), (4, 5), (5, 5)]
+    # Loose row, Mixed, its direct row, Sub: four sections.
+    assert seen == [(1, 4), (2, 4), (3, 4), (4, 4)]
 
 
 def test_compose_stops_a_line_that_cannot_replay_and_keeps_the_rest():

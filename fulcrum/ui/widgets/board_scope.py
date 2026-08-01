@@ -9,11 +9,12 @@ and keeps the analysis and rendering flow.
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from PySide6.QtWidgets import QLabel, QPushButton
 
 from fulcrum.application.game_session import GameSession
+from fulcrum.application.scope_analysis import play_level_landing
 from fulcrum.domain.hierarchy import TOP_LEVEL_FOCUS, child_domains
 from fulcrum.domain.simulation import MoveClassification
 
@@ -28,13 +29,16 @@ _PLAY_LEVEL_LABEL = "Play this level"
 _WHOLE_ORG_LABEL = "Score the whole org"
 _PLAY_LEVEL_TIP = (
     "Score the top level as its own frame: each top-level unit becomes one "
-    "actor and dependencies between them are priced."
+    "actor and dependencies between them are priced. A lone top-level unit "
+    "opens straight at its own frame instead."
 )
 _WHOLE_ORG_TIP = "Return to the flat whole-org score across every real team."
 _TOP_LEVEL_NOTE = (
     "Focused on the top level: each top-level unit is one actor, so "
-    "dependencies between them are priced here. Click a section to drill "
-    "in; Score the whole org returns to the flat view."
+    "dependencies between them are priced here. No moves are offered at "
+    "this altitude: nothing sits above the top level with the authority to "
+    "make one. Click a section to drill in; Score the whole org returns to "
+    "the flat view."
 )
 PREVIEW_COLOR = "#fbbf24"
 
@@ -94,23 +98,30 @@ class ScopePresenter:
         if session is None:
             self.scope_hint.setVisible(False)
             return
+        focused = session.focused_on
+        if focused == TOP_LEVEL_FOCUS:
+            # The top frame offers no moves at all and the focus note
+            # already carries that lesson, so the nudge stands aside.
+            self.scope_hint.setVisible(False)
+            return
         self.scope_hint.setText(_SCOPE_HINT)
         strong = {MoveClassification.GOOD, MoveClassification.GREAT}
         has_strong = any(v.classification in strong for v in valuations)
-        focused = session.focused_on
-        if focused == TOP_LEVEL_FOCUS:
-            can_drill = bool(session.org.domains)
-        else:
-            can_drill = bool(child_domains(session.org, focused))
+        can_drill = bool(child_domains(session.org, focused))
         self.scope_hint.setVisible(can_drill and not has_strong)
 
     def _toggle_top_level(self) -> None:
-        """Switch between the flat whole-org score and the top-level frame."""
+        """Switch between the flat whole-org score and the top-level frame.
+
+        A lone top-level unit's frame would show one box wrapping the whole
+        organisation, so entering lands on the first level that shows more
+        than one actor instead (play_level_landing).
+        """
         session = self._session_of()
         if session is None:
             return
         playing = session.focused_on == TOP_LEVEL_FOCUS
-        session.focus(None if playing else TOP_LEVEL_FOCUS)
+        session.focus(None if playing else play_level_landing(session.org))
         self._update_level_button()
         self._set_focus_note()
         self._scope_changed()

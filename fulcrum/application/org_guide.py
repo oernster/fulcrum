@@ -4,8 +4,9 @@ The move-locality result says structural value lives in many small local
 repairs invisible from the summit, so a guide scoped to one frame shows one
 altitude of a many-storey problem. This builder walks the domain tree and
 plans every frame: each leaf section gets a full plan in its own frame and
-every aggregate frame (a non-leaf unit, and the top level as units) gets the
-view from that altitude, restricted to the kinds that translate down cleanly.
+every aggregate frame (a non-leaf unit) gets the view from that altitude,
+restricted to the kinds that translate down cleanly. The top-level frame
+gets no row: no authority sits above the top level to make a move there.
 
 Sibling leaf frames are disjoint team sets and their moves act on real teams
 (a scoped stabilise thins only its frame's edges), so the leaf lines compose:
@@ -47,7 +48,6 @@ from fulcrum.application.org_guide_model import (
     GROWTH_FRAME_LABEL,
     LOOSE_TEAMS_FRAME,
     LOOSE_TEAMS_LABEL,
-    TOP_FRAME_LABEL,
     WHOLE_ORG_LABEL,
     GuideNode,
     OrgGuide,
@@ -56,14 +56,12 @@ from fulcrum.application.org_guide_model import (
 from fulcrum.application.planner import Guide, ImprovementPlanner
 from fulcrum.domain.hierarchy import (
     AGGREGATE_MOVE_KINDS,
-    TOP_LEVEL_FOCUS,
     child_domains,
     direct_teams_section,
     domain_has_teams,
     focused_suborg,
     has_aggregate_children,
     has_direct_teams,
-    top_level_section,
 )
 from fulcrum.domain.models import Domain, OrgState
 from fulcrum.domain.moves import Move, MoveKind
@@ -173,9 +171,8 @@ class _Builder:
             return OrgGuide(nodes, self._flat_before, flat_after, self._grown)
         extra = 1 if self._grown else 0
         loose = 1 if has_direct_teams(self._org, None) else 0
-        self._total = 1 + loose + _count_sections(self._org, None) + extra
-        top = self._top_frame_node()
-        nodes = (top,)
+        self._total = loose + _count_sections(self._org, None) + extra
+        nodes: tuple[GuideNode, ...] = ()
         if loose:
             nodes = nodes + (
                 self._direct_node(None, LOOSE_TEAMS_LABEL, LOOSE_TEAMS_FRAME),
@@ -282,17 +279,6 @@ class _Builder:
             playable=playable,
             guide=guide,
             org_delta=self._org_delta(guide) if playable else 0.0,
-        )
-
-    def _top_frame_node(self) -> GuideNode:
-        playable, guide = self._plan(top_level_section(self._org), aggregate=True)
-        return GuideNode(
-            frame_id=TOP_LEVEL_FOCUS,
-            label=TOP_FRAME_LABEL,
-            category="",
-            is_leaf=False,
-            playable=playable,
-            guide=guide,
         )
 
     def _direct_node(

@@ -1,7 +1,11 @@
 """Tests for off-thread scope analysis."""
 
 from fulcrum.application.game_session import MAX_PLAYABLE_TEAMS, enumerate_moves
-from fulcrum.application.scope_analysis import active_org, analyze_scope
+from fulcrum.application.scope_analysis import (
+    active_org,
+    analyze_scope,
+    play_level_landing,
+)
 from fulcrum.application.simulator import DeterministicSimulator
 from fulcrum.domain.hierarchy import AGGREGATE_MOVE_KINDS, TOP_LEVEL_FOCUS
 from fulcrum.domain.models import Dependency, Domain, OrgState, Team
@@ -85,11 +89,59 @@ def test_analyze_aggregate_scope_offers_only_translatable_moves():
     assert MoveKind.COLLAPSE_BOUNDARY not in kinds
 
 
-def test_top_level_focus_scopes_to_the_rolled_frame():
+def test_top_level_focus_scopes_to_the_rolled_frame_with_no_moves():
     org = _org()
     active = active_org(org, TOP_LEVEL_FOCUS)
     assert {t.id for t in active.teams} == {"d1", "d2"}
     result = analyze_scope(org, TOP_LEVEL_FOCUS, _SIM)
     assert result.playable is True
-    kinds = {v.move.kind for v in result.valuations}
-    assert kinds <= set(AGGREGATE_MOVE_KINDS)
+    assert result.score == _SIM.score(active).value
+    # Nothing sits above the top level with the authority to make a move.
+    assert result.valuations == ()
+
+
+def test_play_level_lands_on_a_wide_top_frame():
+    # Two root units: the top frame already shows more than one actor.
+    assert play_level_landing(_org()) == TOP_LEVEL_FOCUS
+
+
+def test_play_level_drills_through_a_lone_root_unit():
+    org = OrgState(
+        teams=(
+            Team("a", "A", False, 0.5, domain_id="d1"),
+            Team("b", "B", True, 0.0, domain_id="d2"),
+        ),
+        workload=2,
+        domains=(
+            Domain("root", "Company"),
+            Domain("d1", "One", parent_id="root"),
+            Domain("d2", "Two", parent_id="root"),
+        ),
+    )
+    assert play_level_landing(org) == "root"
+
+
+def test_play_level_descends_a_chain_of_lone_units_to_a_leaf():
+    org = OrgState(
+        teams=(
+            Team("a", "A", False, 0.5, domain_id="mid"),
+            Team("b", "B", True, 0.0, domain_id="mid"),
+        ),
+        workload=2,
+        domains=(
+            Domain("wrap", "Wrap"),
+            Domain("mid", "Mid", parent_id="wrap"),
+        ),
+    )
+    # Wrap's frame is one box (Mid); Mid is a leaf, whose frame is its teams.
+    assert play_level_landing(org) == "mid"
+
+
+def test_play_level_stops_at_a_lone_real_team():
+    org = OrgState(
+        teams=(Team("solo", "Solo", False, 0.5),),
+        workload=1,
+        domains=(Domain("bare", "Bare"),),
+    )
+    # The only node is a real team: nothing sits deeper to drill into.
+    assert play_level_landing(org) == TOP_LEVEL_FOCUS

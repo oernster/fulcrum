@@ -113,6 +113,25 @@ def _append_growth_moves(org: OrgState, moves: list[Move]) -> None:
             moves.append(Move(MoveKind.ADD_TEAM, (team.id,)))
 
 
+def scope_moves(
+    org: OrgState, focus_id: str | None, active: OrgState
+) -> tuple[Move, ...]:
+    """The candidate moves for a scope.
+
+    At the top-level frame there are none: every move is made by an authority
+    above its target and nothing sits above the top level to make one. At any
+    other aggregate scope, only the kinds that translate cleanly down to the
+    real teams are offered. This is the single rule for what a scope offers,
+    shared by the session and the off-thread analysis so they cannot drift.
+    """
+    if focus_id == TOP_LEVEL_FOCUS:
+        return ()
+    moves = enumerate_moves(active)
+    if focus_id is not None and has_aggregate_children(org, focus_id):
+        return tuple(m for m in moves if m.kind in AGGREGATE_MOVE_KINDS)
+    return moves
+
+
 class GameSession:
     """Coordinates an org state with an injected simulator and persistence."""
 
@@ -203,14 +222,9 @@ class GameSession:
         active = self._active_org()
         if len(active.teams) > MAX_PLAYABLE_TEAMS:
             return ()
-        moves = enumerate_moves(active)
-        aggregate = self._focus_id == TOP_LEVEL_FOCUS or (
-            self._focus_id is not None
-            and has_aggregate_children(self._org, self._focus_id)
+        return self._simulator.valuate_moves(
+            active, scope_moves(self._org, self._focus_id, active)
         )
-        if aggregate:
-            moves = tuple(m for m in moves if m.kind in AGGREGATE_MOVE_KINDS)
-        return self._simulator.valuate_moves(active, moves)
 
     def _frame_label(self, move: Move, org: OrgState) -> str:
         """The text the move was played under, in its frame's own terms.

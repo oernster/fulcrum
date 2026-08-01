@@ -14,10 +14,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from fulcrum.application.dto import MoveValuation
-from fulcrum.application.game_session import MAX_PLAYABLE_TEAMS, enumerate_moves
+from fulcrum.application.game_session import MAX_PLAYABLE_TEAMS, scope_moves
 from fulcrum.application.interfaces import Simulator
 from fulcrum.domain.hierarchy import (
-    AGGREGATE_MOVE_KINDS,
     TOP_LEVEL_FOCUS,
     focused_suborg,
     has_aggregate_children,
@@ -55,16 +54,26 @@ def active_org(org: OrgState, focus_id: str | None) -> OrgState:
     return focused_suborg(org, focus_id)
 
 
-def scope_moves(org: OrgState, focus_id: str | None, active: OrgState):
-    """The candidate moves for a scope: at an aggregate scope, only the kinds
-    that translate cleanly down to its teams."""
-    moves = enumerate_moves(active)
-    aggregate = focus_id == TOP_LEVEL_FOCUS or (
-        focus_id is not None and has_aggregate_children(org, focus_id)
-    )
-    if aggregate:
-        return tuple(m for m in moves if m.kind in AGGREGATE_MOVE_KINDS)
-    return moves
+def play_level_landing(org: OrgState) -> str:
+    """Where Play-this-level lands: the top frame, or the first wide level.
+
+    A frame holding a single rolled unit is one box wrapping everything and
+    shows nothing worth playing, so the toggle drills through such tiers
+    until a frame shows more than one actor. Descent stops at a lone real
+    team (nothing sits deeper) and at a lone leaf unit, whose frame is its
+    real teams.
+    """
+    focus = TOP_LEVEL_FOCUS
+    section = top_level_section(org)
+    while len(section.teams) == 1:
+        node = section.teams[0]
+        if org.has_team(node.id):
+            break
+        focus = node.id
+        if not has_aggregate_children(org, node.id):
+            break
+        section = focused_suborg(org, node.id)
+    return focus
 
 
 def analyze_scope(

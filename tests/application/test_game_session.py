@@ -9,7 +9,7 @@ from fulcrum.application.game_session import (
     GameSession,
     enumerate_moves,
 )
-from fulcrum.domain.hierarchy import AGGREGATE_MOVE_KINDS, TOP_LEVEL_FOCUS
+from fulcrum.domain.hierarchy import TOP_LEVEL_FOCUS
 from fulcrum.domain.models import AuthorityClaim, Dependency, Domain, OrgState, Team
 from fulcrum.domain.moves import Move, MoveKind
 
@@ -262,7 +262,7 @@ def test_try_play_rejects_a_move_with_an_unknown_target():
     assert session.org == session.initial_org
 
 
-def test_focus_top_level_plays_rolled_roots_and_translates_moves():
+def test_focus_top_level_offers_no_moves_but_still_translates_a_play():
     org = OrgState(
         teams=(
             Team("a", "A", False, 0.0, domain_id="r1"),
@@ -276,8 +276,10 @@ def test_focus_top_level_plays_rolled_roots_and_translates_moves():
     session = GameSession(org, _FakeSimulator())
     session.focus(TOP_LEVEL_FOCUS)
     assert session.focused_on == TOP_LEVEL_FOCUS
-    kinds = {v.move.kind for v in session.candidate_valuations()}
-    assert kinds <= set(AGGREGATE_MOVE_KINDS)
+    # Nothing sits above the top level with the authority to make a move,
+    # so the top frame's palette is empty; translation stays intact for
+    # any caller that names the frame directly.
+    assert session.candidate_valuations() == ()
     session.play(Move(MoveKind.DELEGATE_AUTHORITY, ("r1",)))
     assert session.org.team("a").has_local_authority
     assert session.org.team("b").has_local_authority

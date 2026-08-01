@@ -106,7 +106,14 @@ class BoardMapPane(QStackedWidget):
         self._complete.apply_map_theme()
 
     def sync_scope(self, focused: str | None) -> None:
-        """Follow the Play-this-level toggle: top frame in, whole org out."""
+        """Follow the Play-this-level toggle: top frame in, whole org out.
+
+        A lone-root organisation lands on the first wide frame rather than
+        the top one. When that frame is the skipped wrapper's own, the
+        complete picture already draws its contents directly, so the
+        picture stays (drilling there would bounce straight back out); any
+        deeper landing drills the map to that section.
+        """
         session = self._session_of()
         if session is None:
             return
@@ -114,8 +121,12 @@ class BoardMapPane(QStackedWidget):
             self._set_drill(True)
             self._map.reset_view()
             self._map.set_org(session.org)
-        elif focused is None:
+        elif focused is None or focused == self._skipped_root():
             self._set_drill(False)
+        else:
+            self._set_drill(True)
+            self._map.set_org(session.org)
+            self._map.drill_to(focused)
 
     def _set_drill(self, drill: bool) -> None:
         view = self._map if drill else self._complete
