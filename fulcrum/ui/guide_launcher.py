@@ -4,8 +4,9 @@ Split from the main window so it stays within the structural line limit.
 The fixed guide builds behind a determinate progress dialog and opens the
 guide; the grown variant costs as much again or more, so it is built only
 when the dialog's grow toggle first asks, behind its own progress dialog.
-Playing a move from the guide rebuilds the fixed guide alone; the dialog
-drops its stale grown guide and re-requests it lazily.
+Playing a move from the guide rebuilds the fixed guide alone, again
+off-thread behind a cancellable bar; the dialog drops its stale grown
+guide and re-requests it lazily. Every bar here can cancel its build.
 """
 
 from __future__ import annotations
@@ -16,7 +17,6 @@ from PySide6.QtWidgets import QApplication
 
 from fulcrum.application.game_session import GameSession
 from fulcrum.application.interfaces import Simulator
-from fulcrum.application.org_guide_parallel import build_org_guide_auto
 from fulcrum.ui.guide_thread import OrgGuideThread
 from fulcrum.ui.widgets.busy_dialog import BusyDialog
 from fulcrum.ui.widgets.org_guide_dialog import OrgGuideDialog
@@ -66,14 +66,15 @@ class GuideLauncher:
 
     def _on_built(self, guide) -> None:
         self._busy.close()
-        OrgGuideDialog(
+        self._dialog = OrgGuideDialog(
             guide,
             self._simulator,
             self._play,
             self._window,
             self._theme_of(),
             grow_planner=self._plan_growth_for,
-        ).exec()
+        )
+        self._dialog.exec()
 
     def _plan_growth_for(self, dialog) -> None:
         """Build the grown guide for the open dialog, off-thread with a bar."""
@@ -110,16 +111,44 @@ class GuideLauncher:
         self._growth_busy.close()
         dialog.set_growth_guide(guide)
 
-    def _play(self, move, frame_id):
-        """Play a guide move live; return the refreshed fixed guide, or None."""
+    def _play(self, move, frame_id) -> None:
+        """Play a guide move live, then rebuild the fixed guide off-thread.
+
+        The rebuild runs behind its own cancellable bar and lands in the
+        open dialog via set_fixed_guide; cancelling closes the dialog
+        (the move is already played and the board already updated), so a
+        slow machine is never trapped waiting for the replan.
+        """
         session = self._session_of()
         if session is None:
-            return None
+            return
         if not session.try_play_in_frame(move, frame_id):
             self._inform(
                 "Cannot play this move yet",
                 "This move builds on earlier moves in the path; play those first.",
             )
-            return None
+            return
         self._on_played()
-        return build_org_guide_auto(session.org, self._simulator)
+        self._rebuild_busy = BusyDialog(
+            "Replanning every level...",
+            self._dialog,
+            determinate=True,
+            on_cancel=lambda: self._rebuild_thread.request_cancel(),
+        )
+        self._rebuild_busy.show()
+        QApplication.processEvents()
+        self._rebuild_thread = OrgGuideThread(session.org, self._simulator)
+        self._rebuild_thread.progress.connect(self._rebuild_busy.set_progress)
+        self._rebuild_thread.built.connect(self._on_rebuilt)
+        self._rebuild_thread.cancelled.connect(self._on_rebuild_cancelled)
+        self._rebuild_thread.finished.connect(self._rebuild_thread.deleteLater)
+        self._rebuild_thread.start()
+
+    def _on_rebuilt(self, guide) -> None:
+        self._rebuild_busy.close()
+        self._dialog.set_fixed_guide(guide)
+
+    def _on_rebuild_cancelled(self) -> None:
+        """A cancelled replan: the guide's contents are stale, so close it."""
+        self._rebuild_busy.close()
+        self._dialog.close()

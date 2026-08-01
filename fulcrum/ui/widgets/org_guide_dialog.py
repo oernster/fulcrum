@@ -193,6 +193,19 @@ class OrgGuideDialog(NeutralDialog):
         """
         self._toggle.setChecked(False)
 
+    def set_fixed_guide(self, guide: OrgGuide) -> None:
+        """Receive the rebuilt fixed guide after a played move.
+
+        The position changed, so any grown guide is stale; drop back to
+        the fixed view and let the toggle re-request a fresh one lazily.
+        """
+        self._guide = guide
+        self._growth_guide = None
+        if self._toggle.isChecked():
+            self._toggle.setChecked(False)
+        else:
+            self._render_current()
+
     def _grown_active(self) -> bool:
         return self._toggle.isChecked() and self._growth_guide is not None
 
@@ -322,17 +335,10 @@ class OrgGuideDialog(NeutralDialog):
             step.org_before, None, valuation, self._simulator, step.org_before, self
         )
         if dialog.exec() and self._on_play is not None:
-            fixed = self._on_play(step.move, node.frame_id)
-            if fixed is not None:
-                self._guide = fixed
-                # The position changed, so any grown guide is stale; drop
-                # back to the fixed view and let the toggle re-request a
-                # fresh one lazily.
-                self._growth_guide = None
-                if self._toggle.isChecked():
-                    self._toggle.setChecked(False)
-                else:
-                    self._render_current()
+            # The play callback rebuilds the fixed guide off-thread behind
+            # its own cancellable bar and delivers it to set_fixed_guide;
+            # the stale view stands until the fresh one lands.
+            self._on_play(step.move, node.frame_id)
 
     # ------------------------------------------------------------- keyboard
 
