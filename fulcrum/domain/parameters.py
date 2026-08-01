@@ -45,6 +45,14 @@ class SimulationParameters:
     pushes its endpoints toward the cannot-decide-cleanly share, scaled by
     the prince factor. Two founders across a desk stay cheap; a roofless
     sovereign network at scale does not.
+
+    dependent_demand_weight routes demand along dependencies: each team
+    waiting on an upstream lands this fraction of the frame's workload on
+    the upstream's queue. Authority is irrelevant here: an empowered hub
+    that thirty teams wait on saturates exactly as a deciding centre does,
+    so dependency concentration prices itself the way authority
+    concentration already did. Distributed fan-out stays free while the
+    upstream's capacity absorbs it; the cost begins where the queue does.
     """
 
     base_capacity: float = 12.0
@@ -69,6 +77,7 @@ class SimulationParameters:
     prince_survivor_ceiling: float = 1.6
     escalation_load_share: float = 0.25
     unowned_interface_weight: float = 0.5
+    dependent_demand_weight: float = 0.15
 
     def __post_init__(self) -> None:
         if self.base_capacity <= _ZERO:
@@ -125,6 +134,13 @@ class SimulationParameters:
             raise InvalidOrgStateError("escalation_load_share must be in [0, 1]")
         if self.unowned_interface_weight < _ZERO:
             raise InvalidOrgStateError("unowned_interface_weight must not be negative")
+        # Waiting on a supplier may never cost more than resolving through
+        # an authority: a dependency is a lighter claim on the upstream
+        # than an escalation line, and the ordering keeps that meaning.
+        if not _ZERO <= self.dependent_demand_weight <= self.escalation_load_share:
+            raise InvalidOrgStateError(
+                "dependent_demand_weight must be in [0, escalation_load_share]"
+            )
 
 
 DEFAULT_PARAMETERS = SimulationParameters()

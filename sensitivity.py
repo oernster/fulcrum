@@ -113,6 +113,7 @@ INDEPENDENT_COEFFICIENTS = (
     "prince_survivor_ceiling",
     "escalation_load_share",
     "unowned_interface_weight",
+    "dependent_demand_weight",
 )
 
 # A perturbed survivor ceiling must keep escalation capacity strictly

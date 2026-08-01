@@ -17,7 +17,14 @@ from fulcrum.domain.simulation import SimulationParameters
 # with amplification 0 makes the prince factor 1 at every scale, so these
 # carefully balanced dilution scenarios hold at any fixture headcount. The
 # scale rule itself is covered by the prince-band conformance suite.
-_FLAT_PRINCE = SimulationParameters(prince_attenuation=1.0, prince_amplification=0.0)
+# Composition semantics are under test here, not pricing: flatten the
+# prince band and switch off routed dependent demand so the hand-built
+# fixtures keep the dilution dynamics the guard logic is probed with.
+_FLAT_PRINCE = SimulationParameters(
+    prince_attenuation=1.0,
+    prince_amplification=0.0,
+    dependent_demand_weight=0.0,
+)
 _SIM = DeterministicSimulator(params=_FLAT_PRINCE)
 
 # One more troubled team than the planner's max_steps can repair, so the

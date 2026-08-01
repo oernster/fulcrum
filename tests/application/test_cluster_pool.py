@@ -28,6 +28,7 @@ from fulcrum.application.dto import (
     OrgBlueprint,
     TeamSpec,
 )
+from fulcrum.application.game_session import enumerate_moves
 from fulcrum.application.intake import build_org_state
 from fulcrum.application.simulator import DeterministicSimulator
 from fulcrum.domain.models import (
@@ -112,11 +113,18 @@ def test_has_great_move_false_for_healthy_org():
     assert has_great_move(_healthy(), DeterministicSimulator()) is False
 
 
-def test_reaches_a_great_move_after_setup_moves():
+def test_enterprise_offers_good_repairs_but_no_knife_edge_great():
+    # Before dependent demand was priced, this archetype's greedy path
+    # opened a knife-edge great (+9.09 against the 9.0 threshold). Honest
+    # hub pricing shaves that collapse below the line: the path still finds
+    # genuinely good repairs, and the great-move guarantee belongs to the
+    # generated levels, which build_cluster_pool rejection-samples for.
     org = _enterprise()
     sim = DeterministicSimulator()
     assert not has_great_move(org, sim)
-    assert reaches_great_move(org, sim)
+    assert not reaches_great_move(org, sim)
+    valuations = sim.valuate_moves(org, enumerate_moves(org))
+    assert any(v.classification == MoveClassification.GOOD for v in valuations)
 
 
 def test_no_great_move_reachable_without_lookahead():

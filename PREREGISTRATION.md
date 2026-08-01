@@ -23,7 +23,10 @@ published in `fulcrum/domain/parameters.py`, at the release tag named in the
 registry deposit, which must be the 4.0.0 release or later. That model
 includes the scale-dependent authority pricing introduced in 4.0.0: the
 prince band, resolution neighbourhoods with escalation load, unowned
-interfaces and the proportional influence and claim divisors, together with
+interfaces, routed dependent demand (each team waiting on an upstream lands
+`dependent_demand_weight` of the frame's workload on the upstream's queue,
+so dependency concentration prices itself as authority concentration does)
+and the proportional influence and claim divisors, together with
 the conformance suites (`tests/domain/test_authority_scale.py`, claims C1 to
 C10, and `tests/domain/test_resolution_conformance.py`, claims C11 to C17)
 that pin its behaviour. Any change to a coefficient or to the scoring

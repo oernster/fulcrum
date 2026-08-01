@@ -225,11 +225,20 @@ def team_arrivals(
     inflow is the escalated load landing on this team's queue from the
     teams that resolve through it (scale_context); None computes it from
     the org, and callers scoring many teams pass the context's value.
+
+    Demand also travels along dependencies: every team waiting on this one
+    lands dependent_demand_weight of the frame's workload on its queue,
+    authority notwithstanding. An empowered hub that dozens of teams wait
+    on saturates exactly as a deciding centre does; a light fan-out stays
+    free while capacity absorbs it, so the cost begins where the queue
+    does (Little's law, and LatencyLab's serial-queue placement result).
     """
     if inflow is None:
         inflow = scale_context(org, params).inflow.get(team.id, _ZERO)
     delay = incoming_delay(org, team.id, index)
-    return org.workload * (_UNIT + params.delay_arrival_weight * delay) + inflow
+    demand = params.dependent_demand_weight * depended_upon(org, team.id, index)
+    arrivals = org.workload * (_UNIT + params.delay_arrival_weight * delay + demand)
+    return arrivals + inflow
 
 
 def team_imbalance(

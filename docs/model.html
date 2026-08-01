@@ -99,6 +99,12 @@
               <td>Engineering judgement (a centre saturates at roughly a dozen escalation lines at typical workloads)</td>
             </tr>
             <tr>
+              <td><code>dependent_demand_weight</code> = 0.15</td>
+              <td>Routes demand along dependencies. Each team waiting on an upstream lands this fraction of the frame's workload on the upstream's queue, authority notwithstanding: an empowered hub that thirty teams wait on saturates exactly as a deciding centre does. A light fan-out stays free while the upstream's capacity absorbs it, so the cost begins where the queue does.</td>
+              <td>Little's law (the shared upstream is a server and its wait grows with demand); LatencyLab's placement result (the singularity is a queue and it prices itself), applied to dependency concentration as it already was to authority concentration</td>
+              <td>Engineering judgement; held at or below <code>escalation_load_share</code> (enforced in code), since waiting on a supplier may never cost more than resolving through an authority</td>
+            </tr>
+            <tr>
               <td><code>unowned_interface_weight</code> = 0.5</td>
               <td>Prices fragmentation. A dependency between two clean sovereigns that share no enclosing domain has no institutional roof under which its conflicts can be arbitrated, so each such edge pushes its endpoints toward the cannot-decide-cleanly share, scaled by the prince factor: two founders across a desk stay near-free while a roofless sovereign network at scale is priced. Any shared unit counts as a roof, which is a modelling claim the declared structure makes.</td>
               <td>Machiavelli's <i>Discourses</i> (the republic is institutionalised: a senate, not merely distributed sovereignty); <i>Decision Architecture</i> (fragmentation: decisions made locally but conflicting globally)</td>
@@ -361,11 +367,11 @@
             <tr><th>Archetype</th><th>Typical</th><th>Well-designed</th></tr>
           </thead>
           <tbody>
-            <tr><td>Startup</td><td>84.7</td><td>98.7</td></tr>
-            <tr><td>Scale-up</td><td>46.5</td><td>91.0</td></tr>
-            <tr><td>Enterprise</td><td>19.4</td><td>78.7</td></tr>
-            <tr><td>Very large</td><td>15.4</td><td>68.8</td></tr>
-            <tr><td>Conglomerate</td><td>12.2</td><td>66.4</td></tr>
+            <tr><td>Startup</td><td>83.4</td><td>98.7</td></tr>
+            <tr><td>Scale-up</td><td>44.9</td><td>88.9</td></tr>
+            <tr><td>Enterprise</td><td>18.8</td><td>75.9</td></tr>
+            <tr><td>Very large</td><td>15.1</td><td>66.8</td></tr>
+            <tr><td>Conglomerate</td><td>12.0</td><td>64.9</td></tr>
           </tbody>
         </table>
       </div>

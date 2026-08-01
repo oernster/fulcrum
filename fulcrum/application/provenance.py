@@ -152,6 +152,25 @@ def _capacity_entries(p: SimulationParameters) -> tuple[ProvenanceEntry, ...]:
             "escalation lines at typical workloads.",
         ),
         ProvenanceEntry(
+            f"dependent_demand_weight = {p.dependent_demand_weight}",
+            "Routes demand along dependencies: each team waiting on an "
+            "upstream lands this fraction of the frame's workload on the "
+            "upstream's queue, authority notwithstanding. An empowered "
+            "hub that thirty teams wait on saturates exactly as a "
+            "deciding centre does; a light fan-out stays free while "
+            "capacity absorbs it, so the cost begins where the queue "
+            "does.",
+            "Little's law (the shared upstream is a server and its wait "
+            "grows with demand); LatencyLab's placement result: the "
+            "singularity is a queue and it prices itself, for dependency "
+            "concentration as it already did for authority "
+            "concentration.",
+            "Engineering judgement; held at or below "
+            "escalation_load_share (enforced in code), since waiting on "
+            "a supplier may never cost more than resolving through an "
+            "authority.",
+        ),
+        ProvenanceEntry(
             f"unowned_interface_weight = {p.unowned_interface_weight}",
             "Prices fragmentation: a dependency between two clean "
             "sovereigns sharing no enclosing domain has no roof under "
