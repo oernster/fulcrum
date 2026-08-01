@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Callable
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
 from concurrent.futures.process import BrokenProcessPool
 from typing import Self
 
@@ -28,7 +28,7 @@ from fulcrum.application.game_session import MAX_PLAYABLE_TEAMS
 from fulcrum.application.interfaces import Simulator
 from fulcrum.application.org_guide import ProgressCallback, build_org_guide
 from fulcrum.application.org_guide_model import OrgGuide
-from fulcrum.application.planner import CancelledCheck
+from fulcrum.application.planner import CancelledCheck, ensure_live
 from fulcrum.domain.errors import FulcrumError
 from fulcrum.domain.models import OrgState
 from fulcrum.domain.moves import Move, apply_move
@@ -43,6 +43,12 @@ _MOVES_PER_TASK = 16
 _UI_RESERVED_CORES = 1
 # Below this many workers the pool's spawn cost outweighs its parallelism.
 _MIN_WORKERS = 2
+
+# While gathering results the pool waits in slices this long, checking
+# for cancellation between them, so a cancel request is honoured within
+# one slice even when the workers are still spawning and nothing has
+# completed yet.
+_CANCEL_POLL_S = 0.25
 
 
 def _replay_without(
@@ -102,10 +108,14 @@ class GuideWorkers:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
-        # Queued tasks are cancelled so an abandoned build (a cancelled
-        # guide, an error) releases the pool after only the in-flight
-        # chunks finish, not the whole remaining pass.
-        self._pool.shutdown(cancel_futures=True)
+        # Never wait: queued tasks are cancelled and the workers drain in
+        # the background. Waiting here made cancellation hang for as long
+        # as the slowest worker took to finish SPAWNING (each child
+        # re-imports the application, Qt included), which read as a
+        # frozen Cancelling button. A completed build has nothing left
+        # in flight, so not waiting costs it nothing; abandoned workers
+        # finish their current chunk, find the pool closed and exit.
+        self._pool.shutdown(wait=False, cancel_futures=True)
 
     def price_lines(
         self,
@@ -114,6 +124,7 @@ class GuideWorkers:
         full: float,
         line_moves: tuple[tuple[Move, ...], ...],
         progress: Callable[[], None] | None,
+        cancelled: CancelledCheck | None = None,
     ) -> tuple[float, ...]:
         spans = _spans(len(line_moves), _LINES_PER_TASK)
         try:
@@ -125,12 +136,14 @@ class GuideWorkers:
                     for position, (start, stop) in enumerate(spans)
                 },
                 None if progress is None else lambda chunk: _each(progress, chunk),
+                cancelled,
             )
         except BrokenProcessPool:
             # Degrade in-process; a tick may repeat for a line the pool
             # already reported, which the bar's monotone clamp absorbs.
             chunks = []
             for start, stop in spans:
+                ensure_live(cancelled)
                 chunks.append(
                     _price_chunk(simulator, org, full, line_moves, start, stop)
                 )
@@ -144,6 +157,7 @@ class GuideWorkers:
         org: OrgState,
         moves: tuple[Move, ...],
         progress: Callable[[int], None] | None,
+        cancelled: CancelledCheck | None = None,
     ) -> tuple[MoveValuation, ...]:
         spans = _spans(len(moves), _MOVES_PER_TASK)
         try:
@@ -155,21 +169,34 @@ class GuideWorkers:
                     for position, (start, stop) in enumerate(spans)
                 },
                 None if progress is None else lambda chunk: progress(len(chunk)),
+                cancelled,
             )
         except BrokenProcessPool:
+            ensure_live(cancelled)
             chunks = [_valuate_chunk(simulator, org, moves)]
             if progress is not None:
                 progress(len(moves))
         return tuple(valuation for chunk in chunks for valuation in chunk)
 
-    def _gather(self, futures, report):
-        """Chunk results in submission order, whatever order they finish."""
+    def _gather(self, futures, report, cancelled):
+        """Chunk results in submission order, whatever order they finish.
+
+        Waits in short slices, checking for cancellation between them, so
+        a cancel request is honoured within a slice even while workers
+        are still spawning and no chunk has completed yet.
+        """
         chunks = [()] * len(futures)
-        for future in as_completed(futures):
-            chunk = future.result()
-            chunks[futures[future]] = chunk
-            if report is not None:
-                report(chunk)
+        pending = set(futures)
+        while pending:
+            ensure_live(cancelled)
+            done, pending = wait(
+                pending, timeout=_CANCEL_POLL_S, return_when=FIRST_COMPLETED
+            )
+            for future in done:
+                chunk = future.result()
+                chunks[futures[future]] = chunk
+                if report is not None:
+                    report(chunk)
         return chunks
 
 

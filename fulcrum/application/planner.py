@@ -145,7 +145,9 @@ class ImprovementPlanner:
         cancelled: CancelledCheck | None = None,
     ):
         if workers is not None:
-            return workers.valuate_moves(self.simulator, org, moves, progress)
+            return workers.valuate_moves(
+                self.simulator, org, moves, progress, cancelled
+            )
         if progress is None and cancelled is None:
             return self.simulator.valuate_moves(org, moves)
         valuations = []

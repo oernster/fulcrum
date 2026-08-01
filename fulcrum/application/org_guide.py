@@ -217,7 +217,12 @@ class _Builder:
             )
         nodes = nodes + tuple(self._unit_node(d) for d in roots)
         nodes, composed = guard_leaf_lines(
-            self._org, self._simulator, nodes, self._pulse, self._workers
+            self._org,
+            self._simulator,
+            nodes,
+            self._pulse,
+            self._workers,
+            self._cancelled,
         )
         flat_after = self._simulator.score(composed).value
         if self._grown:
@@ -228,6 +233,7 @@ class _Builder:
                 flat_after,
                 self._tick,
                 self._workers,
+                self._cancelled,
             )
             if node is not None:
                 nodes = nodes + (node,)

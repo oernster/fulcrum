@@ -21,7 +21,7 @@ from dataclasses import replace
 
 from fulcrum.application.interfaces import GuideWorkerPool, Simulator
 from fulcrum.application.org_guide_model import GuideNode, OrgGuide
-from fulcrum.application.planner import Guide
+from fulcrum.application.planner import CancelledCheck, Guide
 from fulcrum.domain.errors import FulcrumError
 from fulcrum.domain.models import OrgState
 from fulcrum.domain.moves import apply_move
@@ -65,6 +65,7 @@ def guard_leaf_lines(
     nodes: tuple[GuideNode, ...],
     progress: Callable[[], None] | None = None,
     workers: GuideWorkerPool | None = None,
+    cancelled: CancelledCheck | None = None,
 ) -> tuple[tuple[GuideNode, ...], OrgState]:
     """Drop net-harmful leaf lines; return the marked tree and composed org.
 
@@ -85,7 +86,9 @@ def guard_leaf_lines(
         lines = tuple(n for n in tree.leaf_nodes() if n.composes and n.guide.steps)
         composed = compose_leaf_lines(org, tree)
         full = simulator.score(composed).value
-        marginals = _price_all(org, simulator, full, lines, progress, workers)
+        marginals = _price_all(
+            org, simulator, full, lines, progress, workers, cancelled
+        )
         worst: GuideNode | None = None
         worst_marginal = _NO_COST
         for line, marginal in zip(lines, marginals):
@@ -103,18 +106,23 @@ def _price_all(
     lines: tuple[GuideNode, ...],
     progress: Callable[[], None] | None,
     workers: GuideWorkerPool | None,
+    cancelled: CancelledCheck | None,
 ) -> tuple[float, ...]:
     """Every line's marginal price, in line order.
 
     The pool path ships each line as its moves alone (a guide's steps
     carry org snapshots that would dwarf the payload) and prices exactly
-    what the serial loop prices, so the values are identical either way.
+    what the serial loop prices, so the values are identical either way;
+    it also receives the cancelled check, so a cancellation lands even
+    while every worker is busy or still spawning.
     """
     if workers is not None:
         line_moves = tuple(
             tuple(step.move for step in line.guide.steps) for line in lines
         )
-        return workers.price_lines(simulator, org, full, line_moves, progress)
+        return workers.price_lines(
+            simulator, org, full, line_moves, progress, cancelled
+        )
     marginals = []
     for line in lines:
         marginals.append(full - simulator.score(_without(org, lines, line)).value)

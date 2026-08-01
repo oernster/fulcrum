@@ -17,7 +17,7 @@ from collections.abc import Callable
 from fulcrum.application.game_session import MAX_PLAYABLE_TEAMS, enumerate_moves
 from fulcrum.application.interfaces import GuideWorkerPool, Simulator
 from fulcrum.application.org_guide_model import GROWTH_FRAME_LABEL, GuideNode
-from fulcrum.application.planner import ImprovementPlanner
+from fulcrum.application.planner import CancelledCheck, ImprovementPlanner
 from fulcrum.domain.models import OrgState
 from fulcrum.domain.moves import Move, MoveKind
 from fulcrum.domain.simulation import coupling_of
@@ -90,6 +90,7 @@ def plan_growth_node(
     composed_score: float,
     tick: Ticker,
     workers: GuideWorkerPool | None = None,
+    cancelled: CancelledCheck | None = None,
 ) -> tuple[GuideNode | None, float]:
     """The whole-org growth line, or None when growth gains nothing.
 
@@ -113,7 +114,7 @@ def plan_growth_node(
     # half-second whole-org scores; the planner pulses through them
     # against the reserve declared at build start. Growth usually
     # stops early, and the final snap closes the shortfall.
-    guide = planner.plan(composed, GROWTH_MOVE_KINDS, keep, tick, workers)
+    guide = planner.plan(composed, GROWTH_MOVE_KINDS, keep, tick, workers, cancelled)
     tick(1)
     if not guide.steps:
         return None, composed_score

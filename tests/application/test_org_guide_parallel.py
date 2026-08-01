@@ -150,7 +150,7 @@ class _RecordingPool:
     def __init__(self):
         self.valuations = 0
 
-    def valuate_moves(self, simulator, org, moves, progress):
+    def valuate_moves(self, simulator, org, moves, progress, cancelled=None):
         self.valuations += 1
         result = simulator.valuate_moves(org, moves)
         if progress is not None:

@@ -37,7 +37,9 @@ class GuideWorkerPool(Protocol):
     An implementation must be bit-identical to the serial loop it stands
     in for: the same values in the same order, with only the wall-clock
     differing, so the guide's published numbers never depend on whether
-    a pool was available.
+    a pool was available. cancelled, when given, is consulted while
+    waiting on workers, so a cancellation request is honoured promptly
+    even before any task has completed.
     """
 
     def price_lines(
@@ -47,6 +49,7 @@ class GuideWorkerPool(Protocol):
         full: float,
         line_moves: tuple[tuple[Move, ...], ...],
         progress: Callable[[], None] | None,
+        cancelled: Callable[[], bool] | None = None,
     ) -> tuple[float, ...]: ...
 
     def valuate_moves(
@@ -55,6 +58,7 @@ class GuideWorkerPool(Protocol):
         org: OrgState,
         moves: tuple[Move, ...],
         progress: Callable[[int], None] | None,
+        cancelled: Callable[[], bool] | None = None,
     ) -> tuple[MoveValuation, ...]: ...
 
 
