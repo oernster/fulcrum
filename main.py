@@ -67,8 +67,10 @@ def main() -> int:
     )
     if icon is not None:
         window.setWindowIcon(icon)
+    # The sized, centred geometry is what un-maximising restores to; the
+    # app itself opens maximised so the side panel never truncates.
     _size_window(window, avail)
-    window.show()
+    window.showMaximized()
     return app.exec()
 
 
