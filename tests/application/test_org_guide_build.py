@@ -6,15 +6,17 @@ guard pricing, growth valuations) and how the whole-org growth row is
 planned; the guide's tree shape stays in test_org_guide.
 """
 
+from itertools import pairwise
+
 import pytest
 
 from fulcrum.application.game_session import MAX_PLAYABLE_TEAMS
 from fulcrum.application.org_guide import (
-    GROWTH_FRAME_LABEL,
     LOOSE_TEAMS_LABEL,
     _Builder,
     build_org_guide,
 )
+from fulcrum.application.org_guide_model import GROWTH_FRAME_LABEL
 from fulcrum.application.simulator import DeterministicSimulator
 from fulcrum.domain.hierarchy import TOP_LEVEL_FOCUS
 from fulcrum.domain.models import Dependency, Domain, OrgState, Team
@@ -79,6 +81,15 @@ def _mixed_org():
     )
 
 
+def _assert_monotone_and_closed(seen):
+    """The bar fills once: the fraction never decreases, no report before
+    the last is full and the final snap closes the bar."""
+    fractions = [done / total for done, total in seen]
+    assert all(later >= earlier for earlier, later in pairwise(fractions))
+    assert all(done < total for done, total in seen[:-1])
+    assert seen[-1][0] == seen[-1][1]
+
+
 def test_progress_reports_every_phase_and_ends_complete():
     seen = []
     build_org_guide(
@@ -87,15 +98,11 @@ def test_progress_reports_every_phase_and_ends_complete():
         progress=lambda done, total: seen.append((done, total)),
     )
     # Work units cover sections AND the guard's line pricing, so the bar
-    # moves for the whole build: done is monotone, every report stays
-    # within its declared total and the final snap closes the bar.
-    dones = [done for done, _ in seen]
-    assert dones == sorted(dones)
-    assert all(done <= total for done, total in seen)
-    assert seen[0][1] >= 4  # Platform, Product, Web, Mobile at least.
-    assert seen[-1][0] == seen[-1][1]
-    # Sections tick first; the guard extends the total once lines exist.
-    assert seen[-1][1] > 4
+    # moves for the whole build. The total is declared once, up front:
+    # four sections (Platform, Product, Web, Mobile) plus a guard reserve
+    # of one unit per leaf row (Platform, Web, Mobile).
+    assert seen[0] == (1, 7)
+    _assert_monotone_and_closed(seen)
 
 
 def test_growth_flag_is_carried_on_the_result():
@@ -240,13 +247,13 @@ def test_progress_counts_the_growth_pass_when_growing():
         allow_growth=True,
         progress=lambda done, total: seen.append((done, total)),
     )
-    # Four sections plus the whole-org growth pass, whose candidate
-    # valuations extend the total so the bar lives through the planning.
-    assert seen[0] == (1, 5)
-    dones = [done for done, _ in seen]
-    assert dones == sorted(dones)
-    assert all(done <= total for done, total in seen)
-    assert seen[-1][0] == seen[-1][1]
+    # The up-front total now also carries the growth reserve (candidate
+    # valuations per planning step plus the closing tick), so the bar
+    # lives through the whole-org growth pass without ever refilling.
+    fixed_total = 7  # Four sections plus the three-leaf guard reserve.
+    assert seen[0][0] == 1
+    assert seen[0][1] > fixed_total
+    _assert_monotone_and_closed(seen)
 
 
 def test_progress_counts_direct_and_loose_rows():
@@ -254,22 +261,39 @@ def test_progress_counts_direct_and_loose_rows():
     build_org_guide(
         _mixed_org(), _SIM, progress=lambda done, total: seen.append((done, total))
     )
-    # Loose row, Mixed, its direct row, Sub: four sections tick first,
-    # then the guard's line pricing carries the bar to a closed total.
-    assert seen[0] == (1, 4)
+    # Loose row, Mixed, its direct row, Sub: four sections tick first
+    # against a total that already reserves the guard's three leaf rows
+    # (loose, direct, Sub), then the pricing carries the bar to the snap.
+    assert seen[0] == (1, 7)
     assert seen[3][0] == 4
-    assert seen[-1][0] == seen[-1][1]
+    _assert_monotone_and_closed(seen)
 
 
-def test_progress_total_follows_an_overrunning_phase():
-    # An open-ended phase (an extra guard pass, growth past its estimate)
-    # can tick beyond the declared total; the total follows so the bar
-    # keeps moving instead of pinning full.
+def test_progress_holds_short_of_full_through_an_overrunning_phase():
+    # An open-ended phase (an extra guard pass, growth past its reserve)
+    # can tick beyond the declared total: the report clamps just short of
+    # full instead of growing the total, so the bar never refills, and
+    # the finishing snap closes it.
     seen = []
     builder = _Builder(
         _flat_org(), _SIM, False, lambda done, total: seen.append((done, total))
     )
-    builder._extend(1)
+    builder._total = 2
     builder._tick()
     builder._tick()
-    assert seen[-1] == (2, 2)
+    builder._tick()
+    assert seen == [(1, 2), (1, 2), (1, 2)]
+    builder._finish()
+    assert seen[-1] == (3, 3)
+
+
+def test_progress_on_a_flat_org_closes_with_the_finishing_snap():
+    # A flat org is one section: the single tick reports short of full
+    # (the build is not finished when its section is) and the snap closes.
+    seen = []
+    build_org_guide(
+        _flat_org(), _SIM, progress=lambda done, total: seen.append((done, total))
+    )
+    assert seen[0] == (0, 1)
+    assert seen[-1] == (1, 1)
+    _assert_monotone_and_closed(seen)

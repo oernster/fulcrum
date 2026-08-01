@@ -37,15 +37,19 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from fulcrum.application.game_session import MAX_PLAYABLE_TEAMS, enumerate_moves
+from fulcrum.application.game_session import MAX_PLAYABLE_TEAMS
 from fulcrum.application.interfaces import Simulator
 from fulcrum.application.org_guide_compose import (
     compose_leaf_lines,
     guard_leaf_lines,
     replay_line,
 )
+from fulcrum.application.org_guide_growth import (
+    GROWTH_MOVE_KINDS,
+    growth_reserve,
+    plan_growth_node,
+)
 from fulcrum.application.org_guide_model import (
-    GROWTH_FRAME_LABEL,
     LOOSE_TEAMS_FRAME,
     LOOSE_TEAMS_LABEL,
     WHOLE_ORG_LABEL,
@@ -64,38 +68,19 @@ from fulcrum.domain.hierarchy import (
     has_direct_teams,
 )
 from fulcrum.domain.models import Domain, OrgState
-from fulcrum.domain.moves import Move, MoveKind
-from fulcrum.domain.simulation import coupling_of
+from fulcrum.domain.moves import Move
 
-_GROWTH_MOVE_KINDS = (MoveKind.SPLIT_TEAM, MoveKind.ADD_TEAM)
 _EMPTY_SCORE = 0.0
-
-# Past the live-planning size the whole-org growth line is planned over
-# the most coupled teams only (growth pays where the edges live) and with
-# fewer greedy steps, so the line stays live at any organisation size.
-_GROWTH_SHORTLIST_TEAMS = 100
-_GROWTH_LINE_MAX_STEPS = 4
-
-
-def _growth_shortlist(org: OrgState) -> frozenset[str]:
-    """The ids of the most coupled teams, the candidates growth considers.
-
-    Sorted by coupling with the team id as a deterministic tiebreak, so
-    the same organisation always yields the same shortlist.
-    """
-    ranked = sorted(
-        org.teams,
-        key=lambda team: (-coupling_of(org, team.id), team.id),
-    )
-    return frozenset(team.id for team in ranked[:_GROWTH_SHORTLIST_TEAMS])
 
 
 # A progress callback receives (work done, total work). Work units cover
 # every long phase: one per section planned, one per line the composition
 # guard prices and one per candidate a whole-org growth step valuates, so
 # the bar moves for the whole build, not only while sections plan. The
-# total is dynamic: open-ended phases extend it and the end of the build
-# snaps it closed.
+# total is declared once, up front, from reserves that bound the open-ended
+# phases, so the reported fraction never decreases: a phase that overruns
+# its reserve holds the bar just short of full instead of growing the
+# total, and only the final snap reports complete.
 ProgressCallback = Callable[[int, int], None]
 
 
@@ -128,6 +113,24 @@ def _count_sections(org: OrgState, parent_id: str | None) -> int:
     return total
 
 
+def _count_leaf_frames(org: OrgState, parent_id: str | None) -> int:
+    """How many leaf rows the tree will hold, before any is planned.
+
+    An upper bound on the lines the composition guard prices (a line must
+    also compose and hold steps), so it serves as the guard's progress
+    reserve: known before planning starts, never undershooting one pass.
+    """
+    total = 0
+    for domain in _plannable_domains(org, parent_id):
+        if _is_leaf_frame(org, domain):
+            total += 1
+        else:
+            total += _count_leaf_frames(org, domain.id)
+            if _needs_direct_row(org, domain):
+                total += 1
+    return total
+
+
 def build_org_guide(
     org: OrgState,
     simulator: Simulator,
@@ -157,6 +160,7 @@ class _Builder:
         self._grown = allow_growth
         self._done = 0
         self._total = 0
+        self._finished = False
         self._flat_before = 0.0
 
     def build(self) -> OrgGuide:
@@ -173,89 +177,40 @@ class _Builder:
                 self._org, OrgGuide(nodes, 0.0, 0.0, self._grown)
             )
             flat_after = self._simulator.score(composed).value
+            self._finish()
             return OrgGuide(nodes, self._flat_before, flat_after, self._grown)
-        extra = 1 if self._grown else 0
+        # The whole build's total, declared before any work: the exact
+        # section count, a guard reserve (the guard prices every composing
+        # leaf line against the whole org, most of the build on a large
+        # organisation, bounded by the leaf-row count) and a growth reserve
+        # estimated from the original organisation. A single up-front total
+        # is what keeps the bar monotone: extending it mid-build would drop
+        # the reported fraction back after it had climbed.
         loose = 1 if has_direct_teams(self._org, None) else 0
-        self._total = loose + _count_sections(self._org, None) + extra
+        sections = loose + _count_sections(self._org, None)
+        guard_reserve = loose + _count_leaf_frames(self._org, None)
+        growth = (
+            growth_reserve(self._simulator, self._full, self._org) if self._grown else 0
+        )
+        self._total = sections + guard_reserve + growth
         nodes: tuple[GuideNode, ...] = ()
         if loose:
             nodes = nodes + (
                 self._direct_node(None, LOOSE_TEAMS_LABEL, LOOSE_TEAMS_FRAME),
             )
         nodes = nodes + tuple(self._unit_node(d) for d in roots)
-        # The guard prices every composing line against the whole org: on
-        # a large organisation that is most of the build, so it joins the
-        # progress total (one unit per line priced; an extra guard pass
-        # overruns and the total follows).
-        pending = OrgGuide(nodes, _EMPTY_SCORE, _EMPTY_SCORE, False)
-        self._extend(
-            sum(1 for n in pending.leaf_nodes() if n.composes and n.guide.steps)
-        )
         nodes, composed = guard_leaf_lines(
             self._org, self._simulator, nodes, self._pulse
         )
         flat_after = self._simulator.score(composed).value
         if self._grown:
-            growth, flat_after = self._growth_node(composed, flat_after)
-            if growth is not None:
-                nodes = nodes + (growth,)
+            node, flat_after = plan_growth_node(
+                self._simulator, self._full, composed, flat_after, self._tick
+            )
+            if node is not None:
+                nodes = nodes + (node,)
         self._finish()
         return OrgGuide(nodes, self._flat_before, flat_after, self._grown)
-
-    def _growth_node(
-        self, composed: OrgState, composed_score: float
-    ) -> tuple[GuideNode | None, float]:
-        """The whole-org growth line, or None when growth gains nothing.
-
-        Planned from the composed position so every remaining edge is
-        visible; returns the node plus the headline including its climb.
-        Past the live-planning size the line is still planned, over the
-        most coupled teams only (growth pays where the edges live) and
-        with fewer steps, and the node carries that scope so the guide
-        states it honestly.
-        """
-        shortlist: frozenset[str] | None = None
-        planner = self._full
-        keep: Callable[[Move], bool] | None = None
-        if len(composed.teams) > MAX_PLAYABLE_TEAMS:
-            shortlist = _growth_shortlist(composed)
-            planner = ImprovementPlanner(
-                self._simulator,
-                allow_growth=True,
-                max_steps=_GROWTH_LINE_MAX_STEPS,
-            )
-            shortlisted = shortlist
-
-            def keep_shortlisted(move: Move) -> bool:
-                return shortlisted.issuperset(move.targets)
-
-            keep = keep_shortlisted
-        # A whole-org growth step valuates hundreds of candidates at
-        # half-second whole-org scores, so the estimated valuations join
-        # the total and the planner pulses through them; growth usually
-        # stops early, and the final snap closes the overshoot.
-        candidates = [
-            m
-            for m in enumerate_moves(composed, allow_growth=True)
-            if m.kind in _GROWTH_MOVE_KINDS and (keep is None or keep(m))
-        ]
-        self._extend(len(candidates) * planner.max_steps)
-        guide = planner.plan(composed, _GROWTH_MOVE_KINDS, keep, self._tick)
-        self._tick()
-        if not guide.steps:
-            return None, composed_score
-        node = GuideNode(
-            frame_id=None,
-            label=GROWTH_FRAME_LABEL,
-            category="",
-            is_leaf=True,
-            playable=True,
-            guide=guide,
-            org_delta=guide.final_score - guide.start_score,
-            grown_line=True,
-            growth_shortlist=0 if shortlist is None else len(shortlist),
-        )
-        return node, guide.final_score
 
     def _org_delta(self, guide: Guide) -> float:
         """A leaf line's worth in whole-org points, applied alone."""
@@ -264,27 +219,25 @@ class _Builder:
 
     def _tick(self, count: int = 1) -> None:
         self._done += count
-        if self._done > self._total:
-            # An open-ended phase (an extra guard pass, a growth step
-            # beyond the estimate) overran the declared total: the total
-            # follows, so the bar keeps moving instead of pinning full.
-            self._total = self._done
         self._report()
 
     def _pulse(self) -> None:
         self._tick()
 
-    def _extend(self, count: int) -> None:
-        self._total += count
-        self._report()
-
     def _finish(self) -> None:
+        self._finished = True
         self._total = self._done
         self._report()
 
     def _report(self) -> None:
-        if self._progress is not None:
-            self._progress(self._done, self._total)
+        if self._progress is None:
+            return
+        # The reported fraction is monotone: work is clamped just short
+        # of the declared total until the build finishes, so a phase that
+        # overruns its reserve holds the bar steady instead of refilling
+        # it, and only the final snap reports complete.
+        done = self._done if self._finished else min(self._done, self._total - 1)
+        self._progress(done, self._total)
 
     def _plan(self, section: OrgState, aggregate: bool) -> tuple[bool, Guide]:
         if len(section.teams) > MAX_PLAYABLE_TEAMS:
@@ -299,7 +252,7 @@ class _Builder:
             # unit nodes are synthetic and cannot grow as one act.
             guide = self._full.plan(
                 section,
-                AGGREGATE_MOVE_KINDS + _GROWTH_MOVE_KINDS,
+                AGGREGATE_MOVE_KINDS + GROWTH_MOVE_KINDS,
                 self._real_growth_only,
             )
         else:
@@ -309,7 +262,7 @@ class _Builder:
 
     def _real_growth_only(self, move: Move) -> bool:
         """Keep a growth move only when every target is a real team."""
-        if move.kind not in _GROWTH_MOVE_KINDS:
+        if move.kind not in GROWTH_MOVE_KINDS:
             return True
         return all(self._org.has_team(target) for target in move.targets)
 

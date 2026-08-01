@@ -20,8 +20,9 @@ class OrgGuideThread(QThread):
     """Runs build_org_guide once and emits the finished guide.
 
     progress forwards the builder's (work done, total work) reports; the
-    total is dynamic (the guard and growth phases extend it as their size
-    becomes known) and the build's final snap closes the bar.
+    total is declared once, up front, from reserves bounding the guard
+    and growth phases, so the fraction climbs monotonically and the
+    build's final snap closes the bar.
     """
 
     built = Signal(object)
