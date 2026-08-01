@@ -124,7 +124,11 @@ A short tour and the books behind it are at <https://ernster.dev/fulcrum/>.
 - Plan export as a self-contained HTML report written straight to your
   Downloads folder, covering the whole record with earlier runs visually
   separated from the current one, or as JSON you can re-import to resume
-  the organisation and the moves played on it.
+  the organisation and the moves played on it. Every move in the report
+  is judged twice: against the whole organisation and, where it acted
+  inside one unit, within that unit's own frame, so a repair played as
+  good in a drilled section reads as good instead of vanishing into
+  whole-org neutrality.
 - Full keyboard navigation: the whole interface sits on one explicit focus ring,
   so every control is reachable without a mouse.
 - Light and dark themes, switched from the header's sun/moon toggle and

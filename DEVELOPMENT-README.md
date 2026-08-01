@@ -164,7 +164,11 @@ python builddmg.py
 Compiles a standalone `Fulcrum.app` with Nuitka and packages it into
 `fulcrum.dmg`. Needs macOS with the Xcode command-line tools, Homebrew and
 `create-dmg`. Code signing and notarization run when `DEVELOPER_ID_APPLICATION`,
-`APPLE_ID` and `APPLE_APP_PASSWORD` are set; otherwise they are skipped.
+`APPLE_ID` and `APPLE_APP_PASSWORD` are set; otherwise they are skipped. The
+`.icns` derives from the glow-treated icon set `generate_icons.py` emits
+(`fulcrum_1024.png` downwards), never from the raw `fulcrum.png` master, so
+run the icon generator first or the build warns and ships without a custom
+icon.
 
 ### GitHub Pages site
 

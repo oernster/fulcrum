@@ -152,7 +152,10 @@
       <p class="section-sub">One click exports the moves you played as a
         self-contained HTML report: the health change, before and after maps
         and a recommendation section addressed to each unit's lead, each move
-        justified by the signal it eased. This is a real export, embedded
+        justified by the signal it eased. Every move is judged twice: against
+        the whole organisation and, where it acted inside one unit, within
+        that unit's own frame, so a repair that is good where it lives never
+        vanishes into whole-org neutrality. This is a real export, embedded
         here as shipped.</p>
       <div class="shots">
         <figure class="shot">
@@ -162,18 +165,21 @@
                     loading="lazy"
                     style="display:block;width:100%;height:640px;border:0;background:#0d0f12"></iframe>
           </div>
-          <figcaption><b>The report.</b> Six moves on the matrixed
+          <figcaption><b>The report.</b> Nine moves on the matrixed
             enterprise, the approval-layer blunder among them, priced
-            honestly: structural health falls from 16.255 to 13.112 and
-            every move names its lead, its classification and the signal it
-            moved. A resolve clears one of the organisation's 177 contested
-            teams, two delegates each shave a single escalation, a collapse
-            reads bad for merging what should stay apart and the gate alone
-            costs over three points: recommendations grouped by the lead
-            who holds them, CTO-level moves separated from a domain's own.
-            The record separates earlier runs' moves from the current
-            run's by colour and a JSON twin exports alongside it, so the
-            organisation and its played moves re-import to
+            honestly at both scales: structural health falls from 16.255 to
+            13.610 and every move names its lead, its org-wide verdict, its
+            frame verdict and the signal it moved. Three resolves each clear
+            one of the organisation's 177 contested teams and read good
+            within their own groups (the first lifts Runtime group 2 from
+            45.652 to 51.480) while staying honestly neutral at
+            whole-organisation scale, a collapse reads bad org-wide and
+            blunder within its group for merging what should stay apart and
+            the gate alone costs over three points: recommendations grouped
+            by the lead who holds them, CTO-level moves separated from a
+            domain's own. The record separates earlier runs' moves from the
+            current run's by colour and a JSON twin exports alongside it, so
+            the organisation and its played moves re-import to
             resume.</figcaption>
         </figure>
       </div>
@@ -187,7 +193,7 @@
   <div class="container footer-inner">
     <div>
       <strong>Fulcrum</strong>: Organisational Decision Architecture Simulation Tool<br>
-      (c) Oliver Ernster · Local-first · GPL-3.0 + LGPL-3.0 · v<!--VERSION-->4.0.0<!--/VERSION-->
+      (c) Oliver Ernster · Local-first · GPL-3.0 + LGPL-3.0 · v<!--VERSION-->4.1.0<!--/VERSION-->
     </div>
     <div class="footer-links">
       <a href="https://github.com/oernster/fulcrum/releases">Releases</a>
