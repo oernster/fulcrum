@@ -35,6 +35,16 @@ def _read_version() -> str:
     return "0.0.0-dev"
 
 
+def _resolve_source_png() -> Path | None:
+    """The highest-fidelity glow-treated icon PNG present, or None."""
+    root = Path(__file__).parent
+    for name in SOURCE_PNG_CANDIDATES:
+        candidate = root / name
+        if candidate.is_file():
+            return candidate
+    return None
+
+
 # Constants
 
 APP_NAME = "Fulcrum"
@@ -45,9 +55,17 @@ RW_DMG = "_fulcrum_rw.dmg"
 VOLUME_NAME = f"Install {APP_NAME}"
 DIST_DIR = Path("dist")
 
-# Source icon (the same master PNG generate_icons.py downscales) and the runtime
-# PNG bundled beside the binary.
-SOURCE_PNG = "fulcrum.png"
+# Source PNG for the macOS .icns. This must be one of the glow-treated icons
+# generate_icons.py emits, NOT the fulcrum.png master: that master is the raw
+# dark-on-black artwork, so building the icns from it ships the pre-glow icon
+# (dark art on a dark fill) while Windows (fulcrum.ico) and Flatpak
+# (fulcrum_*.png) ship the treated set. Ordered largest first so png_to_icns
+# downscales from the highest-fidelity treated source that is present.
+SOURCE_PNG_CANDIDATES = (
+    "fulcrum_1024.png",
+    "fulcrum_512.png",
+    "fulcrum_256.png",
+)
 
 # Dark background matching Fulcrum's theme base colour (the installer _BACKGROUND
 # and theme.py dark surface), so transparent icon areas read dark, not white.
@@ -374,14 +392,16 @@ def main() -> int:
         entitlements_path = Path(f.name)
 
     with tempfile.TemporaryDirectory() as icon_tmp:
-        png_path = Path(__file__).parent / SOURCE_PNG
+        png_path = _resolve_source_png()
         icns_path = (
-            png_to_icns(png_path, Path(icon_tmp), ICON_BG)
-            if png_path.exists()
-            else None
+            png_to_icns(png_path, Path(icon_tmp), ICON_BG) if png_path else None
         )
         if not icns_path:
-            print(f"  WARNING: {png_path} not found, building without custom icon.")
+            print(
+                "  WARNING: no glow-treated icon PNG found "
+                f"({', '.join(SOURCE_PNG_CANDIDATES)}); "
+                "run generate_icons.py. Building without custom icon."
+            )
 
         try:
             app_path = build_app_bundle(icns_path)

@@ -242,3 +242,6 @@ _dmg_staging/
 
 # Private release notes (pasted into the GitHub Releases page, not committed)
 NOTES.md
+
+# macOS Finder metadata
+.DS_Store
