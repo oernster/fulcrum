@@ -37,7 +37,7 @@ The tests mirror the package, one area per layer:
 | Area | Kind | I/O |
 |---|---|---|
 | `tests/domain` | pure unit tests of the model, moves, signals and books | none |
-| `tests/application` | unit tests over the Protocol seams, using hand-written fakes | none |
+| `tests/application` | unit tests over the Protocol seams, using hand-written fakes; the guide's worker pool is also exercised live with a real two-worker process pool and asserted bit-identical to the serial path | none |
 | `tests/infrastructure` | integration tests against real files in a temp directory | temp files |
 | `tests/structural` | an AST scan that enforces the architectural invariants | reads source |
 

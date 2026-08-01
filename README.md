@@ -112,7 +112,11 @@ A short tour and the books behind it are at <https://ernster.dev/fulcrum/>.
   seconds rather than minutes. The parallel build is deterministic and
   identical to the single-core one down to the last digit; small
   organisations plan in-process because they finish faster than worker
-  processes take to start.
+  processes take to start. Every planning bar (opening the guide, the
+  grow toggle, the replan after playing a guide move) carries a Cancel
+  button that stops the build within a fraction of a second, so a
+  machine without the cores for the pool is never trapped in a long
+  serial build.
 - Move history that survives closing the app: the session autosaves the
   starting org and every move, the next launch restores it by replay and
   Take a move back steps through earlier runs' moves too, from the board or

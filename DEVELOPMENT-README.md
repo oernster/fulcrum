@@ -39,7 +39,8 @@ buildinstaller.py) use.
 ```
 fulcrum/
   domain/          pure model: org state, moves, scoring, frames, signals, books
-  application/     simulator seam, session, org draft, planner, org guide, plan, glossary
+  application/     simulator seam, session, org draft, planner, org guide,
+                   guide worker pool, plan, glossary
   infrastructure/  JSON serialization, plan export, HTML and SVG renderers
   ui/              PySide6 board, map, editor and dialogs
   shared/          asset discovery and text helpers (no Qt)
@@ -113,6 +114,13 @@ the book covers, the header-button icons, the stepper arrows, the calibration
 examples, the `VERSION` file and the licence texts are bundled beside it so
 the app's asset discovery finds them. Set
 `FULCRUM_DEBUG_CONSOLE=1` for a console-visible diagnostic build.
+
+On a large organisation the guide spawns worker processes (the pool in
+`fulcrum/application/org_guide_parallel.py`); `main.py` calls
+`multiprocessing.freeze_support()` so those workers behave inside the
+packaged executable, where each worker relaunches the executable itself.
+Seeing several `fulcrum.exe` processes during guide planning is the pool
+at work, not a fault.
 
 ### Windows installer
 
