@@ -37,7 +37,6 @@ import stamp_version
 
 # --- Project identity (single source of truth for build metadata) -----------
 APP_DISPLAY_NAME = "Fulcrum"
-APP_DESCRIPTION = "Organisational Simulation Tool"
 APP_AUTHOR = "Oliver Ernster"
 EXE_NAME = "fulcrum"
 
@@ -211,7 +210,9 @@ def build_exe() -> int:
         f"--product-name={APP_DISPLAY_NAME}",
         f"--file-version={pe_version}",
         f"--product-version={pe_version}",
-        f"--file-description={APP_DESCRIPTION}",
+        # Task Manager and Explorer show FileDescription as the process
+        # name, so it carries the app name, not the tagline.
+        f"--file-description={APP_DISPLAY_NAME}",
         f"--copyright={copyright_text()}",
     ]
 

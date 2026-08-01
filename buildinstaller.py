@@ -35,7 +35,6 @@ import stamp_version
 
 # --- Project identity (single source of truth for installer metadata) -------
 APP_DISPLAY_NAME = "Fulcrum"
-APP_DESCRIPTION = "Organisational Simulation Tool"
 APP_AUTHOR = "Oliver Ernster"
 INSTALLER_NAME = "FulcrumSetup"
 
@@ -232,7 +231,9 @@ def build_installer() -> int:
         f"--product-name={APP_DISPLAY_NAME} Setup",
         f"--file-version={pe_version}",
         f"--product-version={pe_version}",
-        f"--file-description={APP_DESCRIPTION} Installer",
+        # Task Manager and Explorer show FileDescription as the process
+        # name, so it carries the app name, not the tagline.
+        f"--file-description={APP_DISPLAY_NAME} Setup",
         f"--copyright={copyright_text()}",
         # Embed the staged payload (app bundle + zip + LICENSE) in the installer.
         f"--include-data-dir={PAYLOAD_STAGE_DIR}={PAYLOAD_DIR_NAME}",
@@ -272,7 +273,7 @@ def build_installer() -> int:
     for part in nuitka_args:
         print("  ", part)
 
-    result = subprocess.run(nuitka_args, cwd=str(PROJECT_ROOT))
+    result = subprocess.run(nuitka_args, cwd=str(PROJECT_ROOT), check=False)
     if result.returncode != 0:
         print(
             f"[buildinstaller] ERROR: Nuitka build failed "
