@@ -510,6 +510,7 @@ def _is_app_running() -> bool:
             timeout=_TASKLIST_TIMEOUT_S,
             stdin=subprocess.DEVNULL,
             creationflags=no_window,
+            check=False,
         )
     except (OSError, subprocess.SubprocessError):
         return False
@@ -658,7 +659,7 @@ def _copy_uninstaller(install_dir: Path) -> Path:
     try:
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
-    except Exception:
+    except Exception:  # noqa: BLE001 - any failure degrades to the running exe
         return source
     return destination
 
@@ -1257,18 +1258,21 @@ class InstallerWindow(QWidget):
             self,
         ).exec()
 
-    def _guard_not_running(self) -> bool:
-        """Return True when it is safe to proceed; warn if the app is running."""
-        if _is_app_running():
-            self._status.setText(
-                f"{APP_DISPLAY_NAME} is running. Please close it, then retry."
-            )
-            return False
-        return True
+    def _guard_not_running(self, action: str) -> bool:
+        """True when the app is not running; otherwise ask the user to
+        close it, offering Retry until it is gone or they cancel."""
+        if not _is_app_running():
+            return True
+        if AppRunningDialog(action, self).exec() == QDialog.DialogCode.Accepted:
+            return True
+        self._status.setText(
+            f"{APP_DISPLAY_NAME} is still running, so the {action} was cancelled."
+        )
+        return False
 
     def _on_primary(self) -> None:
         """Install, upgrade or reinstall, then optionally launch the app."""
-        if not self._guard_not_running():
+        if not self._guard_not_running("installation"):
             return
         self._set_busy("Installing...")
         try:
@@ -1278,7 +1282,7 @@ class InstallerWindow(QWidget):
                 start_menu=self._start_menu.isChecked(),
                 autostart=self._autostart.isChecked(),
             )
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - surfaced as a status message
             self._finish_error(f"Installation failed: {error}")
             return
         self._status.setText(f"Installed to {exe_path.parent}.")
@@ -1308,13 +1312,13 @@ class InstallerWindow(QWidget):
 
     def _on_repair(self) -> None:
         """Re-deploy the application files over the existing install."""
-        if not self._guard_not_running():
+        if not self._guard_not_running("repair"):
             return
         location = _installed_location() or _install_target()
         self._set_busy("Repairing...")
         try:
             repair(location)
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - surfaced as a status message
             self._finish_error(f"Repair failed: {error}")
             return
         self._status.setText("Repair complete.")
@@ -1322,7 +1326,7 @@ class InstallerWindow(QWidget):
 
     def _on_uninstall(self) -> None:
         """Confirm, then remove the application, shortcuts and registration."""
-        if not self._guard_not_running():
+        if not self._guard_not_running("uninstall"):
             return
         dialog = UninstallDialog(self)
         if dialog.exec() != QDialog.DialogCode.Accepted:
@@ -1330,7 +1334,7 @@ class InstallerWindow(QWidget):
         self._set_busy("Uninstalling...")
         try:
             uninstall(remove_settings=dialog.remove_settings())
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - surfaced as a status message
             self._finish_error(f"Uninstall failed: {error}")
             return
         self._status.setText(f"{APP_DISPLAY_NAME} has been uninstalled.")
@@ -1365,6 +1369,69 @@ class InstallerWindow(QWidget):
         self._uninstall.setEnabled(True)
         self._primary.setEnabled(True)
         self._repair.setEnabled(True)
+
+
+class AppRunningDialog(QDialog):
+    """A themed ask to close the running app before setup continues.
+
+    Retry re-checks the task list and accepts once the app is gone;
+    Cancel abandons the action. A premature retry gets an immediate
+    still-running notice rather than a silent no-op.
+    """
+
+    def __init__(self, action: str, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle(f"{APP_DISPLAY_NAME} Setup")
+        self.setWindowIcon(_app_icon())
+        self.setStyleSheet(_STYLESHEET)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(
+            _DIALOG_MARGIN, _DIALOG_MARGIN, _DIALOG_MARGIN, _DIALOG_MARGIN
+        )
+        layout.setSpacing(_BUTTON_GAP)
+
+        self._start = _NeutralStart(self)
+        layout.addWidget(self._start)
+        self._started = False
+
+        message = QLabel(
+            f"{APP_DISPLAY_NAME} is currently running. Close it, then choose "
+            f"Retry to continue with the {action}."
+        )
+        message.setWordWrap(True)
+        layout.addWidget(message)
+
+        self._notice = QLabel("")
+        self._notice.setObjectName("StatusLine")
+        self._notice.setWordWrap(True)
+        layout.addWidget(self._notice)
+
+        retry = QPushButton("Retry")
+        retry.setObjectName("PrimaryAction")
+        retry.clicked.connect(self._on_retry)
+        cancel = QPushButton("Cancel")
+        cancel.setObjectName("SecondaryAction")
+        cancel.clicked.connect(self.reject)
+        row = QHBoxLayout()
+        row.addStretch()
+        row.addWidget(cancel)
+        row.addWidget(retry)
+        layout.addLayout(row)
+
+    def _on_retry(self) -> None:
+        if _is_app_running():
+            self._notice.setText(
+                f"{APP_DISPLAY_NAME} is still running. Close it first."
+            )
+            return
+        self.accept()
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        if not self._started:
+            self._started = True
+            self._start.setFocus()
 
 
 class UninstallDialog(QDialog):
@@ -1437,8 +1504,13 @@ def _run_uninstall_cli(args: argparse.Namespace) -> int:
         uninstall(remove_settings=args.remove_settings)
         return 0
     dialog = UninstallDialog()
-    if dialog.exec() == QDialog.DialogCode.Accepted:
-        uninstall(remove_settings=dialog.remove_settings())
+    if dialog.exec() != QDialog.DialogCode.Accepted:
+        return 0
+    if _is_app_running():
+        gate = AppRunningDialog("uninstall")
+        if gate.exec() != QDialog.DialogCode.Accepted:
+            return 0
+    uninstall(remove_settings=dialog.remove_settings())
     return 0
 
 
