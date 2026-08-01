@@ -185,6 +185,14 @@ class OrgGuideDialog(NeutralDialog):
         self._growth_guide = guide
         self._render_current()
 
+    def growth_cancelled(self) -> None:
+        """The requested grown guide is not coming; release the toggle.
+
+        Unchecking re-renders the fixed view, and the next toggle-on
+        simply asks the grow planner again.
+        """
+        self._toggle.setChecked(False)
+
     def _grown_active(self) -> bool:
         return self._toggle.isChecked() and self._growth_guide is not None
 

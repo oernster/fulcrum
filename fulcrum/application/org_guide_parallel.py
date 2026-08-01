@@ -28,6 +28,7 @@ from fulcrum.application.game_session import MAX_PLAYABLE_TEAMS
 from fulcrum.application.interfaces import Simulator
 from fulcrum.application.org_guide import ProgressCallback, build_org_guide
 from fulcrum.application.org_guide_model import OrgGuide
+from fulcrum.application.planner import CancelledCheck
 from fulcrum.domain.errors import FulcrumError
 from fulcrum.domain.models import OrgState
 from fulcrum.domain.moves import Move, apply_move
@@ -101,7 +102,10 @@ class GuideWorkers:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
-        self._pool.shutdown()
+        # Queued tasks are cancelled so an abandoned build (a cancelled
+        # guide, an error) releases the pool after only the in-flight
+        # chunks finish, not the whole remaining pass.
+        self._pool.shutdown(cancel_futures=True)
 
     def price_lines(
         self,
@@ -199,15 +203,20 @@ def build_org_guide_auto(
     allow_growth: bool = False,
     progress: ProgressCallback | None = None,
     cpu_count: int | None = None,
+    cancelled: CancelledCheck | None = None,
 ) -> OrgGuide:
     """build_org_guide behind an automatically sized worker pool.
 
     The guide is identical with and without the pool; only the wall-clock
     differs. Callers that already hold a pool pass it to build_org_guide
-    directly instead.
+    directly instead. cancelled is checked at every progress tick and
+    planner step; a true answer raises GuideBuildCancelled, releasing
+    the pool on the way out.
     """
     workers = guide_workers_for(org, cpu_count)
     if workers is None:
-        return build_org_guide(org, simulator, allow_growth, progress)
+        return build_org_guide(org, simulator, allow_growth, progress, None, cancelled)
     with workers:
-        return build_org_guide(org, simulator, allow_growth, progress, workers)
+        return build_org_guide(
+            org, simulator, allow_growth, progress, workers, cancelled
+        )

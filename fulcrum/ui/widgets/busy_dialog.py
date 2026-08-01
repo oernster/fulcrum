@@ -2,8 +2,16 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QLabel, QProgressBar, QVBoxLayout
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QLabel,
+    QProgressBar,
+    QPushButton,
+    QVBoxLayout,
+)
 
 from fulcrum.ui import ui_scale
 from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
@@ -16,7 +24,7 @@ _EMPTY_MAX = 1
 
 
 class BusyDialog(NeutralDialog):
-    """A modal, cancel-less 'working' dialog with a progress bar.
+    """A modal 'working' dialog with a progress bar and an optional Cancel.
 
     A worker that reports its sections passes determinate=True: the bar
     starts EMPTY (an indeterminate bar renders as full on some styles, which
@@ -24,9 +32,21 @@ class BusyDialog(NeutralDialog):
     worker with nothing to report keeps the indeterminate animation. Shown
     without blocking the event loop (via show, not exec), so the worker
     thread keeps running and its finished signal is still delivered.
+
+    on_cancel, when given, adds a Cancel button (Escape presses it too):
+    clicking asks the worker to stop and the dialog stays up, its button
+    reading "Cancelling...", until the worker confirms and the caller
+    closes it. Without on_cancel the dialog cannot be dismissed at all:
+    closing it would orphan the running worker.
     """
 
-    def __init__(self, message: str, parent=None, determinate: bool = False) -> None:
+    def __init__(
+        self,
+        message: str,
+        parent=None,
+        determinate: bool = False,
+        on_cancel: Callable[[], None] | None = None,
+    ) -> None:
         super().__init__(parent)
         self.setWindowTitle("Fulcrum")
         self.setModal(True)
@@ -44,9 +64,32 @@ class BusyDialog(NeutralDialog):
             self._bar.setRange(_BUSY_RANGE, _BUSY_RANGE)
         self._bar.setTextVisible(False)
         layout.addWidget(self._bar)
+        self._on_cancel = on_cancel
+        self._cancel_button: QPushButton | None = None
+        if on_cancel is not None:
+            row = QHBoxLayout()
+            self._cancel_button = QPushButton("Cancel")
+            self._cancel_button.clicked.connect(self._request_cancel)
+            row.addStretch()
+            row.addWidget(self._cancel_button)
+            layout.addLayout(row)
 
     def set_progress(self, done: int, total: int) -> None:
         """Advance the bar; the first call makes it determinate."""
         if total > 0:
             self._bar.setMaximum(total)
             self._bar.setValue(done)
+
+    def _request_cancel(self) -> None:
+        """Ask the worker to stop, once; the caller closes the dialog when
+        the worker confirms, so the button dims to show the request took."""
+        if self._cancel_button is None or not self._cancel_button.isEnabled():
+            return
+        self._cancel_button.setEnabled(False)
+        self._cancel_button.setText("Cancelling...")
+        self._on_cancel()
+
+    def reject(self) -> None:
+        # Escape routes to cancellation when available and is otherwise
+        # swallowed: closing the dialog would orphan the running worker.
+        self._request_cancel()

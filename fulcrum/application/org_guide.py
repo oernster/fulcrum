@@ -57,7 +57,12 @@ from fulcrum.application.org_guide_model import (
     OrgGuide,
     direct_teams_frame,
 )
-from fulcrum.application.planner import Guide, ImprovementPlanner
+from fulcrum.application.planner import (
+    CancelledCheck,
+    Guide,
+    ImprovementPlanner,
+    ensure_live,
+)
 from fulcrum.domain.hierarchy import (
     AGGREGATE_MOVE_KINDS,
     child_domains,
@@ -137,13 +142,16 @@ def build_org_guide(
     allow_growth: bool = False,
     progress: ProgressCallback | None = None,
     workers: GuideWorkerPool | None = None,
+    cancelled: CancelledCheck | None = None,
 ) -> OrgGuide:
     """Plan every frame of the org and compose the leaf lines into a headline.
 
     workers, when given, prices the guard's lines and growth's candidate
     valuations on a process pool; the guide is identical either way.
+    cancelled, when given, is checked at every progress tick and planner
+    step; a true answer abandons the build by raising GuideBuildCancelled.
     """
-    builder = _Builder(org, simulator, allow_growth, progress, workers)
+    builder = _Builder(org, simulator, allow_growth, progress, workers, cancelled)
     return builder.build()
 
 
@@ -157,6 +165,7 @@ class _Builder:
         allow_growth: bool,
         progress: ProgressCallback | None,
         workers: GuideWorkerPool | None = None,
+        cancelled: CancelledCheck | None = None,
     ) -> None:
         self._org = org
         self._simulator = simulator
@@ -164,6 +173,7 @@ class _Builder:
         self._aggregate = ImprovementPlanner(simulator)
         self._progress = progress
         self._workers = workers
+        self._cancelled = cancelled
         self._grown = allow_growth
         self._done = 0
         self._total = 0
@@ -230,6 +240,9 @@ class _Builder:
         return self._simulator.score(replayed).value - self._flat_before
 
     def _tick(self, count: int = 1) -> None:
+        # Ticks fire from every long phase, so this is also where a
+        # cancellation request stops the build within one unit of work.
+        ensure_live(self._cancelled)
         self._done += count
         self._report()
 
@@ -255,8 +268,10 @@ class _Builder:
         if len(section.teams) > MAX_PLAYABLE_TEAMS:
             self._tick()
             return False, Guide(_EMPTY_SCORE, _EMPTY_SCORE, ())
+        # Sections plan without progress ticks, so the cancelled check
+        # rides into the planner to keep cancellation responsive here too.
         if not aggregate:
-            guide = self._full.plan(section)
+            guide = self._full.plan(section, cancelled=self._cancelled)
         elif self._grown:
             # An aggregate frame is where cross-unit edges are priced, so
             # with growth allowed it may propose split or add for the real
@@ -266,9 +281,12 @@ class _Builder:
                 section,
                 AGGREGATE_MOVE_KINDS + GROWTH_MOVE_KINDS,
                 self._real_growth_only,
+                cancelled=self._cancelled,
             )
         else:
-            guide = self._aggregate.plan(section, AGGREGATE_MOVE_KINDS)
+            guide = self._aggregate.plan(
+                section, AGGREGATE_MOVE_KINDS, cancelled=self._cancelled
+            )
         self._tick()
         return True, guide
 

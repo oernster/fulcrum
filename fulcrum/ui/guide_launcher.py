@@ -47,7 +47,10 @@ class GuideLauncher:
         if session is None:
             return
         self._busy = BusyDialog(
-            "Planning every level...", self._window, determinate=True
+            "Planning every level...",
+            self._window,
+            determinate=True,
+            on_cancel=lambda: self._thread.request_cancel(),
         )
         self._busy.show()
         # Paint the dialog before the worker starts: the planner's tight
@@ -57,6 +60,7 @@ class GuideLauncher:
         self._thread = OrgGuideThread(session.org, self._simulator)
         self._thread.progress.connect(self._busy.set_progress)
         self._thread.built.connect(self._on_built)
+        self._thread.cancelled.connect(self._busy.close)
         self._thread.finished.connect(self._thread.deleteLater)
         self._thread.start()
 
@@ -76,7 +80,12 @@ class GuideLauncher:
         session = self._session_of()
         if session is None:
             return
-        self._growth_busy = BusyDialog("Planning growth...", dialog, determinate=True)
+        self._growth_busy = BusyDialog(
+            "Planning growth...",
+            dialog,
+            determinate=True,
+            on_cancel=lambda: self._growth_thread.request_cancel(),
+        )
         self._growth_busy.show()
         QApplication.processEvents()
         self._growth_thread = OrgGuideThread(
@@ -86,8 +95,16 @@ class GuideLauncher:
         self._growth_thread.built.connect(
             lambda guide, d=dialog: self._on_growth_built(d, guide)
         )
+        self._growth_thread.cancelled.connect(
+            lambda d=dialog: self._on_growth_cancelled(d)
+        )
         self._growth_thread.finished.connect(self._growth_thread.deleteLater)
         self._growth_thread.start()
+
+    def _on_growth_cancelled(self, dialog) -> None:
+        """A cancelled grown build: close the bar and release the toggle."""
+        self._growth_busy.close()
+        dialog.growth_cancelled()
 
     def _on_growth_built(self, dialog, guide) -> None:
         self._growth_busy.close()

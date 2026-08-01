@@ -22,6 +22,25 @@ from fulcrum.domain.simulation import MoveClassification
 _DEFAULT_MAX_STEPS = 12
 _DEFAULT_MIN_GAIN = 0.5
 
+# A cancellation check: returns True once the caller wants the work stopped.
+CancelledCheck = Callable[[], bool]
+
+
+class GuideBuildCancelled(Exception):
+    """Raised mid-plan when the caller's cancelled check turns true."""
+
+
+def ensure_live(cancelled: CancelledCheck | None) -> None:
+    """Raise GuideBuildCancelled when a given cancelled check says stop.
+
+    The planner and the guide builder call this at every step, valuation
+    chunk and progress tick, so a long build stops within one unit of
+    work of the request rather than running to completion.
+    """
+    if cancelled is not None and cancelled():
+        raise GuideBuildCancelled()
+
+
 # With a progress callback, candidates are valuated in chunks this size so
 # long steps report life mid-step. Each chunk re-scores the base position
 # once, so the chunk is sized to keep that overhead a few percent while a
@@ -66,18 +85,22 @@ class ImprovementPlanner:
         move_filter: Callable[[Move], bool] | None = None,
         progress: Callable[[int], None] | None = None,
         workers: GuideWorkerPool | None = None,
+        cancelled: CancelledCheck | None = None,
     ) -> Guide:
         """Plan the greedy line; progress, if given, receives the number of
         candidates valuated after each chunk, so a caller can keep a bar
         alive through a step that valuates hundreds of moves. Candidate
         valuations are independent, so a worker pool, when given, prices
-        each step's candidates in parallel with identical results."""
+        each step's candidates in parallel with identical results.
+        cancelled, if given, is checked each step and each chunk and a
+        true answer abandons the plan by raising GuideBuildCancelled."""
         start = self.simulator.score(org).value
         current = org
         current_score = start
         steps: list[GuideStep] = []
         played: set[tuple[MoveKind, tuple[str, ...]]] = set()
         for _ in range(self.max_steps):
+            ensure_live(cancelled)
             moves = enumerate_moves(current, allow_growth=self.allow_growth)
             if allowed_kinds is not None:
                 moves = tuple(m for m in moves if m.kind in allowed_kinds)
@@ -91,7 +114,7 @@ class ImprovementPlanner:
             if not moves:
                 break
             best = max(
-                self._valuate(current, moves, progress, workers),
+                self._valuate(current, moves, progress, workers, cancelled),
                 key=lambda valuation: valuation.delta,
             )
             if best.delta < self.min_gain:
@@ -119,14 +142,17 @@ class ImprovementPlanner:
         moves: tuple[Move, ...],
         progress: Callable[[int], None] | None,
         workers: GuideWorkerPool | None = None,
+        cancelled: CancelledCheck | None = None,
     ):
         if workers is not None:
             return workers.valuate_moves(self.simulator, org, moves, progress)
-        if progress is None:
+        if progress is None and cancelled is None:
             return self.simulator.valuate_moves(org, moves)
         valuations = []
         for at in range(0, len(moves), _PROGRESS_CHUNK):
+            ensure_live(cancelled)
             chunk = moves[at : at + _PROGRESS_CHUNK]
             valuations.extend(self.simulator.valuate_moves(org, chunk))
-            progress(len(chunk))
+            if progress is not None:
+                progress(len(chunk))
         return valuations
