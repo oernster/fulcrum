@@ -12,8 +12,7 @@ from __future__ import annotations
 
 from random import Random
 
-from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialogButtonBox,
     QHBoxLayout,
@@ -32,6 +31,7 @@ from fulcrum.shared.text import count_noun
 from fulcrum.ui import ui_scale
 from fulcrum.ui.widgets.claim_editor import ClaimEditor
 from fulcrum.ui.widgets.dependency_editor import DependencyEditor
+from fulcrum.ui.widgets.dialog_sizing import initial_size
 from fulcrum.ui.widgets.glossary_dialog import GlossaryDialog
 from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 from fulcrum.ui.widgets.org_editor_widgets import labelled
@@ -80,7 +80,7 @@ class OrgEditorDialog(NeutralDialog):
         self.setWindowTitle(_EDIT_TITLE if blueprint is not None else _FRESH_TITLE)
         self.setWindowFlag(Qt.WindowType.WindowMaximizeButtonHint, True)
         self.setMinimumSize(ui_scale.px(_MIN_WIDTH), ui_scale.px(_MIN_HEIGHT))
-        self.resize(self._initial_size(parent))
+        self.resize(initial_size(parent, _PARENT_FILL, _SCREEN_FILL))
         names = NamePicker(rng if rng is not None else Random())
         if blueprint is not None:
             self._draft = OrgDraft.from_blueprint(blueprint, names)
@@ -159,22 +159,6 @@ class OrgEditorDialog(NeutralDialog):
         self._inspector.nodeEdited.connect(self._node_edited)
         self._inspector.kindChanged.connect(self._kind_changed)
         self._refresh_footer()
-
-    @staticmethod
-    def _initial_size(parent) -> QSize:
-        """Nearly the app window's size, or the screen's when parentless."""
-        if parent is not None:
-            base = parent.window().size()
-            return QSize(
-                round(base.width() * _PARENT_FILL),
-                round(base.height() * _PARENT_FILL),
-            )
-        screen = QGuiApplication.primaryScreen()
-        available = screen.availableGeometry().size()
-        return QSize(
-            round(available.width() * _SCREEN_FILL),
-            round(available.height() * _SCREEN_FILL),
-        )
 
     def _build_footer(self) -> QHBoxLayout:
         footer = QHBoxLayout()

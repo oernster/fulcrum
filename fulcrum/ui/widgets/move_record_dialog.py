@@ -9,8 +9,8 @@ position and carries its own keyboard focus ring.
 
 from __future__ import annotations
 
-from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QBrush, QColor, QGuiApplication
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -35,6 +35,7 @@ from fulcrum.ui.widgets.auto_scroller import AutoScroller
 from fulcrum.ui.widgets.complete_map_view import CompleteMapView
 from fulcrum.ui.widgets.dialog_banner import banner_row
 from fulcrum.ui.widgets.dialog_focus_ring import WIDGET_STOP, DialogFocusRing
+from fulcrum.ui.widgets.dialog_sizing import initial_size
 from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 
 _TITLE = "Move record"
@@ -73,7 +74,7 @@ class MoveRecordDialog(NeutralDialog):
         self.setWindowTitle(_TITLE)
         self.setWindowFlag(Qt.WindowType.WindowMaximizeButtonHint, True)
         self.setMinimumSize(ui_scale.px(_MIN_WIDTH), ui_scale.px(_MIN_HEIGHT))
-        self.resize(self._initial_size(parent))
+        self.resize(initial_size(parent, _PARENT_FILL, _SCREEN_FILL))
         self._history = history
         self._positions = record_positions(initial_org, history)
         self._simulator = simulator
@@ -210,22 +211,6 @@ class MoveRecordDialog(NeutralDialog):
                 target.click()
                 return
         super().keyPressEvent(event)
-
-    @staticmethod
-    def _initial_size(parent) -> QSize:
-        """Most of the app window's size, or the screen's when parentless."""
-        if parent is not None:
-            base = parent.window().size()
-            return QSize(
-                round(base.width() * _PARENT_FILL),
-                round(base.height() * _PARENT_FILL),
-            )
-        screen = QGuiApplication.primaryScreen()
-        available = screen.availableGeometry().size()
-        return QSize(
-            round(available.width() * _SCREEN_FILL),
-            round(available.height() * _SCREEN_FILL),
-        )
 
     def _on_row_changed(self, row: int) -> None:
         """Row r IS position r: the origin first, then each move's result."""

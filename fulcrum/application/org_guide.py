@@ -37,7 +37,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from fulcrum.application.game_session import MAX_PLAYABLE_TEAMS
+from fulcrum.application.game_session import MAX_PLAYABLE_TEAMS, enumerate_moves
 from fulcrum.application.interfaces import Simulator
 from fulcrum.application.org_guide_compose import (
     compose_leaf_lines,
@@ -90,7 +90,12 @@ def _growth_shortlist(org: OrgState) -> frozenset[str]:
     return frozenset(team.id for team in ranked[:_GROWTH_SHORTLIST_TEAMS])
 
 
-# A progress callback receives (sections planned so far, total sections).
+# A progress callback receives (work done, total work). Work units cover
+# every long phase: one per section planned, one per line the composition
+# guard prices and one per candidate a whole-org growth step valuates, so
+# the bar moves for the whole build, not only while sections plan. The
+# total is dynamic: open-ended phases extend it and the end of the build
+# snaps it closed.
 ProgressCallback = Callable[[int, int], None]
 
 
@@ -178,12 +183,23 @@ class _Builder:
                 self._direct_node(None, LOOSE_TEAMS_LABEL, LOOSE_TEAMS_FRAME),
             )
         nodes = nodes + tuple(self._unit_node(d) for d in roots)
-        nodes, composed = guard_leaf_lines(self._org, self._simulator, nodes)
+        # The guard prices every composing line against the whole org: on
+        # a large organisation that is most of the build, so it joins the
+        # progress total (one unit per line priced; an extra guard pass
+        # overruns and the total follows).
+        pending = OrgGuide(nodes, _EMPTY_SCORE, _EMPTY_SCORE, False)
+        self._extend(
+            sum(1 for n in pending.leaf_nodes() if n.composes and n.guide.steps)
+        )
+        nodes, composed = guard_leaf_lines(
+            self._org, self._simulator, nodes, self._pulse
+        )
         flat_after = self._simulator.score(composed).value
         if self._grown:
             growth, flat_after = self._growth_node(composed, flat_after)
             if growth is not None:
                 nodes = nodes + (growth,)
+        self._finish()
         return OrgGuide(nodes, self._flat_before, flat_after, self._grown)
 
     def _growth_node(
@@ -200,6 +216,7 @@ class _Builder:
         """
         shortlist: frozenset[str] | None = None
         planner = self._full
+        keep: Callable[[Move], bool] | None = None
         if len(composed.teams) > MAX_PLAYABLE_TEAMS:
             shortlist = _growth_shortlist(composed)
             planner = ImprovementPlanner(
@@ -207,15 +224,23 @@ class _Builder:
                 allow_growth=True,
                 max_steps=_GROWTH_LINE_MAX_STEPS,
             )
-        if shortlist is None:
-            guide = planner.plan(composed, _GROWTH_MOVE_KINDS)
-        else:
             shortlisted = shortlist
 
             def keep_shortlisted(move: Move) -> bool:
                 return shortlisted.issuperset(move.targets)
 
-            guide = planner.plan(composed, _GROWTH_MOVE_KINDS, keep_shortlisted)
+            keep = keep_shortlisted
+        # A whole-org growth step valuates hundreds of candidates at
+        # half-second whole-org scores, so the estimated valuations join
+        # the total and the planner pulses through them; growth usually
+        # stops early, and the final snap closes the overshoot.
+        candidates = [
+            m
+            for m in enumerate_moves(composed, allow_growth=True)
+            if m.kind in _GROWTH_MOVE_KINDS and (keep is None or keep(m))
+        ]
+        self._extend(len(candidates) * planner.max_steps)
+        guide = planner.plan(composed, _GROWTH_MOVE_KINDS, keep, self._tick)
         self._tick()
         if not guide.steps:
             return None, composed_score
@@ -237,8 +262,27 @@ class _Builder:
         replayed = replay_line(self._org, guide)
         return self._simulator.score(replayed).value - self._flat_before
 
-    def _tick(self) -> None:
-        self._done += 1
+    def _tick(self, count: int = 1) -> None:
+        self._done += count
+        if self._done > self._total:
+            # An open-ended phase (an extra guard pass, a growth step
+            # beyond the estimate) overran the declared total: the total
+            # follows, so the bar keeps moving instead of pinning full.
+            self._total = self._done
+        self._report()
+
+    def _pulse(self) -> None:
+        self._tick()
+
+    def _extend(self, count: int) -> None:
+        self._total += count
+        self._report()
+
+    def _finish(self) -> None:
+        self._total = self._done
+        self._report()
+
+    def _report(self) -> None:
         if self._progress is not None:
             self._progress(self._done, self._total)
 

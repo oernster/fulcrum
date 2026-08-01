@@ -1,8 +1,10 @@
-"""Build the whole-hierarchy guide on a worker thread, off the UI thread.
+"""Build one hierarchy guide on a worker thread, off the UI thread.
 
-Planning every frame of a large organisation is many small planner runs; a
-QThread keeps the event loop free and delivers both variants (fixed size and
-allowed to grow) in one pass, so the dialog's grow toggle swaps instantly.
+Planning every frame of a large organisation is minutes of small planner
+runs plus the composition guard; a QThread keeps the event loop free. The
+guide dialog opens on the fixed guide alone and the grown variant is built
+lazily by a second run, only when the grow toggle first asks for it, so
+nobody pays for growth they never look at.
 """
 
 from __future__ import annotations
@@ -15,32 +17,33 @@ from fulcrum.domain.models import OrgState
 
 
 class OrgGuideThread(QThread):
-    """Runs build_org_guide twice (fixed, grown) and emits the pair.
+    """Runs build_org_guide once and emits the finished guide.
 
-    progress reports (sections planned, total sections) across BOTH passes:
-    the two passes plan the same frames, so the fixed pass covers the first
-    half of the bar and the grown pass the second.
+    progress forwards the builder's (work done, total work) reports; the
+    total is dynamic (the guard and growth phases extend it as their size
+    becomes known) and the build's final snap closes the bar.
     """
 
     built = Signal(object)
     progress = Signal(int, int)
 
-    _PASSES = 2
-
-    def __init__(self, org: OrgState, simulator: Simulator, parent=None) -> None:
+    def __init__(
+        self,
+        org: OrgState,
+        simulator: Simulator,
+        allow_growth: bool = False,
+        parent=None,
+    ) -> None:
         super().__init__(parent)
         self._org = org
         self._simulator = simulator
+        self._allow_growth = allow_growth
 
     def run(self) -> None:
-        fixed = build_org_guide(self._org, self._simulator, progress=self._first)
-        grown = build_org_guide(
-            self._org, self._simulator, allow_growth=True, progress=self._second
+        guide = build_org_guide(
+            self._org,
+            self._simulator,
+            allow_growth=self._allow_growth,
+            progress=self.progress.emit,
         )
-        self.built.emit((fixed, grown))
-
-    def _first(self, done: int, total: int) -> None:
-        self.progress.emit(done, total * self._PASSES)
-
-    def _second(self, done: int, total: int) -> None:
-        self.progress.emit(total + done, total * self._PASSES)
+        self.built.emit(guide)

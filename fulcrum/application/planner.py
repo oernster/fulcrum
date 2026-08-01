@@ -22,6 +22,13 @@ from fulcrum.domain.simulation import MoveClassification
 _DEFAULT_MAX_STEPS = 12
 _DEFAULT_MIN_GAIN = 0.5
 
+# With a progress callback, candidates are valuated in chunks this size so
+# long steps report life mid-step. Each chunk re-scores the base position
+# once, so the chunk is sized to keep that overhead a few percent while a
+# whole-org growth step (hundreds of half-second valuations) still ticks
+# every few seconds.
+_PROGRESS_CHUNK = 16
+
 
 @dataclass(frozen=True, slots=True)
 class GuideStep:
@@ -57,7 +64,11 @@ class ImprovementPlanner:
         org: OrgState,
         allowed_kinds: tuple[MoveKind, ...] | None = None,
         move_filter: Callable[[Move], bool] | None = None,
+        progress: Callable[[int], None] | None = None,
     ) -> Guide:
+        """Plan the greedy line; progress, if given, receives the number of
+        candidates valuated after each chunk, so a caller can keep a bar
+        alive through a step that valuates hundreds of moves."""
         start = self.simulator.score(org).value
         current = org
         current_score = start
@@ -77,7 +88,7 @@ class ImprovementPlanner:
             if not moves:
                 break
             best = max(
-                self.simulator.valuate_moves(current, moves),
+                self._valuate(current, moves, progress),
                 key=lambda valuation: valuation.delta,
             )
             if best.delta < self.min_gain:
@@ -98,3 +109,18 @@ class ImprovementPlanner:
                 )
             )
         return Guide(start_score=start, final_score=current_score, steps=tuple(steps))
+
+    def _valuate(
+        self,
+        org: OrgState,
+        moves: tuple[Move, ...],
+        progress: Callable[[int], None] | None,
+    ):
+        if progress is None:
+            return self.simulator.valuate_moves(org, moves)
+        valuations = []
+        for at in range(0, len(moves), _PROGRESS_CHUNK):
+            chunk = moves[at : at + _PROGRESS_CHUNK]
+            valuations.extend(self.simulator.valuate_moves(org, chunk))
+            progress(len(chunk))
+        return valuations

@@ -16,6 +16,7 @@ its row and badge, marked as not composing with its cost.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import replace
 
 from fulcrum.application.interfaces import Simulator
@@ -59,7 +60,10 @@ def compose_leaf_lines(org: OrgState, guide_tree: OrgGuide) -> OrgState:
 
 
 def guard_leaf_lines(
-    org: OrgState, simulator: Simulator, nodes: tuple[GuideNode, ...]
+    org: OrgState,
+    simulator: Simulator,
+    nodes: tuple[GuideNode, ...],
+    progress: Callable[[], None] | None = None,
 ) -> tuple[tuple[GuideNode, ...], OrgState]:
     """Drop net-harmful leaf lines; return the marked tree and composed org.
 
@@ -68,6 +72,10 @@ def guard_leaf_lines(
     single worst negative line as not composing, then reprices: marginals
     interact, so lines are dropped one at a time, worst first, and the
     order is deterministic. The loop ends when every survivor helps.
+
+    Pricing a line replays every other line against the whole organisation,
+    so on a large org this loop is minutes of work: progress, if given, is
+    called once per line priced, keeping a bar alive through it.
     """
     while True:
         tree = OrgGuide(nodes, _NO_COST, _NO_COST, False)
@@ -78,6 +86,8 @@ def guard_leaf_lines(
         worst_marginal = _NO_COST
         for line in lines:
             marginal = full - simulator.score(_without(org, lines, line)).value
+            if progress is not None:
+                progress()
             if marginal < worst_marginal:
                 worst, worst_marginal = line, marginal
         if worst is None:

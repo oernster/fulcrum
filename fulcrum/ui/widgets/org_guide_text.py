@@ -158,3 +158,31 @@ def same_lines(first: OrgGuide, second: OrgGuide) -> bool:
         return tuple(collected)
 
     return lines(first) == lines(second)
+
+
+def growth_touched(fixed: OrgGuide, node: GuideNode) -> bool:
+    """Whether growth changes this frame's line at all.
+
+    The growth row exists only under growth; any other row is touched
+    when its line differs from the fixed tree's line for the same frame,
+    aggregate frames included (a split can be priced at the top level
+    only).
+    """
+    if node.grown_line:
+        return True
+    counterpart = find_frame(fixed, node.frame_id)
+    return counterpart is None or line_of(counterpart) != line_of(node)
+
+
+def growth_unchanged_note(fixed: OrgGuide, node: GuideNode) -> str:
+    """With growth on, say in place when it changes nothing for a frame.
+
+    A frame with no dependency load looks like a dead toggle otherwise;
+    the growth row itself and unplayable frames say their own thing.
+    """
+    if node.grown_line or not node.playable:
+        return ""
+    counterpart = find_frame(fixed, node.frame_id)
+    if counterpart is None or line_of(counterpart) != line_of(node):
+        return ""
+    return GROWTH_SAME_FRAME_NOTE

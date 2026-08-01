@@ -10,8 +10,8 @@ is the view from that altitude, shown but never composed.
 
 from __future__ import annotations
 
-from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QBrush, QColor, QGuiApplication
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
     QCheckBox,
     QHBoxLayout,
@@ -39,21 +39,21 @@ from fulcrum.ui.widgets.dialog_focus_ring import (
     WIDGET_STOP,
     DialogFocusRing,
 )
+from fulcrum.ui.widgets.dialog_sizing import initial_size
 from fulcrum.ui.widgets.move_preview_dialog import MovePreviewDialog
 from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 from fulcrum.ui.widgets.org_guide_text import (
     ALREADY_GOOD,
     GROW_TOGGLE_TEXT,
     GROW_TOGGLE_TIP,
-    GROWTH_SAME_FRAME_NOTE,
     GROWTH_SAME_NOTE,
     HINT,
     SCORE_DECIMALS,
     TOO_LARGE,
-    find_frame,
     frame_note_text,
     gain,
-    line_of,
+    growth_touched,
+    growth_unchanged_note,
     non_composing_note,
     same_lines,
     step_text,
@@ -79,11 +79,11 @@ class OrgGuideDialog(NeutralDialog):
     def __init__(
         self,
         guide: OrgGuide,
-        growth_guide: OrgGuide,
         simulator: Simulator | None = None,
         on_play=None,
         parent=None,
         theme: str | None = None,
+        grow_planner=None,
     ) -> None:
         super().__init__(parent)
         palette = PALETTES[theme if theme is not None else DEFAULT_THEME]
@@ -91,9 +91,13 @@ class OrgGuideDialog(NeutralDialog):
         self.setWindowTitle("Guide - path to a stronger org, level by level")
         self.setWindowFlag(Qt.WindowType.WindowMaximizeButtonHint, True)
         self.setMinimumSize(ui_scale.px(_MIN_WIDTH), ui_scale.px(_MIN_HEIGHT))
-        self.resize(self._initial_size(parent))
+        self.resize(initial_size(parent, _PARENT_FILL, _SCREEN_FILL))
         self._guide = guide
-        self._growth_guide = growth_guide
+        # The grown guide costs as much to build as the fixed one or more,
+        # so it arrives lazily: grow_planner is asked the first time the
+        # toggle turns on and set_growth_guide receives the result.
+        self._growth_guide: OrgGuide | None = None
+        self._grow_planner = grow_planner
         self._simulator = simulator
         self._on_play = on_play
         self._selected_frame: str | None = None
@@ -109,7 +113,7 @@ class OrgGuideDialog(NeutralDialog):
         self._toggle = QCheckBox(GROW_TOGGLE_TEXT)
         self._toggle.setObjectName("GrowToggle")
         self._toggle.setToolTip(GROW_TOGGLE_TIP)
-        self._toggle.toggled.connect(self._render_current)
+        self._toggle.toggled.connect(self._on_toggle)
         layout.addWidget(self._toggle)
 
         self._tree = QTreeWidget()
@@ -162,31 +166,35 @@ class OrgGuideDialog(NeutralDialog):
         self._render_current()
         self._focus_ring = DialogFocusRing(self, self._ring, self._tree_owns_updown)
 
-    @staticmethod
-    def _initial_size(parent) -> QSize:
-        """Most of the app window's size, or the screen's when parentless."""
-        if parent is not None:
-            base = parent.window().size()
-            return QSize(
-                round(base.width() * _PARENT_FILL),
-                round(base.height() * _PARENT_FILL),
-            )
-        screen = QGuiApplication.primaryScreen()
-        available = screen.availableGeometry().size()
-        return QSize(
-            round(available.width() * _SCREEN_FILL),
-            round(available.height() * _SCREEN_FILL),
-        )
-
     # ------------------------------------------------------------- rendering
 
+    def _on_toggle(self, checked: bool) -> None:
+        if checked and self._growth_guide is None:
+            if self._grow_planner is None:
+                self._toggle.setChecked(False)
+                return
+            # The grown guide builds off-thread behind its own progress
+            # dialog; set_growth_guide re-renders when it lands, and the
+            # fixed view stands until then.
+            self._grow_planner(self)
+            return
+        self._render_current()
+
+    def set_growth_guide(self, guide: OrgGuide) -> None:
+        """Receive the lazily built grown guide and re-render with it."""
+        self._growth_guide = guide
+        self._render_current()
+
+    def _grown_active(self) -> bool:
+        return self._toggle.isChecked() and self._growth_guide is not None
+
     def _active(self) -> OrgGuide:
-        return self._growth_guide if self._toggle.isChecked() else self._guide
+        return self._growth_guide if self._grown_active() else self._guide
 
     def _render_current(self) -> None:
         active = self._active()
         note = ""
-        if self._toggle.isChecked() and same_lines(self._guide, self._growth_guide):
+        if self._grown_active() and same_lines(self._guide, self._growth_guide):
             note = f"   {GROWTH_SAME_NOTE}"
         dropped = non_composing_note(active)
         if dropped:
@@ -200,7 +208,7 @@ class OrgGuideDialog(NeutralDialog):
 
     def _rebuild_tree(self, active: OrgGuide) -> None:
         remembered = self._selected_frame
-        mark_growth = self._toggle.isChecked()
+        mark_growth = self._grown_active()
         self._tree.blockSignals(True)
         self._tree.clear()
         to_select: list[QTreeWidgetItem] = []
@@ -209,7 +217,7 @@ class OrgGuideDialog(NeutralDialog):
             label = node.label if not node.category else f"{node.label}"
             item = QTreeWidgetItem([label, gain(node)])
             item.setData(0, _NODE_ROLE, node)
-            if mark_growth and self._growth_touched(node):
+            if mark_growth and growth_touched(self._guide, node):
                 # The toggle's own on-colour marks every row whose line
                 # growth actually changes, so where growth has any effect
                 # is visible at a glance rather than found row by row.
@@ -249,7 +257,9 @@ class OrgGuideDialog(NeutralDialog):
         title = node.label if not node.category else f"{node.category}: {node.label}"
         self._frame_title.setText(f"{title}   {gain(node)}")
         note = frame_note_text(node)
-        suffix = self._growth_unchanged_note(node)
+        suffix = (
+            growth_unchanged_note(self._guide, node) if self._grown_active() else ""
+        )
         if suffix:
             note = f"{note} {suffix}" if note else suffix
         self._frame_note.setText(note)
@@ -267,32 +277,6 @@ class OrgGuideDialog(NeutralDialog):
         for index, step in enumerate(node.guide.steps):
             self._rows.addWidget(self._step_row(node, index, step))
         self._rows.addStretch()
-
-    def _growth_touched(self, node: GuideNode) -> bool:
-        """Whether growth changes this frame's line at all.
-
-        The growth row exists only under growth; any other row is touched
-        when its line differs from the fixed tree's line for the same
-        frame, aggregate frames included (a split can be priced at the
-        top level only).
-        """
-        if node.grown_line:
-            return True
-        fixed = find_frame(self._guide, node.frame_id)
-        return fixed is None or line_of(fixed) != line_of(node)
-
-    def _growth_unchanged_note(self, node: GuideNode) -> str:
-        """With growth on, say in place when it changes nothing for a frame.
-
-        A frame with no dependency load looks like a dead toggle otherwise;
-        the growth row itself and unplayable frames say their own thing.
-        """
-        if not self._toggle.isChecked() or node.grown_line or not node.playable:
-            return ""
-        fixed = find_frame(self._guide, node.frame_id)
-        if fixed is None or line_of(fixed) != line_of(node):
-            return ""
-        return GROWTH_SAME_FRAME_NOTE
 
     def _add_note(self, text: str) -> None:
         note = QLabel(text)
@@ -330,10 +314,17 @@ class OrgGuideDialog(NeutralDialog):
             step.org_before, None, valuation, self._simulator, step.org_before, self
         )
         if dialog.exec() and self._on_play is not None:
-            guides = self._on_play(step.move, node.frame_id)
-            if guides is not None:
-                self._guide, self._growth_guide = guides
-                self._render_current()
+            fixed = self._on_play(step.move, node.frame_id)
+            if fixed is not None:
+                self._guide = fixed
+                # The position changed, so any grown guide is stale; drop
+                # back to the fixed view and let the toggle re-request a
+                # fresh one lazily.
+                self._growth_guide = None
+                if self._toggle.isChecked():
+                    self._toggle.setChecked(False)
+                else:
+                    self._render_current()
 
     # ------------------------------------------------------------- keyboard
 
