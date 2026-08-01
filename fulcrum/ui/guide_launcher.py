@@ -60,12 +60,12 @@ class GuideLauncher:
         self._thread = OrgGuideThread(session.org, self._simulator)
         self._thread.progress.connect(self._busy.set_progress)
         self._thread.built.connect(self._on_built)
-        self._thread.cancelled.connect(self._busy.close)
+        self._thread.cancelled.connect(self._busy.dismiss)
         self._thread.finished.connect(self._thread.deleteLater)
         self._thread.start()
 
     def _on_built(self, guide) -> None:
-        self._busy.close()
+        self._busy.dismiss()
         self._dialog = OrgGuideDialog(
             guide,
             self._simulator,
@@ -104,11 +104,11 @@ class GuideLauncher:
 
     def _on_growth_cancelled(self, dialog) -> None:
         """A cancelled grown build: close the bar and release the toggle."""
-        self._growth_busy.close()
+        self._growth_busy.dismiss()
         dialog.growth_cancelled()
 
     def _on_growth_built(self, dialog, guide) -> None:
-        self._growth_busy.close()
+        self._growth_busy.dismiss()
         dialog.set_growth_guide(guide)
 
     def _play(self, move, frame_id) -> None:
@@ -145,10 +145,10 @@ class GuideLauncher:
         self._rebuild_thread.start()
 
     def _on_rebuilt(self, guide) -> None:
-        self._rebuild_busy.close()
+        self._rebuild_busy.dismiss()
         self._dialog.set_fixed_guide(guide)
 
     def _on_rebuild_cancelled(self) -> None:
         """A cancelled replan: the guide's contents are stale, so close it."""
-        self._rebuild_busy.close()
+        self._rebuild_busy.dismiss()
         self._dialog.close()

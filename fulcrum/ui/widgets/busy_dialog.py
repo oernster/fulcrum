@@ -36,8 +36,10 @@ class BusyDialog(NeutralDialog):
     on_cancel, when given, adds a Cancel button (Escape presses it too):
     clicking asks the worker to stop and the dialog stays up, its button
     reading "Cancelling...", until the worker confirms and the caller
-    closes it. Without on_cancel the dialog cannot be dismissed at all:
-    closing it would orphan the running worker.
+    dismisses it. The user cannot close the dialog directly (close would
+    orphan the running worker), so QDialog's own close/reject paths are
+    routed to cancellation; the caller closes it through dismiss(), the
+    one path allowed to actually hide it.
     """
 
     def __init__(
@@ -65,6 +67,7 @@ class BusyDialog(NeutralDialog):
         self._bar.setTextVisible(False)
         layout.addWidget(self._bar)
         self._on_cancel = on_cancel
+        self._dismissed = False
         self._cancel_button: QPushButton | None = None
         if on_cancel is not None:
             row = QHBoxLayout()
@@ -80,14 +83,35 @@ class BusyDialog(NeutralDialog):
             self._bar.setMaximum(total)
             self._bar.setValue(done)
 
+    def dismiss(self) -> None:
+        """Close the dialog; the worker is finished with it.
+
+        The only path that actually hides the dialog: user-driven close
+        and Escape route to cancellation instead, so the callers that
+        receive the worker's built or cancelled signal call this.
+        """
+        self._dismissed = True
+        self.close()
+
     def _request_cancel(self) -> None:
-        """Ask the worker to stop, once; the caller closes the dialog when
-        the worker confirms, so the button dims to show the request took."""
+        """Ask the worker to stop, once; the caller dismisses the dialog
+        when the worker confirms, so the button dims to show it took."""
         if self._cancel_button is None or not self._cancel_button.isEnabled():
             return
         self._cancel_button.setEnabled(False)
         self._cancel_button.setText("Cancelling...")
         self._on_cancel()
+
+    def closeEvent(self, event) -> None:
+        # Only dismiss() may close the dialog: QDialog routes close
+        # through reject and ignores it when the dialog stays visible,
+        # so an unguarded user close (Alt+F4) is turned into a
+        # cancellation request instead of orphaning the worker.
+        if self._dismissed:
+            event.accept()
+            return
+        event.ignore()
+        self._request_cancel()
 
     def reject(self) -> None:
         # Escape routes to cancellation when available and is otherwise
