@@ -57,8 +57,12 @@ _LOCAL_APPDATA_SUBPATH = ("AppData", "Local")
 _START_MENU_SUBPATH = ("Microsoft", "Windows", "Start Menu", "Programs")
 _DESKTOP_DIR_NAME = "Desktop"
 _SHORTCUT_EXT = ".lnk"
-# Per-user state directory the application writes (preferences, saved games).
-_STATE_DIR_NAME = "Fulcrum"
+# Per-user state directory the application actually writes: its settings and
+# the session autosave, both under a dot-directory in the user's home rather
+# than under LocalAppData. This MUST match the app's own directory name or the
+# uninstaller's "also remove my settings and saved games" removes nothing and
+# says otherwise. tests/installer/test_state_dir.py pins the two together.
+_STATE_DIR_NAME = ".fulcrum"
 
 # The registered uninstaller is a copy of this installer placed under the
 # install root, so "Apps & features" can re-run it with --uninstall.
@@ -83,10 +87,6 @@ RUN_VALUE = "Fulcrum"
 # removes it. Must match the app's APP_APPUSERMODELID.
 APP_AUMID = "uk.codecrafter.fulcrum"
 AUMID_CLASSES_SUBKEY = r"Software\Classes\AppUserModelId"
-
-# Deferred delete (when the uninstaller lives inside the dir it must remove).
-_DEFERRED_DELETE_ATTEMPTS = 30
-_DEFERRED_DELETE_INTERVAL_MS = 500
 
 # Crash diagnostics: a console-disabled onefile shows no traceback when it
 # dies, so unhandled exceptions are appended to this file under the temp
@@ -188,9 +188,9 @@ def install_target(local_appdata: str | None, home: Path) -> Path:
     return _local_appdata(local_appdata, home) / _PROGRAMS_DIR_NAME / APP_NAME
 
 
-def state_dir(local_appdata: str | None, home: Path) -> Path:
+def state_dir(home: Path) -> Path:
     """Return the per-user state directory the app writes (settings, saves)."""
-    return _local_appdata(local_appdata, home) / _STATE_DIR_NAME
+    return home / _STATE_DIR_NAME
 
 
 def start_menu_link(appdata: str | None) -> Path | None:
@@ -309,41 +309,6 @@ def absolute_location(raw: str | None) -> Path | None:
 def toast_identity_key() -> str:
     """Return the HKCU key holding the app's notification registration."""
     return rf"{AUMID_CLASSES_SUBKEY}\{APP_AUMID}"
-
-
-# ------------------------------------------------------------ shell-out scripts
-
-
-def shortcut_command(exe_path: Path, link: Path) -> str:
-    """Return the PowerShell that writes a shortcut to the installed exe."""
-    icon = exe_path.parent / SHORTCUT_ICON_FILE_NAME
-    icon_clause = f"$s.IconLocation = '{icon}'; " if icon.exists() else ""
-    return (
-        "$s = (New-Object -ComObject WScript.Shell).CreateShortcut('"
-        f"{link}'); $s.TargetPath = '{exe_path}'; "
-        f"$s.WorkingDirectory = '{exe_path.parent}'; "
-        f"{icon_clause}$s.Save()"
-    )
-
-
-def deferred_delete_script(install_dir: Path) -> str:
-    """Return the PowerShell that deletes a directory once its lock clears."""
-    escaped = str(install_dir).replace("'", "''")
-    return (
-        f"$d = '{escaped}'; "
-        f"for ($i = 0; $i -lt {_DEFERRED_DELETE_ATTEMPTS}; $i++) {{ "
-        "if (-not (Test-Path -LiteralPath $d)) { break } "
-        "Remove-Item -LiteralPath $d -Recurse -Force "
-        "-ErrorAction SilentlyContinue; "
-        "if (-not (Test-Path -LiteralPath $d)) { break } "
-        f"Start-Sleep -Milliseconds {_DEFERRED_DELETE_INTERVAL_MS} "
-        "}"
-    )
-
-
-def process_is_running(tasklist_output: str) -> bool:
-    """Return True when the task list names the application executable."""
-    return EXE_NAME.lower() in tasklist_output.lower()
 
 
 # ------------------------------------------------------------------ deployment

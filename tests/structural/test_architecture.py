@@ -89,8 +89,10 @@ def test_the_installer_stays_standalone():
 
 
 def test_the_installer_decisions_touch_no_side_effects():
-    # installer_logic is the gated layer: it is testable precisely because
-    # it never reaches the registry, a subprocess, the environment or Qt.
-    modules = _imported_modules(_INSTALLER / "installer_logic.py")
+    # installer_logic decides and installer_scripts builds the text those
+    # decisions are carried out with. Both are gated, and both are testable
+    # precisely because neither reaches the registry, a subprocess, the
+    # environment or Qt. Only installer_ops is allowed to act.
     forbidden = {"winreg", "subprocess", "os", "sys", "ctypes", "PySide6"}
-    assert not (modules & forbidden)
+    for name in ("installer_logic.py", "installer_scripts.py"):
+        assert not (_imported_modules(_INSTALLER / name) & forbidden), name

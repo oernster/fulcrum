@@ -96,6 +96,16 @@ class BoardMapPane(QStackedWidget):
         self._map.set_org(org)
         self._complete.set_org(org)
 
+    def set_highlight(self, node_ids) -> None:
+        """Ring the given nodes on both views, so a move is visible either way.
+
+        The drill map rings only what the current level draws; the complete
+        picture resolves a summarised team to the deepest ancestor it does
+        draw, so a move on leaf teams still marks the section holding them.
+        """
+        self._map.set_highlight(node_ids)
+        self._complete.set_highlight(node_ids)
+
     def reset(self) -> None:
         """A fresh organisation: back to the top and the complete picture."""
         self._map.reset_view()

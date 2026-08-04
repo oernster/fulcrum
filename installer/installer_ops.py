@@ -27,6 +27,7 @@ from pathlib import Path
 from types import TracebackType
 
 import installer_logic as logic
+import installer_scripts as scripts
 
 # Best-effort shell-out timeouts.
 _POWERSHELL = "powershell"
@@ -148,7 +149,7 @@ def install_target() -> Path:
 
 def state_dir() -> Path:
     """Return the per-user state directory the app writes (settings, saves)."""
-    return logic.state_dir(os.environ.get(logic.ENV_LOCALAPPDATA), Path.home())
+    return logic.state_dir(Path.home())
 
 
 def start_menu_link() -> Path | None:
@@ -179,7 +180,7 @@ def is_app_running() -> bool:
         )
     except (OSError, subprocess.SubprocessError):
         return False
-    return logic.process_is_running(result.stdout)
+    return scripts.process_is_running(result.stdout)
 
 
 def run_powershell(command: str) -> None:
@@ -244,7 +245,7 @@ def set_app_user_model_id() -> None:
 def create_shortcut(exe_path: Path, link: Path) -> None:
     """Write a shortcut to the installed exe with the app icon (best effort)."""
     link.parent.mkdir(parents=True, exist_ok=True)
-    run_powershell(logic.shortcut_command(exe_path, link))
+    run_powershell(scripts.shortcut_command(exe_path, link))
 
 
 def remove_shortcut(link: Path | None) -> None:
@@ -325,7 +326,7 @@ def schedule_delete_after_exit(install_dir: Path) -> None:
                 "-WindowStyle",
                 "Hidden",
                 "-Command",
-                logic.deferred_delete_script(install_dir),
+                scripts.deferred_delete_script(install_dir),
             ],
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,

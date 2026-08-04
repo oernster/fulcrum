@@ -121,6 +121,11 @@ class MainWindow(QMainWindow):
             lambda: self._theme,
         )
         restored = org_store.load() if org_store is not None else None
+        # A failed restore is not the same as having nothing to restore, and
+        # the user is the only one who can tell which happened. Held until
+        # the window is shown, since a message box during construction has no
+        # parent to sit over.
+        self._restore_warning = self._restore_warning_text(org_store)
         if restored is not None:
             # Replay rebuilds the undo stack, so the whole record (this
             # run's predecessor included) can be taken back move by move.
@@ -335,11 +340,33 @@ class MainWindow(QMainWindow):
     def _inform(self, title: str, message: str) -> None:
         QMessageBox.information(self, title, message)
 
+    @staticmethod
+    def _restore_warning_text(org_store) -> str | None:
+        """Explain a failed restore, or None when there is nothing to explain."""
+        if org_store is None:
+            return None
+        if org_store.preserved_copy is not None:
+            return (
+                "The saved organisation could not be read, so it has been kept "
+                f"at {org_store.preserved_copy} and a new one has been started. "
+                "Nothing has been deleted."
+            )
+        if org_store.is_sealed:
+            return (
+                "The saved organisation could not be read and could not be "
+                "moved aside, so it has been left untouched. This session will "
+                "not be saved over it."
+            )
+        return None
+
     def showEvent(self, event) -> None:
         super().showEvent(event)
         if not self._started:
             self._started = True
             self._focus_start.setFocus(Qt.FocusReason.OtherFocusReason)
+            if self._restore_warning is not None:
+                self._inform("Saved organisation", self._restore_warning)
+                self._restore_warning = None
 
     def closeEvent(self, event) -> None:
         self._autosave()

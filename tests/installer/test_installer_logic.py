@@ -95,20 +95,29 @@ def test_compare_versions_orders_by_numeric_parts():
 # ---------------------------------------------------------------- user paths
 
 
-def test_install_and_state_paths_use_the_environment_when_it_is_set(tmp_path):
+def test_the_install_path_uses_the_environment_when_it_is_set(tmp_path):
     local = str(tmp_path / "Local")
     home = tmp_path / "home"
     assert logic.install_target(local, home) == (
         tmp_path / "Local" / "Programs" / logic.APP_NAME
     )
-    assert logic.state_dir(local, home) == tmp_path / "Local" / logic.APP_NAME
 
 
-def test_install_and_state_paths_fall_back_to_the_home_directory(tmp_path):
+def test_the_install_path_falls_back_to_the_home_directory(tmp_path):
     home = tmp_path / "home"
-    expected = home / "AppData" / "Local"
-    assert logic.install_target(None, home).parent.parent == expected
-    assert logic.state_dir("", home).parent == expected
+    assert logic.install_target(None, home).parent.parent == (
+        home / "AppData" / "Local"
+    )
+
+
+def test_the_state_directory_sits_in_the_home_directory(tmp_path):
+    # Not under LocalAppData: the application writes its settings and its
+    # session autosave to a dot-directory in the user's home, and the
+    # uninstaller has to remove that one or its offer to remove saved games
+    # is a false statement.
+    home = tmp_path / "home"
+    assert logic.state_dir(home).parent == home
+    assert logic.state_dir(home).name.startswith(".")
 
 
 def test_start_menu_link_needs_the_roaming_appdata_variable(tmp_path):

@@ -7,6 +7,7 @@ path move to a faster kernel later without touching the domain or the UI.
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import Protocol
 
 from fulcrum.application.dto import (
@@ -69,11 +70,24 @@ class Clock(Protocol):
 
 
 class OrgStore(Protocol):
-    """Persists the session (org plus move history) across app runs."""
+    """Persists the session (org plus move history) across app runs.
+
+    A store that cannot read what it finds must not destroy it. ``load``
+    returning None therefore has two meanings the caller has to tell apart:
+    nothing was saved, or something was saved and could not be read. The two
+    members below report the second case, so a failed restore can be said out
+    loud rather than silently replaced by a fresh session.
+    """
 
     def save(self, snapshot: SessionSnapshot) -> None: ...
 
     def load(self) -> SessionSnapshot | None: ...
+
+    @property
+    def preserved_copy(self) -> Path | None: ...
+
+    @property
+    def is_sealed(self) -> bool: ...
 
 
 class SettingsStore(Protocol):

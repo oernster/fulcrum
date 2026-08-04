@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 import installer_logic as logic
+import installer_scripts as scripts
 
 
 class _UnreadableDirectory:
@@ -142,7 +143,7 @@ def test_the_toast_identity_key_sits_under_the_classes_subkey():
 def test_the_shortcut_command_points_at_the_installed_exe(tmp_path):
     exe = tmp_path / logic.EXE_NAME
     link = tmp_path / "Fulcrum.lnk"
-    command = logic.shortcut_command(exe, link)
+    command = scripts.shortcut_command(exe, link)
     assert f"$s.TargetPath = '{exe}'" in command
     assert f"$s.WorkingDirectory = '{tmp_path}'" in command
     assert "IconLocation" not in command
@@ -151,21 +152,21 @@ def test_the_shortcut_command_points_at_the_installed_exe(tmp_path):
 def test_the_shortcut_command_carries_the_icon_when_one_is_deployed(tmp_path):
     icon = tmp_path / logic.SHORTCUT_ICON_FILE_NAME
     icon.write_bytes(b"ico")
-    command = logic.shortcut_command(tmp_path / logic.EXE_NAME, tmp_path / "F.lnk")
+    command = scripts.shortcut_command(tmp_path / logic.EXE_NAME, tmp_path / "F.lnk")
     assert f"$s.IconLocation = '{icon}'" in command
 
 
 def test_the_deferred_delete_escapes_quotes_and_polls_the_lock(tmp_path):
     quoted = tmp_path / "Ol'iver"
-    script = logic.deferred_delete_script(quoted)
+    script = scripts.deferred_delete_script(quoted)
     assert "Ol''iver" in script
     assert "Remove-Item -LiteralPath $d -Recurse -Force" in script
     assert "Start-Sleep -Milliseconds" in script
 
 
 def test_the_task_list_is_read_case_insensitively():
-    assert logic.process_is_running("FULCRUM.EXE  1234 Console") is True
-    assert logic.process_is_running("No tasks are running") is False
+    assert scripts.process_is_running("FULCRUM.EXE  1234 Console") is True
+    assert scripts.process_is_running("No tasks are running") is False
 
 
 # ------------------------------------------------------------------- deploy

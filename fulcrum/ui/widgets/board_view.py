@@ -230,6 +230,13 @@ class BoardView(QWidget):
         )
         self._scope.refresh()
         self._map_pane.set_org(self._session.org)
+        # Mark where the last move acted. Without this the map redraws in the
+        # new position and shows nothing: at whole-org scope a leaf repair
+        # moves the encoding by hundredths, so the ring is the only visible
+        # evidence a move landed. Derived from the history rather than held as
+        # its own state, so a take-back falls back to the move before it and a
+        # fresh organisation clears it.
+        self._map_pane.set_highlight(self._last_move_targets())
         self._move_note.show_last_move(self._session)
         self._update_undo()
         self._start_analysis()
@@ -240,6 +247,12 @@ class BoardView(QWidget):
             return
         self._session.take_back()
         self.refresh()
+
+    def _last_move_targets(self) -> tuple[str, ...]:
+        """The nodes the most recent move acted on, empty when none is played."""
+        if self._session is None or not self._session.history:
+            return ()
+        return self._session.history[-1].targets
 
     def _update_undo(self) -> None:
         can = self._session is not None and self._session.can_take_back
