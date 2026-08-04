@@ -131,8 +131,12 @@ QPushButton#TreeAction, QPushButton#MapZoom {{
 /* The tree's action cells sit over the tree surface; without this they paint
    the window background as opaque blocks in each row. */
 QWidget#TreeActionCell {{ background: transparent; }}
+/* Icon buttons differ from text buttons in padding and glyph size only.
+   They deliberately declare no background: every button in the app, on the
+   main window and in every dialog, takes the one from the generic
+   QPushButton rule above, so there is a single place that decides what a
+   button looks like at rest. */
 QPushButton#IconLink {{
-    background: transparent;
     border: 2px solid transparent;
     padding: 4px 10px;
     font-size: {glyph_pt}pt;
@@ -147,7 +151,6 @@ QPushButton#IconLink:enabled:focus {{
 }}
 QPushButton#IconLink:disabled {{ border-color: {p.ring_red}; }}
 QPushButton#PreviewButton {{
-    background: transparent;
     border: 2px solid transparent;
     padding: 4px 8px;
     font-size: {glyph_pt}pt;
