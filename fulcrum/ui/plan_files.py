@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QStandardPaths
+from PySide6.QtCore import QStandardPaths, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QFileDialog, QMessageBox
 
 from fulcrum.application.dto import Plan
@@ -89,11 +90,15 @@ class PlanFileActions:
         self._set_session(session)
 
     def export_html(self) -> None:
-        """Write the presentation straight into Downloads, never a dialog.
+        """Write the presentation into Downloads and open it for reading.
 
         The report carries the whole record (earlier runs included), so the
         export needs no save-as conversation; a fresh unique name in the
-        Downloads folder means nothing is ever overwritten.
+        Downloads folder means nothing is ever overwritten. It is then handed
+        to the browser, because a report nobody reads is not an output: the
+        old behaviour wrote the file and reported a filename, leaving the
+        user to go and find it. The confirmation box is kept only for the
+        case where nothing opens it, where the filename is all we can give.
         """
         session = self._session_of()
         if session is None:
@@ -109,6 +114,8 @@ class PlanFileActions:
         self._plan_exporter.export_html(
             str(path), report, session.initial_org, session.org, created
         )
+        if QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))):
+            return
         QMessageBox.information(
             self._window,
             "Presentation created",

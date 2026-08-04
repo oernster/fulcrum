@@ -54,7 +54,7 @@ _GLOSSARY_GLYPH = "\N{INFORMATION SOURCE}\N{VARIATION SELECTOR-16}"
 _GLOSSARY_TOOLTIP = "Decision glossary"
 _RECORD_TOOLTIP = "Move record: every move to date, with the position before and after"
 _PRESENTATION_GLYPH = "\N{CHART WITH UPWARDS TREND}"
-_PRESENTATION_TOOLTIP = "Create presentation"
+_PRESENTATION_TOOLTIP = "Create the presentation and open it"
 _MODEL_ORG_TOOLTIP = "Model my organisation"
 _EDIT_ORG_TOOLTIP = "Edit my org: reopen and edit the current organisation"
 _GUIDE_TOOLTIP = "Show the guide"
@@ -170,7 +170,9 @@ class MainWindow(QMainWindow):
             _PROVENANCE_TOOLTIP, self._provenance
         )
         top.addWidget(provenance_button)
-        top.addStretch()
+        # The presentation joins the pair at the centre rather than sitting
+        # out on the right edge with the utilities: it is what the board is
+        # for, and on the edge it read as an afterthought.
         presentation_link = QPushButton(_PRESENTATION_GLYPH)
         presentation_link.setObjectName("IconLink")
         presentation_link.setToolTip(_PRESENTATION_TOOLTIP)
@@ -178,10 +180,11 @@ class MainWindow(QMainWindow):
         presentation_link.clicked.connect(self._plan_files.export_html)
         presentation_link.setEnabled(False)
         self._board.historyChanged.connect(presentation_link.setEnabled)
+        top.addWidget(presentation_link)
+        top.addStretch()
         self._theme_toggle = header_buttons.theme_toggle_button(self._toggle_theme)
         header_buttons.dress_theme_toggle(self._theme_toggle, self._theme)
         top.addWidget(self._theme_toggle)
-        top.addWidget(presentation_link)
         glossary_link = QPushButton(_GLOSSARY_GLYPH)
         glossary_link.setObjectName("IconLink")
         glossary_link.setToolTip(_GLOSSARY_TOOLTIP)
@@ -198,8 +201,8 @@ class MainWindow(QMainWindow):
                 guide_button,
                 record_button,
                 provenance_button,
-                self._theme_toggle,
                 presentation_link,
+                self._theme_toggle,
                 glossary_link,
             )
         )
@@ -246,7 +249,7 @@ class MainWindow(QMainWindow):
     def _build_menu(self) -> None:
         file_menu = self.menuBar().addMenu("File")
         self._presentation_action = file_menu.addAction(
-            "Create presentation...", self._plan_files.export_html
+            "Create presentation", self._plan_files.export_html
         )
         self._presentation_action.setEnabled(False)
         self._board.historyChanged.connect(self._presentation_action.setEnabled)
