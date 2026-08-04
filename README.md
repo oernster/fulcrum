@@ -185,6 +185,8 @@ python main.py
   Flatpak, the macOS disk image and the site).
 - [Testing](TESTING.md): how the suite is structured, how to run it and how to
   read its result.
+- [Technical debt](TECH_DEBT.md): the standing reference to what is still open,
+  what is deliberately left and what only looks like debt.
 
 ## Test
 
