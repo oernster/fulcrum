@@ -20,8 +20,8 @@ from fulcrum.domain.models import (
     AuthorityClaim,
     Dependency,
     Domain,
-    Origin,
     OrgState,
+    Origin,
     Team,
 )
 

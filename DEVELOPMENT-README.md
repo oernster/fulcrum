@@ -133,6 +133,20 @@ Packages the standalone payload into a single-file installer
 `%LOCALAPPDATA%\Programs\Fulcrum`, writes the uninstall entry and creates the
 desktop and Start Menu shortcuts. Run `buildexe.py` first.
 
+The installer under `installer/` is a second application, layered like one.
+`installer_logic.py` decides (where files go, how two versions compare, what
+the uninstall registration says, what a shortcut or a deferred delete asks
+Windows to do): it is pure, imports nothing beyond the stdlib and is held at
+100% coverage by `tests/installer`. `installer_ops.py` acts
+(registry, task list, PowerShell, Win32). `installer_lifecycle.py` composes
+the two into install, repair and uninstall. `installer_bundle.py` reads the
+payload beside the binary; `installer_theme.py`, `installer_widgets.py`
+and `installer_window.py` are the Qt surface, outside the coverage gate as the
+app's own UI is. `app.py` is the entry point. Every module is inside the
+400-line cap, which the structural test now enforces over `installer/` too.
+Nothing under `installer/` may import from the `fulcrum` package: the two
+binaries are built and released separately.
+
 ### Linux Flatpak
 
 ```
@@ -173,18 +187,21 @@ icon.
 ### GitHub Pages site
 
 The site under `docs/` is hand-maintained static HTML, served from the
-`main` branch `/docs` folder. Edit the pages directly and do not regenerate
-them: `build_docs.py` predates the hand-maintained content and running it
-would overwrite the pages. Version numbers in the pages sit between
-`<!--VERSION-->` delimiters and are stamped from the `VERSION` file (the
-packaged builds run this automatically):
+`main` branch `/docs` folder: `index.html` plus `why.html`, `model.html`,
+`tool.html` and `download.html`, sharing one `styles.css`. Edit the pages
+directly. There is no generator: the site is authored, not built, so nothing
+can overwrite it. Version numbers in the pages sit between `<!--VERSION-->`
+delimiters and are stamped from the `VERSION` file (the packaged builds run
+this automatically):
 
 ```
 python stamp_version.py
 ```
 
-The play-by-play screenshots in `docs/assets/screenshots/` are captured from
-the running app and committed alongside.
+The images under `docs/assets/` are committed alongside the pages: the
+play-by-play screenshots in `docs/assets/screenshots/` are captured from the
+running app; the book covers in `docs/assets/books/` are web-sized copies
+of the masters in `assets/books/`.
 
 ### Sensitivity sweep
 
@@ -214,6 +231,12 @@ validation set); add new ones from `TEMPLATE.json`. The matrixed-enterprise
 case is written by `generate_matrixed_enterprise.py` (deterministic and
 seeded); change that script and rerun it rather than editing its JSON by
 hand.
+
+All three scripts carry smoke tests in `tests/scripts`, so the suite fails if
+the sweep loses a conclusion, a calibration case drifts outside its band or
+the committed matrixed-enterprise JSON stops matching what the generator
+produces. They stay outside the coverage gate: the tests assert they run,
+exit zero and emit the shape their reader depends on.
 
 ## Conventions
 

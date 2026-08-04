@@ -393,9 +393,7 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory() as icon_tmp:
         png_path = _resolve_source_png()
-        icns_path = (
-            png_to_icns(png_path, Path(icon_tmp), ICON_BG) if png_path else None
-        )
+        icns_path = png_to_icns(png_path, Path(icon_tmp), ICON_BG) if png_path else None
         if not icns_path:
             print(
                 "  WARNING: no glow-treated icon PNG found "

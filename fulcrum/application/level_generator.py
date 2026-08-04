@@ -26,7 +26,7 @@ from fulcrum.application.cluster_pool import (
 )
 from fulcrum.application.name_pool import NamePicker
 from fulcrum.application.simulator import DeterministicSimulator
-from fulcrum.domain.models import GROUP_CATEGORIES, Domain, Origin, OrgState, Team
+from fulcrum.domain.models import GROUP_CATEGORIES, Domain, OrgState, Origin, Team
 from fulcrum.domain.org_size import DEFAULT_BAND, OrgSizeBand
 
 # Cosmetic name pool for generated domains, the structural equivalent of the

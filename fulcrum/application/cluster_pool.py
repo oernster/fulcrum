@@ -18,7 +18,7 @@ from random import Random
 
 from fulcrum.application.game_session import enumerate_moves
 from fulcrum.application.simulator import DeterministicSimulator
-from fulcrum.domain.models import Dependency, Origin, OrgState, Team
+from fulcrum.domain.models import Dependency, OrgState, Origin, Team
 from fulcrum.domain.moves import apply_move
 from fulcrum.domain.simulation import MoveClassification
 

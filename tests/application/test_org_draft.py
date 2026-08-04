@@ -5,7 +5,6 @@ test_org_draft_convert; the shared builders in org_draft_support.
 """
 
 import pytest
-
 from org_draft_support import make_draft, make_imported_draft
 
 from fulcrum.application.dto import DependencySpec

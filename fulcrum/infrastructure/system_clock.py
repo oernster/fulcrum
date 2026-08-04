@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 _MONTHS = (
     "January",
@@ -27,5 +27,5 @@ class SystemClock:
         # Human-friendly UTC for report headers and saved games, to the second
         # (no sub-second noise): e.g. "22 June 2026, 14:30:45 UTC". A fixed
         # month list keeps it English regardless of the system locale.
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         return f"{now.day} {_MONTHS[now.month - 1]} {now.year}, {now:%H:%M:%S} UTC"

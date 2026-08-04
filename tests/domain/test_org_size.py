@@ -1,5 +1,7 @@
 """Tests for the organisation size bands."""
 
+from itertools import pairwise
+
 import pytest
 
 from fulcrum.domain.errors import InvalidOrgStateError
@@ -46,6 +48,6 @@ def test_bands_are_named_and_cover_a_growing_range():
     assert DEFAULT_BAND in ORG_SIZE_BANDS
     keys = [band.key for band in ORG_SIZE_BANDS]
     assert keys == ["tiny", "small", "medium", "large", "huge", "massive"]
-    for earlier, later in zip(ORG_SIZE_BANDS, ORG_SIZE_BANDS[1:]):
+    for earlier, later in pairwise(ORG_SIZE_BANDS):
         assert later.min_people >= earlier.min_people
         assert later.max_people > earlier.max_people

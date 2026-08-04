@@ -9,7 +9,7 @@ the event filter.
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from PySide6.QtCore import QEvent, QObject, Qt
 from PySide6.QtWidgets import QApplication, QWidget
@@ -111,9 +111,12 @@ class DialogFocusRing(QObject):
         ]
 
     def _step_within(self, focus, delta) -> bool:
-        if focus is not None and self._owns_updown is not None:
-            if self._owns_updown(focus):
-                return False
+        if (
+            focus is not None
+            and self._owns_updown is not None
+            and self._owns_updown(focus)
+        ):
+            return False
         for kind, target in self._stops():
             if kind != GROUP_STOP:
                 continue

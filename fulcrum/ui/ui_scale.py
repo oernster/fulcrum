@@ -20,4 +20,4 @@ def factor() -> float:
 
 
 def px(value: float) -> int:
-    return int(round(value * _state["factor"]))
+    return round(value * _state["factor"])

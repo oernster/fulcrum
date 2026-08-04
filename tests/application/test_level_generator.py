@@ -13,7 +13,7 @@ from fulcrum.domain.hierarchy import (
     root_domains,
     total_headcount,
 )
-from fulcrum.domain.models import Origin, OrgState
+from fulcrum.domain.models import OrgState, Origin
 from fulcrum.domain.org_size import ORG_SIZE_BANDS
 
 _LOW = 0.6

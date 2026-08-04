@@ -30,7 +30,7 @@ def test_can_claim_rules():
 
 
 def test_add_claim_records_once_and_refuses_duplicates_and_illegals():
-    draft, unit, first, second = _draft_with_two_teams()
+    draft, _unit, first, second = _draft_with_two_teams()
     assert draft.add_claim(second.id, first.id) is True
     assert draft.add_claim(second.id, first.id) is False
     assert draft.add_claim(first.id, first.id) is False
@@ -53,21 +53,21 @@ def test_claimant_options_exclude_the_subject_itself():
 
 
 def test_removing_a_node_prunes_the_claims_it_carried():
-    draft, unit, first, second = _draft_with_two_teams()
+    draft, _unit, first, second = _draft_with_two_teams()
     draft.add_claim(second.id, first.id)
     draft.remove(second.id)
     assert draft.claims == ()
 
 
 def test_removing_a_subject_prunes_its_claims():
-    draft, unit, first, second = _draft_with_two_teams()
+    draft, _unit, first, second = _draft_with_two_teams()
     draft.add_claim(second.id, first.id)
     draft.remove(first.id)
     assert draft.claims == ()
 
 
 def test_converting_a_team_to_a_unit_drops_claims_on_it_but_not_by_it():
-    draft, unit, first, second = _draft_with_two_teams()
+    draft, _unit, first, second = _draft_with_two_teams()
     draft.add_claim(second.id, first.id)
     draft.add_claim(first.id, second.id)
     draft.convert_to_container(first.id, "Domain")

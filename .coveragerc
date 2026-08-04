@@ -15,3 +15,11 @@ omit =
     */__pycache__/*
     */venv/*
     */generate_icons.py
+    */installer/app.py
+    */installer/installer_bundle.py
+    */installer/installer_lifecycle.py
+    */installer/installer_ops.py
+    */installer/installer_theme.py
+    */installer/installer_widgets.py
+    */installer/installer_window.py
+    */installer/payload/*

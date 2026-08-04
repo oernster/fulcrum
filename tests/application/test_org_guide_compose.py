@@ -170,7 +170,7 @@ def _harmful_nodes(org):
 def test_net_harmful_line_is_dropped_from_the_headline():
     org = _guard_org()
     platform, product = _harmful_nodes(org)
-    nodes, composed = guard_leaf_lines(org, _SIM, (platform, product))
+    nodes, _composed = guard_leaf_lines(org, _SIM, (platform, product))
     marked = next(n for n in nodes if n.label == "Platform")
     assert marked.composes is False
     assert marked.compose_cost > 0

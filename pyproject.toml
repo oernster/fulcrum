@@ -18,7 +18,34 @@ version = {file = "VERSION"}
 line-length = 88
 target-version = ["py311"]
 
+[tool.ruff]
+# Mirrors .flake8 so ruff and flake8 read the same files at the same width.
+# The excludes are the gitignored build outputs, so a bare "ruff check ."
+# never walks into the Nuitka payload, the installer bundle or the Flatpak
+# and DMG staging trees. (.flake8's E203 and W503 ignores are flake8-only
+# concerns and are not in ruff's default selection.)
+line-length = 88
+extend-exclude = [
+    "build",
+    "dist-installer",
+    "installer/payload",
+    "*.build",
+    "*.dist",
+    "*.onefile-build",
+    ".flatpak-build",
+    ".flatpak-builder",
+    ".flatpak-wheels",
+    "packaging",
+    "_dmg_staging",
+]
+
+[tool.ruff.lint]
+# No "select" on purpose: the rule set stays at ruff's default until a family
+# is genuinely cleared, one dedicated commit at a time. See TECH_DEBT.md for
+# the wider baseline, and for why RUF100 must not be enabled before the
+# families its noqa comments name are.
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q --cov=fulcrum --cov=main --cov-report=term-missing --cov-fail-under=100 --cov-config=.coveragerc"
-pythonpath = ["."]
+addopts = "-q --cov=fulcrum --cov=main --cov=installer --cov-report=term-missing --cov-fail-under=100 --cov-config=.coveragerc"
+pythonpath = [".", "installer"]

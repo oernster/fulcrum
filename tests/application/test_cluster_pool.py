@@ -35,8 +35,8 @@ from fulcrum.domain.models import (
     DEFAULT_CATEGORY,
     DEFAULT_HEADCOUNT,
     Domain,
-    Origin,
     OrgState,
+    Origin,
     Team,
 )
 from fulcrum.domain.simulation import DEFAULT_PARAMETERS, MoveClassification
@@ -212,7 +212,7 @@ class _NeverGreat:
 
 
 def test_random_cluster_falls_back_after_the_try_cap():
-    teams, deps = _random_cluster(Random(0), _NeverGreat(), 6, 0, 4)
+    teams, _deps = _random_cluster(Random(0), _NeverGreat(), 6, 0, 4)
     assert len(teams) == 4
     assert teams[0].has_local_authority is True
 

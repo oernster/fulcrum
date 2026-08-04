@@ -29,10 +29,13 @@ class _DisabledTooltip(QObject):
     def eventFilter(self, obj: QObject, event: QEvent) -> bool:
         if event.type() == QEvent.Type.ToolTip and isinstance(obj, QWidget):
             child = obj.childAt(event.pos())
-            if child is not None and not child.isEnabled():
-                if child.property(_GATED_PROPERTY):
-                    QToolTip.showText(event.globalPos(), _AWAITING_MOVE_TIP)
-                    return True
+            if (
+                child is not None
+                and not child.isEnabled()
+                and child.property(_GATED_PROPERTY)
+            ):
+                QToolTip.showText(event.globalPos(), _AWAITING_MOVE_TIP)
+                return True
         return super().eventFilter(obj, event)
 
 

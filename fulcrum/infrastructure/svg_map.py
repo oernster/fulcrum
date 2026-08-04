@@ -45,8 +45,10 @@ def render_overview_svg(org: OrgState) -> str:
     width = _MARGIN * _HALF + columns * _NODE_W + (columns - 1) * _GAP_X
     height = _MARGIN * _HALF + rows * _NODE_H + (rows - 1) * _GAP_Y
     parts = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" '
-        f'height="{height}" viewBox="0 0 {width} {height}">',
+        (
+            f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" '
+            f'height="{height}" viewBox="0 0 {width} {height}">'
+        ),
         f'<rect width="{width}" height="{height}" fill="{_BG}"/>',
     ]
     for edge in edges:
@@ -76,8 +78,10 @@ def _edge_svg(edge, positions) -> list[str]:
     x1, y1 = _center(positions[edge.source])
     x2, y2 = _center(positions[edge.target])
     out = [
-        f'<line x1="{x1:.0f}" y1="{y1:.0f}" x2="{x2:.0f}" y2="{y2:.0f}" '
-        f'stroke="{_EDGE}" stroke-width="1.5"/>'
+        (
+            f'<line x1="{x1:.0f}" y1="{y1:.0f}" x2="{x2:.0f}" y2="{y2:.0f}" '
+            f'stroke="{_EDGE}" stroke-width="1.5"/>'
+        )
     ]
     if edge.weight > 1:
         out.append(
@@ -102,12 +106,18 @@ def _node_svg(node, pos) -> list[str]:
         _CONTESTED_STROKE if node.contested_count else _stroke(node.authority_ratio)
     )
     parts = [
-        f'<rect x="{x}" y="{y}" width="{_NODE_W}" height="{_NODE_H}" rx="10" '
-        f'fill="{fill}" stroke="{stroke}" stroke-width="2"/>',
-        f'<text x="{x + 12}" y="{y + 26}" fill="{_TEXT}" font-size="14" '
-        f'font-weight="bold">{escape(node.label)}</text>',
-        f'<text x="{x + 12}" y="{y + 46}" fill="{_MUTED}" '
-        f'font-size="12">{escape(sub)}</text>',
+        (
+            f'<rect x="{x}" y="{y}" width="{_NODE_W}" height="{_NODE_H}" rx="10" '
+            f'fill="{fill}" stroke="{stroke}" stroke-width="2"/>'
+        ),
+        (
+            f'<text x="{x + 12}" y="{y + 26}" fill="{_TEXT}" font-size="14" '
+            f'font-weight="bold">{escape(node.label)}</text>'
+        ),
+        (
+            f'<text x="{x + 12}" y="{y + 46}" fill="{_MUTED}" '
+            f'font-size="12">{escape(sub)}</text>'
+        ),
     ]
     if node.owner:
         prefix = "lead" if node.kind == _KIND_DOMAIN else "owner"

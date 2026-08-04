@@ -39,25 +39,41 @@ The tests mirror the package, one area per layer:
 | `tests/domain` | pure unit tests of the model, moves, signals and books | none |
 | `tests/application` | unit tests over the Protocol seams, using hand-written fakes; the guide's worker pool is also exercised live with a real two-worker process pool and asserted bit-identical to the serial path | none |
 | `tests/infrastructure` | integration tests against real files in a temp directory | temp files |
+| `tests/installer` | unit tests of the Windows installer's decisions, deploying real zips into a temp directory | temp files |
+| `tests/scripts` | smoke tests of the three analysis scripts at the repo root | reads examples |
 | `tests/structural` | an AST scan that enforces the architectural invariants | reads source |
 
 ## Coverage scope
 
-`.coveragerc` gates the domain, the application, the infrastructure and the
-shared text helpers at 100%. It omits the surfaces that are composition or
-framework glue: the UI, `main.py`, the shared asset discovery, the application
-Protocol definitions, the version module and `generate_icons.py`. Those carry
-no branching logic, so they are verified by running the app rather than by the
-gate.
+`.coveragerc` gates the domain, the application, the infrastructure, the
+shared text helpers and the installer's decision layer
+(`installer/installer_logic.py`) at 100%. It omits the surfaces that are
+composition or framework glue: the UI, `main.py`, the shared asset discovery,
+the application Protocol definitions, the version module,
+`generate_icons.py` plus the installer's Qt surface and side-effect modules.
+Those carry no branching logic, so they are verified by running the app
+rather than by the gate.
+
+The installer is gated because it is a second application, not a build
+recipe: a defect in its registry writes, path resolution, extraction or
+shortcut targets lands on a user's machine before Fulcrum ever starts. The
+decisions live in `installer_logic.py` with no registry, no subprocess, no
+environment and no Qt, which is exactly what makes them testable; the module
+that acts on them (`installer_ops.py`) stays outside the gate with the
+widgets. The analysis scripts at the repo root are outside the gate too, but
+not outside the suite: `tests/scripts` asserts each one runs and exits zero.
 
 ## Structural invariants
 
 `tests/structural/test_architecture.py` is part of the suite, not a separate
 check. It fails the build if the domain imports I/O or an outer layer; if the
-application imports infrastructure or the UI; or if any module exceeds 400
-lines, the test modules included (an oversized test file hides structure the
-same way an oversized source file does). The architectural rules are
-therefore tested, not merely documented.
+application imports infrastructure or the UI; if any module exceeds 400
+lines, the test modules and the installer included (an oversized test file
+hides structure the same way an oversized source file does); if anything
+under `installer/` imports from the `fulcrum` package, which would drag the
+whole application into the setup binary; or if `installer_logic.py` reaches
+for the registry, a subprocess, the environment or Qt. The architectural
+rules are therefore tested, not merely documented.
 
 ## Verifying the UI
 
