@@ -62,6 +62,47 @@ def test_restore_session_falls_back_when_a_move_cannot_replay():
     assert restored.prior_history_count == 0
 
 
+def test_the_drilled_section_is_carried_in_the_snapshot_and_restored():
+    original = GameSession(_nested_org(), _FakeSimulator())
+    original.focus("d1")
+    assert original.snapshot().focused_on == "d1"
+    restored = restore_session(original.snapshot(), _FakeSimulator())
+    assert restored.focused_on == "d1"
+
+
+def test_the_top_level_frame_is_restored_as_itself():
+    original = GameSession(_nested_org(), _FakeSimulator())
+    original.focus(TOP_LEVEL_FOCUS)
+    restored = restore_session(original.snapshot(), _FakeSimulator())
+    assert restored.focused_on == TOP_LEVEL_FOCUS
+
+
+def test_an_unfocused_session_restores_unfocused():
+    original = GameSession(_nested_org(), _FakeSimulator())
+    assert original.snapshot().focused_on is None
+    assert restore_session(original.snapshot(), _FakeSimulator()).focused_on is None
+
+
+def test_a_focus_on_a_unit_that_is_gone_returns_to_the_whole_org():
+    # The restored focus is validated against the org that came back, so a
+    # file naming a unit this organisation does not have cannot leave the
+    # session pointed at nothing.
+    snapshot = SessionSnapshot(_nested_org(), (), _nested_org(), "ghost")
+    assert restore_session(snapshot, _FakeSimulator()).focused_on is None
+
+
+def test_the_focus_is_restored_even_when_the_moves_will_not_replay():
+    snapshot = SessionSnapshot(
+        _nested_org(),
+        (Move(MoveKind.DELEGATE_AUTHORITY, ("ghost",)),),
+        _nested_org(),
+        "d1",
+    )
+    restored = restore_session(snapshot, _FakeSimulator())
+    assert restored.history == ()
+    assert restored.focused_on == "d1"
+
+
 def test_played_moves_are_named_for_the_record():
     session = GameSession(_org(), _FakeSimulator())
     session.play(Move(MoveKind.DELEGATE_AUTHORITY, ("b",)))

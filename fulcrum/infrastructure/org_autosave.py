@@ -36,6 +36,7 @@ _JSON_INDENT = 2
 _TMP_SUFFIX = ".tmp"
 _INITIAL_KEY = "initial_org"
 _HISTORY_KEY = "history"
+_FOCUS_KEY = "focused_on"
 # A file that is present but will not read is kept under this suffix rather
 # than left in place to be overwritten. The launch that cannot restore starts
 # a new session and saves it immediately, so without this the unreadable file
@@ -96,6 +97,8 @@ class FileOrgStore:
         if snapshot.moves:
             data[_INITIAL_KEY] = org_to_dict(snapshot.initial_org)
             data[_HISTORY_KEY] = [move_to_dict(move) for move in snapshot.moves]
+        if snapshot.focused_on is not None:
+            data[_FOCUS_KEY] = snapshot.focused_on
         self._path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self._path.with_name(self._path.name + _TMP_SUFFIX)
         tmp.write_text(json.dumps(data, indent=_JSON_INDENT), encoding="utf-8")
@@ -120,12 +123,17 @@ class FileOrgStore:
         except (ValueError, KeyError, FulcrumError):
             self._preserve()
             return None
+        focus = data.get(_FOCUS_KEY)
+        if not isinstance(focus, str):
+            # Absent in files written before the focus was saved, and not to
+            # be trusted from a hand-edited one; either way, no focus.
+            focus = None
         try:
             moves = tuple(move_from_dict(m) for m in data.get(_HISTORY_KEY, ()))
             initial = org_from_dict(data[_INITIAL_KEY]) if moves else org
         except (ValueError, KeyError, TypeError, FulcrumError):
-            return SessionSnapshot(org, (), org)
-        return SessionSnapshot(initial, moves, org)
+            return SessionSnapshot(org, (), org, focus)
+        return SessionSnapshot(initial, moves, org, focus)
 
     def _preserve(self) -> None:
         """Move an unreadable file aside, or seal the store when that fails."""

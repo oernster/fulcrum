@@ -170,8 +170,10 @@ class GameSession:
         self._prior_count = len(self._history)
 
     def snapshot(self) -> SessionSnapshot:
-        """The session as persisted: start org, every move and the result."""
-        return SessionSnapshot(self._initial_org, self.history, self._org)
+        """The session as persisted: start org, every move, result and focus."""
+        return SessionSnapshot(
+            self._initial_org, self.history, self._org, self._focus_id
+        )
 
     @property
     def focused_on(self) -> str | None:
@@ -330,12 +332,20 @@ def restore_session(snapshot: SessionSnapshot, simulator: Simulator) -> GameSess
     runs). A snapshot whose moves no longer replay (say the file was edited)
     falls back to its stored current org with an empty history, which is
     what the pre-history autosave restored.
+
+    The drilled section is restored through focus(), so it is validated
+    against the org that actually came back: a unit that no longer exists or
+    no longer holds teams returns the session to the whole org rather than
+    leaving it pointed at nothing.
     """
     session = GameSession(snapshot.initial_org, simulator)
     for move in snapshot.moves:
         try:
             session.play(move)
         except FulcrumError:
-            return GameSession(snapshot.org, simulator)
+            fallback = GameSession(snapshot.org, simulator)
+            fallback.focus(snapshot.focused_on)
+            return fallback
     session.mark_history_as_prior()
+    session.focus(snapshot.focused_on)
     return session

@@ -93,6 +93,50 @@ def test_load_invalid_org_returns_none(tmp_path):
     assert FileOrgStore(path).load() is None
 
 
+# ------------------------------------------- the drilled section is remembered
+
+
+def test_the_focused_section_round_trips(tmp_path):
+    store = FileOrgStore(tmp_path / "last_org.json")
+    store.save(SessionSnapshot(_org(), (), _org(), "unit"))
+    restored = store.load()
+    assert restored.focused_on == "unit"
+
+
+def test_no_focus_is_written_at_all_when_there_is_none(tmp_path):
+    path = tmp_path / "last_org.json"
+    FileOrgStore(path).save(SessionSnapshot(_org(), (), _org()))
+    assert "focused_on" not in json.loads(path.read_text(encoding="utf-8"))
+    assert FileOrgStore(path).load().focused_on is None
+
+
+def test_a_file_written_before_the_focus_existed_loads_unfocused(tmp_path):
+    path = tmp_path / "last_org.json"
+    path.write_text(json.dumps(org_to_dict(_org())), encoding="utf-8")
+    assert FileOrgStore(path).load().focused_on is None
+
+
+def test_a_focus_that_is_not_a_name_is_ignored(tmp_path):
+    # A hand-edited file must not be able to put a non-name into the session.
+    path = tmp_path / "last_org.json"
+    data = org_to_dict(_org())
+    data["focused_on"] = {"not": "a name"}
+    path.write_text(json.dumps(data), encoding="utf-8")
+    assert FileOrgStore(path).load().focused_on is None
+
+
+def test_the_focus_survives_history_that_will_not_parse(tmp_path):
+    path = tmp_path / "last_org.json"
+    data = org_to_dict(_org())
+    data["history"] = [{"kind": "not-a-kind", "targets": [], "label": ""}]
+    data["initial_org"] = org_to_dict(_org())
+    data["focused_on"] = "unit"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    restored = FileOrgStore(path).load()
+    assert restored.moves == ()
+    assert restored.focused_on == "unit"
+
+
 # ------------------------------------------------- never destroy what we find
 
 

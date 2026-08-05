@@ -192,10 +192,18 @@ class BoardView(QWidget):
         )
 
     def set_session(self, session: GameSession) -> None:
+        """Show a session, opening at whatever section it is focused on.
+
+        A newly modelled, generated or imported organisation arrives with no
+        focus and so opens at the top. A restored one arrives focused on the
+        section it was left in, and forcing it back to the top here was what
+        made every launch start over from the whole organisation.
+        """
         self._session = session
-        session.focus(None)
         self._map_pane.reset()
         self.refresh()
+        if session.focused_on is not None:
+            self._map_pane.sync_scope(session.focused_on)
 
     def _on_scope_changed(self) -> None:
         """The Play-this-level toggle moved the scope; follow with the map."""

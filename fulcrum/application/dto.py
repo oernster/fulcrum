@@ -101,11 +101,16 @@ class SessionSnapshot:
 
     org is stored too so a reader that cannot replay (an older build, or a
     replay that no longer applies) still has the current organisation.
+
+    focused_on carries the drilled section, so a session reopens where it was
+    left rather than at the top level. It defaults to None, which is both the
+    unfocused state and what an older file without the field restores as.
     """
 
     initial_org: OrgState
     moves: tuple[Move, ...]
     org: OrgState
+    focused_on: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
