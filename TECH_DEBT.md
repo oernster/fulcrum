@@ -49,12 +49,6 @@ Clearing this means one dedicated commit per rule family, each with the gate gre
 
 `pyproject.toml` carries a `[tool.ruff]` block that mirrors `.flake8` (line length and exclusions) so the two tools read the same files with the same width. It deliberately sets no `select`.
 
-## 5. Two of the four packaging scripts never stamp the version
-
-`buildexe.py` and `buildinstaller.py` both call `stamp_version.main()` before building, so a Windows release cannot ship a GitHub Pages site whose version disagrees with `VERSION`. `builddmg.py` and `build_flatpak.sh` read `VERSION` for their own metadata but never run the stamper.
-
-The exposure is narrow (the stamped surface is the `docs/` site, which is published from `main` rather than from a build) and the failure is cosmetic rather than functional: a release cut on macOS or Linux without a preceding Windows build leaves the site showing the previous version. It is one line in each script. It is recorded rather than fixed because the packaging scripts are the owner's release path and each is verified by running it on its own platform.
-
 ---
 
 ## Looks like debt, not worth touching
@@ -76,4 +70,5 @@ These look like candidates but are correct as they stand; changing them would re
 - **The coverage omissions of the installer's Qt and side-effect modules** (`app.py`, `installer_bundle.py`, `installer_lifecycle.py`, `installer_ops.py`, `installer_theme.py`, `installer_widgets.py`, `installer_window.py`). The decisions were lifted into `installer_logic.py` and the command text it produces into `installer_scripts.py`, both gated at 100%; what remains is widgets, a registry and subprocess edge plus the composition that wires them. Testing `installer_ops.py` would mean writing to the real HKCU hive.
 - **`docs/` being hand-maintained with no generator.** The generator that used to write `docs/index.html` was retired because it had diverged: it emitted a single page with no navigation while the live site carries four further hand-written pages. The site is authored, not built. Do not reintroduce a generator without teaching it the whole page set.
 - **`VERSION` as the only real version string, with `stamp_version.py` writing the delimited tokens into the `docs/` site.** The apparent duplication is generated, not maintained. No documentation outside the site carries version data.
+- **Only `buildexe.py` and `buildinstaller.py` calling `stamp_version.main()`.** `builddmg.py` and `build_flatpak.sh` read `VERSION` for their own metadata and deliberately do not stamp, which reads like an omission and is not one. The two surfaces are separate and each is already correct. The **application** takes its version at runtime: `fulcrum/version.py` reads the `VERSION` file, every delivery script stages that file into the bundle, so Help then About reports the right number on Windows, macOS and Linux alike. This is verified, not assumed: a `python3 builddmg.py` DMG and a cleaned `build_flatpak.sh` Flatpak both show the current version. The **site** is a set of committed files under `docs/`, published from `main` rather than from any build, so it is stamped when the version is bumped and the documentation pass runs; `stamp_version.py` is idempotent. Adding the stamper to the macOS and Linux scripts would be actively worse: it would rewrite tracked files mid-build on a machine that is not the one making the release commit, leaving a dirty tree there and no benefit anywhere.
 - **The 45 tracked PNGs.** Every one is emitted by `generate_icons.py` from a single master and consumed by a named packaging path (PE icon, installer badge, hicolor set, `.icns` source). This is the single-master rule working, not asset sprawl.
