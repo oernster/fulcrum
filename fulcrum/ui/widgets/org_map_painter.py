@@ -18,12 +18,12 @@ from PySide6.QtGui import (
     QPainter,
     QPainterPath,
     QPen,
-    QPolygonF,
 )
 from PySide6.QtWidgets import QGraphicsScene
 
 from fulcrum.shared.text import count_noun
 from fulcrum.ui.map_palette import map_palette
+from fulcrum.ui.widgets.map_geometry import arrow_head, edge_span
 
 KIND_DOMAIN = "domain"
 NODE_W = 240.0
@@ -45,7 +45,6 @@ _SUB_LINE2 = 42.0
 _ARROW = 11.0
 _HALF = 2.0
 _FULL = 1.0
-_ARROW_SPREAD = math.pi / 6
 _PERSON_X = 26.0
 _PERSON_TOP = 14.0
 _HEAD_R = 5.0
@@ -155,42 +154,48 @@ def draw_node(scene: QGraphicsScene, node, top_left: QPointF) -> QRectF:
     return rect
 
 
-def _draw_arrow(scene: QGraphicsScene, start: QPointF, end: QPointF) -> None:
-    angle = math.atan2(end.y() - start.y(), end.x() - start.x())
-    tip = QPointF(
-        end.x() - NODE_W / _HALF * math.cos(angle),
-        end.y() - NODE_H / _HALF * math.sin(angle),
-    )
-    left = QPointF(
-        tip.x() - _ARROW * math.cos(angle - _ARROW_SPREAD),
-        tip.y() - _ARROW * math.sin(angle - _ARROW_SPREAD),
-    )
-    right = QPointF(
-        tip.x() - _ARROW * math.cos(angle + _ARROW_SPREAD),
-        tip.y() - _ARROW * math.sin(angle + _ARROW_SPREAD),
-    )
-    scene.addPolygon(
-        QPolygonF([tip, left, right]),
-        QPen(map_palette().edge),
-        QBrush(map_palette().edge),
-    )
+def _node_rect(top_left: QPointF) -> QRectF:
+    return QRectF(top_left.x(), top_left.y(), NODE_W, NODE_H)
 
 
 def draw_edges(scene: QGraphicsScene, edges, positions: dict) -> None:
-    """Draw each dependency edge as an arrow, with a weight label when above one."""
+    """Draw each dependency edge as an arrow, with a weight label when above one.
+
+    The run is border to border rather than centre to centre, so no line is
+    painted across the inside of the box it leaves or the box it enters, and
+    the head sits exactly where the line meets the target for every approach
+    angle rather than only for the horizontal and vertical ones.
+    """
     for edge in edges:
         if edge.source not in positions or edge.target not in positions:
             continue
-        start = node_center(positions[edge.source])
-        end = node_center(positions[edge.target])
+        span = edge_span(
+            _node_rect(positions[edge.source]), _node_rect(positions[edge.target])
+        )
+        if span is None:
+            continue
+        start, end, angle = span
         scene.addLine(
             start.x(), start.y(), end.x(), end.y(), QPen(map_palette().edge, 1.5)
         )
-        _draw_arrow(scene, start, end)
+        scene.addPolygon(
+            arrow_head(end, angle, _ARROW),
+            QPen(map_palette().edge),
+            QBrush(map_palette().edge),
+        )
         if edge.weight > 1:
-            label = scene.addSimpleText(str(edge.weight), node_font())
-            label.setBrush(map_palette().text_muted)
-            label.setPos((start.x() + end.x()) / _HALF, (start.y() + end.y()) / _HALF)
+            _draw_weight(scene, start, end, edge.weight)
+
+
+def _draw_weight(scene: QGraphicsScene, start: QPointF, end: QPointF, weight) -> None:
+    """Centre the count on the run rather than hanging it off the midpoint."""
+    label = scene.addSimpleText(str(weight), node_font())
+    label.setBrush(map_palette().text_muted)
+    bounds = label.boundingRect()
+    label.setPos(
+        (start.x() + end.x()) / _HALF - bounds.width() / _HALF,
+        (start.y() + end.y()) / _HALF - bounds.height(),
+    )
 
 
 def grid_positions(nodes, gap_x: float, gap_y: float) -> dict:

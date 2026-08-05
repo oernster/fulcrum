@@ -8,9 +8,8 @@ limit, mirroring org_map_painter beside OrgMapView.
 
 from __future__ import annotations
 
-import math
 
-from PySide6.QtCore import QPointF, QRectF, Qt
+from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import (
     QBrush,
     QColor,
@@ -18,7 +17,6 @@ from PySide6.QtGui import (
     QFontMetricsF,
     QPainterPath,
     QPen,
-    QPolygonF,
 )
 from PySide6.QtWidgets import QGraphicsScene
 
@@ -33,9 +31,9 @@ from fulcrum.ui.widgets.complete_map_layout import (
     SHELL_DETAIL,
     SHELL_ID,
     SHELL_LABEL,
-    TEAM_H,
     is_summary,
 )
+from fulcrum.ui.widgets.map_geometry import arrow_head, edge_span
 
 # Public: the view's hover ring wraps a box at this corner radius.
 CORNER = 10.0
@@ -191,7 +189,7 @@ def draw_edges(scene: QGraphicsScene, org: OrgState, rects: dict[str, QRectF]) -
             continue
         source, target = rects[dep.upstream], rects[dep.downstream]
         if direct_is_clear(source, target, rects):
-            _draw_edge(scene, source.center(), target.center())
+            _draw_edge(scene, source, target)
             continue
         routed.append((dep.upstream, dep.downstream))
     drawing = route_edges(tuple(routed), rects, diagram_right)
@@ -206,7 +204,12 @@ def draw_edges(scene: QGraphicsScene, org: OrgState, rects: dict[str, QRectF]) -
         label.setPos(position)
 
 
-def _draw_edge(scene: QGraphicsScene, start: QPointF, end: QPointF) -> None:
+def _draw_edge(scene: QGraphicsScene, source: QRectF, target: QRectF) -> None:
+    """A direct run, drawn border to border with its head on the target."""
+    span = edge_span(source, target)
+    if span is None:
+        return
+    start, end, angle = span
     scene.addLine(
         start.x(),
         start.y(),
@@ -214,21 +217,8 @@ def _draw_edge(scene: QGraphicsScene, start: QPointF, end: QPointF) -> None:
         end.y(),
         QPen(map_palette().edge, _EDGE_PEN_W),
     )
-    angle = math.atan2(end.y() - start.y(), end.x() - start.x())
-    tip = QPointF(
-        end.x() - TEAM_H / HALF * math.cos(angle),
-        end.y() - TEAM_H / HALF * math.sin(angle),
-    )
-    left = QPointF(
-        tip.x() - _ARROW * math.cos(angle - math.pi / 6),
-        tip.y() - _ARROW * math.sin(angle - math.pi / 6),
-    )
-    right = QPointF(
-        tip.x() - _ARROW * math.cos(angle + math.pi / 6),
-        tip.y() - _ARROW * math.sin(angle + math.pi / 6),
-    )
     scene.addPolygon(
-        QPolygonF([tip, left, right]),
+        arrow_head(end, angle, _ARROW),
         QPen(map_palette().edge),
         QBrush(map_palette().edge),
     )
