@@ -93,6 +93,11 @@ A short tour and the books behind it are at <https://ernster.dev/fulcrum/>.
   authority, contested ownership, centre escalation load and unowned
   interfaces), each carrying its own definition: hover for a gloss, click for
   the full meaning.
+- Every move you play is marked where it landed: the nodes it acted on are
+  ringed on both maps, and where the complete picture summarises a section,
+  the section holding those teams is ringed instead. At whole-org scale a
+  repair inside one unit moves the colours by hundredths, so the ring is what
+  makes a played move visible at all.
 - Structural moves scored from blunder to great. The Guide plans every level
   of the organisation at once: a tree of frames where each leaf line is
   priced in whole-org points (the composing badges sum to the headline and
@@ -118,16 +123,21 @@ A short tour and the books behind it are at <https://ernster.dev/fulcrum/>.
   machine without the cores for the pool is never trapped in a long
   serial build.
 - Move history that survives closing the app: the session autosaves the
-  starting org and every move, the next launch restores it by replay and
-  Take a move back steps through earlier runs' moves too, from the board or
-  with Ctrl+Z, all the way to the original organisation.
-- Plan export as a self-contained HTML report written straight to your
-  Downloads folder, covering the whole record with earlier runs visually
-  separated from the current one, or as JSON you can re-import to resume
-  the organisation and the moves played on it. Every move in the report
-  is judged twice: against the whole organisation and, where it acted
-  inside one unit, within that unit's own frame, so a repair played as
-  good in a drilled section reads as good instead of vanishing into
+  starting org, every move and the section you were drilled into, so the next
+  launch restores the position by replay and reopens where you left it rather
+  than at the whole organisation. Take a move back steps through earlier runs'
+  moves too, from the board or with Ctrl+Z, all the way to the original
+  organisation. A saved organisation that cannot be read is never written
+  over: it is kept aside under its own name and the app says where it went.
+- Plan export as a self-contained HTML report, from the header's chart button
+  beside the move record and the provenance mark. It is written straight into
+  your Downloads folder under a name that never overwrites an earlier one and
+  then opened for reading, and it covers the whole record with earlier runs
+  visually separated from the current one. The same plan exports as JSON you
+  can re-import to resume the organisation and the moves played on it. Every
+  move in the report is judged twice: against the whole organisation and,
+  where it acted inside one unit, within that unit's own frame, so a repair
+  played as good in a drilled section reads as good instead of vanishing into
   whole-org neutrality.
 - Full keyboard navigation: the whole interface sits on one explicit focus ring,
   so every control is reachable without a mouse.
@@ -149,7 +159,7 @@ A short tour and the books behind it are at <https://ernster.dev/fulcrum/>.
 | Language | Python 3.11+ (developed on 3.13) |
 | UI | PySide6 (Qt for Python) |
 | Persistence | Local JSON files |
-| Tests | pytest, 100% gate on domain, application, infrastructure and shared |
+| Tests | pytest, 100% gate on domain, application, infrastructure, shared and the installer's decision layer |
 | Format and lint | black (line length 88), flake8, ruff |
 | Icons and images | Pillow (build time) |
 | Packaging | Nuitka (Windows and macOS), Flatpak (Linux) |

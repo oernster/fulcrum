@@ -44,7 +44,11 @@ fulcrum/
   infrastructure/  JSON serialization, plan export, HTML and SVG renderers
   ui/              PySide6 board, map, editor and dialogs
   shared/          asset discovery and text helpers (no Qt)
-tests/             domain, application, infrastructure, shared and structural
+installer/         the bespoke Windows installer, a second application layered
+                   the same way: logic decides, scripts build the command text,
+                   ops acts, lifecycle composes and the Qt modules present
+tests/             domain, application, infrastructure, shared, installer,
+                   scripts and structural
 assets/            book covers and the generated header-button icons
 examples/          reference org JSON: a debt ladder, a healthy reference and
                    the calibration cases (examples/calibration)
@@ -58,17 +62,24 @@ Run all four before pushing:
 
 ```
 pytest
-black --check fulcrum tests main.py
-flake8 fulcrum tests main.py
+black --check .
+flake8 .
 ruff check .
 ```
 
-`pytest` enforces 100% coverage on the gated layers (domain, application and
-infrastructure). The structural tests in `tests/structural` enforce the
-architectural invariants: domain purity, inward dependencies and the 400-line
-module limit. Adding a feature means placing it in the right layer (the domain
-stays pure; the UI talks only to the application) or those tests fail. The
-detail is in [TESTING.md](TESTING.md).
+Run them from the repo root so the installer and the build scripts are read
+too; `.flake8` carries the exclusions and `pyproject.toml` mirrors them for
+ruff, so the three tools see the same files at the same width.
+
+`pytest` enforces 100% coverage on the gated layers (domain, application,
+infrastructure, shared and the installer's pure modules). The structural
+tests in `tests/structural` enforce the architectural invariants: domain
+purity, inward dependencies, the 400-line module limit across source, tests
+and the installer, the installer importing nothing from the `fulcrum`
+package, and its pure modules touching no registry, subprocess, environment
+or Qt. Adding a feature means placing it in the right layer (the domain stays
+pure; the UI talks only to the application) or those tests fail. The detail
+is in [TESTING.md](TESTING.md).
 
 ## Build scripts
 
