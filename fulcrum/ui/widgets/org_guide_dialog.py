@@ -33,6 +33,7 @@ from fulcrum.application.org_guide import GuideNode, OrgGuide
 from fulcrum.application.planner import GuideStep
 from fulcrum.ui import ui_scale
 from fulcrum.ui.theme_palettes import DEFAULT_THEME, PALETTES
+from fulcrum.ui.widgets.auto_scroller import AutoScroller
 from fulcrum.ui.widgets.board_renderers import clear_layout, magnifier_button
 from fulcrum.ui.widgets.dialog_focus_ring import (
     GROUP_STOP,
@@ -147,6 +148,10 @@ class OrgGuideDialog(NeutralDialog):
         self._rows = QVBoxLayout(self._rows_holder)
         scroll.setWidget(self._rows_holder)
         steps_layout.addWidget(scroll, 1)
+        # A long line overflows the pane exactly as the board's moves list
+        # does, so it reads itself down on the same terms and yields the
+        # moment the reader scrolls or tabs into a move row.
+        self._steps_scroller = AutoScroller(scroll)
 
         panes = QSplitter(Qt.Orientation.Horizontal)
         panes.addWidget(self._tree)

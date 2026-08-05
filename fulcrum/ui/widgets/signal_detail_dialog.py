@@ -2,7 +2,8 @@
 
 Replaces the old hover popover. A click-opened dialog reads clearly on every
 platform and scrolls when tall, neither of which the hover tooltip managed
-reliably; the magnifier that opens it sits in the keyboard focus ring.
+reliably; the magnifier that opens it sits in the keyboard focus ring. Joins
+the help family: auto-scrolls gently and yields to any manual scroll.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from PySide6.QtWidgets import (
 
 from fulcrum.domain.signals import SignalReading, format_reading_value
 from fulcrum.ui import ui_scale
+from fulcrum.ui.widgets.auto_scroller import AutoScroller
 from fulcrum.ui.widgets.neutral_dialog import NeutralDialog
 
 _MIN_WIDTH = 460
@@ -59,6 +61,7 @@ class SignalDetailDialog(NeutralDialog):
         scroll.setWidgetResizable(True)
         scroll.setWidget(content)
         layout.addWidget(scroll, 1)
+        self._scroller = AutoScroller(scroll)
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
         buttons.rejected.connect(self.reject)

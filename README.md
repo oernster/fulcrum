@@ -147,10 +147,12 @@ A short tour and the books behind it are at <https://ernster.dev/fulcrum/>.
   amber and violet keep their meaning on either surface (violet marks
   contested ownership rather than red, so it stays distinct from the green
   hover ring under red-green colour blindness).
-- Help built in: About, both licence texts, a decision glossary and a
-  background page on the Decision Architecture books. Long help content
-  reads itself down gently, holds at the end and rewinds; it yields the
-  moment you scroll by hand and resumes where you stopped.
+- Help built in: About, both licence texts, a decision glossary, a background
+  page on the Decision Architecture books, a page grounding every number in
+  the model and a definition behind every signal. Long help content reads
+  itself down gently, holds at the end and rewinds; it yields the moment you
+  scroll by hand and resumes where you stopped. Every surface that can
+  overflow reads itself the same way, the guide's move list included.
 
 ## Stack
 
