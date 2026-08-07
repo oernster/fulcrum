@@ -61,8 +61,8 @@
       <div class="eyebrow">Provenance</div>
       <h2 class="section-title">Where the weights come from</h2>
       <p>The scoring function lives in one module,
-        <a href="https://github.com/oernster/fulcrum/blob/main/fulcrum/domain/simulation.py">fulcrum/domain/simulation.py</a>,
-        and every coefficient lives in one frozen dataclass, <code>SimulationParameters</code>.
+        <a href="https://github.com/oernster/fulcrum/blob/main/fulcrum/domain/simulation.py">fulcrum/domain/simulation.py</a>;
+        every coefficient lives in one frozen dataclass, <code>SimulationParameters</code>.
         There are no hidden constants: the table below is the complete set. The honest split is
         this: the <b>mechanisms</b> (what is penalised and why) come from the books; the
         <b>magnitudes</b> (the specific numbers) are engineering judgement, constrained where the
@@ -197,7 +197,7 @@
   <section id="determinism">
     <div class="container prose">
       <div class="eyebrow">The distinction</div>
-      <h2 class="section-title">What determinism buys, and what it does not</h2>
+      <h2 class="section-title">What determinism buys and what it does not</h2>
       <p>Determinism buys three things. Reproducibility: two people with the same model get the
         same number, so a disagreement about structure becomes something you can examine rather
         than adjudicate. Inspectability: every score decomposes into its named penalties and every
@@ -231,8 +231,8 @@
           the nearest enclosing unit holding a clean authority, falling back to the whole frame.
           The factor is attenuated to 0.3 up to 150 people, at parity by 200, then amplified
           with the log of the population and capped. This is Machiavelli read structurally: the
-          Prince governs the small state well and the durable large state is a republic, or a
-          federation of Dunbar-sized principalities, with the survivor cap conceding that rare
+          Prince governs the small state well and the durable large state is a republic (or a
+          federation of Dunbar-sized principalities), with the survivor cap conceding that rare
           princes persist at scale. If the Dunbar horizon is the wrong hinge (a hundred-person
           organisation that already needs a republic, a founder who genuinely scales command
           past a thousand), the score over-rewards small autocracies or over-punishes large
@@ -270,7 +270,7 @@
           a diagnostic.</li>
         <li><b>Contest is priced, not fully simulated.</b> Matrix and dual-reporting structures
           are drawn as authority claims and priced through three channels (a capacity cut, the
-          escalation share and a whole-score divisor), but the reconciliation traffic between the
+          escalation share and a whole-score divisor); the reconciliation traffic between the
           claimants themselves is not synthesised as edges. A claim is also binary: a courtesy
           dotted line and a co-equal second boss weigh the same. Where claim strength varies
           widely, the score is coarser than the organisation.</li>
@@ -336,7 +336,7 @@
         curve-fit to its own examples. So the repository carries a deterministic sweep,
         <a href="https://github.com/oernster/fulcrum/blob/main/sensitivity.py">sensitivity.py</a>,
         which scales every tunable coefficient by 0.8 and by 1.2 (the three composite penalty
-        shares are renormalised to keep their enforced sum of 1.0, and the prince band's float
+        shares are renormalised to keep their enforced sum of 1.0; the prince band's float
         coefficients are swept while its headcount edges, being structural counts, are not),
         re-scores the ten shipped archetypes under each of the 34 perturbed configurations and
         checks five qualitative conclusions: the typical archetypes still collapse in order with scale, the well-designed
@@ -356,7 +356,7 @@
         conclusion holds. <b>All five conclusions hold in 100% of the 1,000 joint draws</b>
         (seed 20260711, the same published seed the books use).</p>
       <p>The sweep has already earned its keep once: the first cut of contested ownership
-        counted a team's own authority as its only structural claimant, and under that rule the
+        counted a team's own authority as its only structural claimant; under that rule the
         matrix overlay read <b>positive</b> on the escalation-heavy archetypes (it barely
         contested anyone while diluting every penalty share). The sweep failed, the semantics
         were corrected (the structural owner is always claimant one, so any standing claim is
