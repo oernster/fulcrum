@@ -345,6 +345,15 @@ footer {
 }
 .prose li { margin-bottom: 12px; }
 .prose li b { color: var(--text); }
+
+/* Group headings inside the vocabulary section (the tool page). */
+.vocab-heading {
+  color: var(--accent-bright);
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 30px 0 14px;
+}
 .prose code {
   background: var(--bg);
   border: 1px solid var(--border);
