@@ -407,6 +407,36 @@ footer {
   max-width: 1020px;
 }
 
+/* Clickable cards, site policy. A card that leads somewhere is clickable
+   across its whole surface and highlights on hover, so the affordance is the
+   pane itself rather than a small hyperlink buried inside it. The card keeps
+   exactly one real anchor and that anchor's ::after covers the card, so the
+   markup stays valid (no nested links) and assistive technology still
+   announces the link's own text. Cards whose affordance is already an obvious
+   button (the download cards) are deliberately left alone, since an overlay
+   there would also block selecting the install command. */
+.card-link {
+  position: relative;
+  transition: border-color 0.15s ease, background 0.15s ease,
+    transform 0.15s ease;
+}
+.card-link:hover,
+.card-link:focus-within {
+  border-color: var(--accent);
+  background: var(--raised);
+  transform: translateY(-2px);
+}
+.card-link:hover h3,
+.card-link:hover h4,
+.card-link:focus-within h3,
+.card-link:focus-within h4 { color: var(--accent-bright); }
+.card-link .stretched::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+}
+
 /* Keyboard focus stays visible site-wide. */
 a:focus-visible,
 .btn:focus-visible {
@@ -418,6 +448,9 @@ a:focus-visible,
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .btn { transition: none; }
+  .card-link { transition: none; }
+  .card-link:hover,
+  .card-link:focus-within { transform: none; }
 }
 
 @media (max-width: 640px) {
