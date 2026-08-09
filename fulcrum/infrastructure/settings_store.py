@@ -18,6 +18,7 @@ _TMP_SUFFIX = ".tmp"
 _THEME_KEY = "theme"
 _KNOWN_THEMES = ("dark", "light")
 _DEFAULT_THEME = "dark"
+_SKIPPED_UPDATE_KEY = "skipped_update_version"
 
 
 def default_settings_path() -> Path:
@@ -42,6 +43,20 @@ class FileSettingsStore:
     def save_theme(self, theme: str) -> None:
         data = self._read_all()
         data[_THEME_KEY] = theme
+        self._write_all(data)
+
+    def load_skipped_update_version(self) -> str | None:
+        """The exact release tag the user chose to skip, else None."""
+        value = self._read_all().get(_SKIPPED_UPDATE_KEY)
+        return value if isinstance(value, str) and value else None
+
+    def save_skipped_update_version(self, version: str) -> None:
+        data = self._read_all()
+        data[_SKIPPED_UPDATE_KEY] = version
+        self._write_all(data)
+
+    def _write_all(self, data: dict) -> None:
+        """Atomically replace the settings file with ``data``."""
         self._path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self._path.with_name(self._path.name + _TMP_SUFFIX)
         tmp.write_text(json.dumps(data, indent=_JSON_INDENT), encoding="utf-8")

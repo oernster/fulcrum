@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from random import Random
 
-from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -37,7 +36,9 @@ from fulcrum.ui.icons import button_icon
 from fulcrum.ui.map_palette import set_map_theme
 from fulcrum.ui.org_intake import OrgIntakeController
 from fulcrum.ui.plan_files import PlanFileActions
+from fulcrum.application.update_service import UpdateService
 from fulcrum.ui.theme import get_qss
+from fulcrum.ui.update_check import UpdateCheckController
 from fulcrum.ui.theme_palettes import DEFAULT_THEME, THEME_DARK, THEME_LIGHT
 from fulcrum.ui.widgets import disabled_cue
 from fulcrum.ui.widgets.about_dialog import AboutDialog, LicenceDialog
@@ -49,7 +50,6 @@ from fulcrum.ui.widgets.move_record_dialog import MoveRecordDialog
 from fulcrum.ui.widgets.provenance_dialog import ProvenanceDialog
 from fulcrum.version import APP_NAME, APP_TAGLINE
 
-_RELEASES_URL = "https://github.com/oernster/fulcrum/releases"
 _GLOSSARY_GLYPH = "\N{INFORMATION SOURCE}\N{VARIATION SELECTOR-16}"
 _GLOSSARY_TOOLTIP = "Decision glossary"
 _RECORD_TOOLTIP = "Move record: every move to date, with the position before and after"
@@ -75,12 +75,18 @@ class MainWindow(QMainWindow):
         examples: ExampleSource,
         org_store: OrgStore | None = None,
         settings: SettingsStore | None = None,
+        update_service: UpdateService | None = None,
         parent=None,
     ) -> None:
         super().__init__(parent)
         self._simulator = simulator
         self._org_store = org_store
         self._settings = settings
+        self._update_check = (
+            UpdateCheckController(self, update_service, settings)
+            if update_service is not None
+            else None
+        )
         self._theme = settings.load_theme() if settings is not None else DEFAULT_THEME
         set_map_theme(self._theme)
         # The generated header icons carry a variant per theme; the toggle
@@ -329,7 +335,8 @@ class MainWindow(QMainWindow):
         BookBackgroundDialog(self).exec()
 
     def _check_for_updates(self) -> None:
-        QDesktopServices.openUrl(QUrl(_RELEASES_URL))
+        if self._update_check is not None:
+            self._update_check.check_manually()
 
     def _about(self) -> None:
         AboutDialog(self).exec()

@@ -10,7 +10,9 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
 from fulcrum.application.simulator import DeterministicSimulator
+from fulcrum.application.update_service import UpdateService, platform_key_for
 from fulcrum.infrastructure.example_library import FileExampleLibrary
+from fulcrum.infrastructure.github_release_source import GitHubReleaseSource
 from fulcrum.infrastructure.org_autosave import FileOrgStore
 from fulcrum.infrastructure.plan_exporter import FilePlanExporter
 from fulcrum.infrastructure.settings_store import FileSettingsStore
@@ -19,6 +21,7 @@ from fulcrum.shared.resources import find_app_icon, find_examples_dir
 from fulcrum.ui import ui_scale
 from fulcrum.ui.main_window import MainWindow
 from fulcrum.ui.theme import get_qss
+from fulcrum.version import __version__
 
 _UI_SCALE_REFERENCE_HEIGHT = 1260.0
 _MAX_UI_SCALE = 1.5
@@ -65,6 +68,9 @@ def main() -> int:
         examples=FileExampleLibrary(find_examples_dir()),
         org_store=FileOrgStore(),
         settings=settings,
+        update_service=UpdateService(
+            GitHubReleaseSource(), __version__, platform_key_for(sys.platform)
+        ),
     )
     if icon is not None:
         window.setWindowIcon(icon)

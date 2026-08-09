@@ -8,7 +8,9 @@ result from 0 to 100. You can play generated levels, model your own organisation
 or ask for a guide to a stronger structure.
 
 It is a local-first desktop app: everything runs on your machine and nothing
-leaves it.
+about you or your organisations leaves it. The one call it makes to the
+network is an anonymous daily ask of GitHub's releases API for whether a
+newer Fulcrum exists; a failed check is silent.
 
 A short tour and the books behind it are at <https://ernster.dev/fulcrum/>.
 
@@ -147,6 +149,12 @@ A short tour and the books behind it are at <https://ernster.dev/fulcrum/>.
   amber and violet keep their meaning on either surface (violet marks
   contested ownership rather than red, so it stays distinct from the green
   hover ring under red-green colour blindness).
+- An update check against GitHub's releases API: a few seconds after launch,
+  daily while running and on demand from Help, prompting with Download (the
+  right file for your platform), Skip This Version and Later. Only a published
+  release can prompt, a skipped version never prompts again and an unreachable
+  network is silent; the manual check reports every outcome and ignores the
+  skip.
 - Help built in: About, both licence texts, a decision glossary, a background
   page on the Decision Architecture books, a page grounding every number in
   the model and a definition behind every signal. Long help content reads

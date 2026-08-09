@@ -17,6 +17,7 @@ from fulcrum.application.dto import (
     PlanReport,
     SessionSnapshot,
 )
+from fulcrum.application.update_info import ReleaseInfo
 from fulcrum.domain.models import OrgState
 from fulcrum.domain.moves import Move
 from fulcrum.domain.simulation import StructuralScore
@@ -91,11 +92,28 @@ class OrgStore(Protocol):
 
 
 class SettingsStore(Protocol):
-    """Persists small user preferences (the theme) across app runs."""
+    """Persists small user preferences across app runs.
+
+    Currently the theme and the update check's skipped version.
+    """
 
     def load_theme(self) -> str: ...
 
     def save_theme(self, theme: str) -> None: ...
+
+    def load_skipped_update_version(self) -> str | None: ...
+
+    def save_skipped_update_version(self, version: str) -> None: ...
+
+
+class ReleaseSource(Protocol):
+    """Reads the latest published release, for the update check.
+
+    Returns None on any failure: the caller decides whether silence or a
+    message is the right report.
+    """
+
+    def latest_release(self) -> ReleaseInfo | None: ...
 
 
 class ExampleSource(Protocol):

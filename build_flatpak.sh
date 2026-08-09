@@ -196,6 +196,9 @@ build-options:
   no-debuginfo: true
 
 finish-args:
+  # The in-app update check asks GitHub's releases API; without this the
+  # sandbox blocks the socket and every check reports unreachable.
+  - --share=network
   - --share=ipc
   - --socket=fallback-x11
   - --socket=wayland

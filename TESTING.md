@@ -59,11 +59,11 @@ The installer is gated because it is a second application, not a build
 recipe: a defect in its registry writes, path resolution, extraction or
 shortcut targets lands on a user's machine before Fulcrum ever starts. The
 decisions live in `installer_logic.py` with no registry, no subprocess, no
-environment and no Qt, which is exactly what makes them testable, and the
+environment and no Qt, which is exactly what makes them testable; the
 exact command text those decisions are carried out with lives beside it in
 `installer_scripts.py` so it can be asserted character by character; the
 module that acts on them (`installer_ops.py`) stays outside the gate with the
-widgets. The analysis scripts at the repo root are outside the gate too, but
+widgets. The analysis scripts at the repo root are outside the gate too but
 not outside the suite: `tests/scripts` asserts each one runs and exits zero.
 
 One invariant cannot be reached from either side alone. The installer is

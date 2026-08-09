@@ -10,13 +10,13 @@ A standing reference to the project's outstanding technical debt. It records wha
 
 It is small and the contract is honest (the docstring says the composition root sets it once), so the cost of the debt is low: the real price is that scale is global, so nothing can render at two scales and no test can vary the factor without leaking into the next test. Converting it to a `UiScale` value object injected down from `main.py` is the correct shape.
 
-**Blocked on an owner decision.** 52 of the 53 UI modules import `ui_scale`; the UI is outside the coverage gate, so threading an injected value object through them is a wide, behaviour-neutral edit whose only verification is by eye on a real window. The direction is settled; the appetite for that edit (and when to spend it) is not. It stays open until the owner says to spend it.
+**Blocked on an owner decision.** 23 of the 55 UI modules import `ui_scale` directly and everything sized flows through them; the UI is outside the coverage gate, so threading an injected value object through them is a wide, behaviour-neutral edit whose only verification is by eye on a real window. The direction is settled; the appetite for that edit (and when to spend it) is not. It stays open until the owner says to spend it.
 
-## 2. The UI layer is 8079 lines with no coverage and some of it is not UI
+## 2. The UI layer is 8356 lines with no coverage and some of it is not UI
 
 `.coveragerc` omits `*/ui/*` wholesale, which `TESTING.md` documents as deliberate. For painting, layout and Qt wiring that is correct and matches every other project here.
 
-The open question is how much of those 53 modules is actually presentation. `org_editor.py`, `org_guide_dialog.py` and the board widgets carry sequencing and state-shaping decisions, and each one of those is a decision no test can see. There is no proposal here to test Qt. The item is to keep pulling the decision-shaped parts down into `fulcrum/application` (where `org_draft.py` and `org_guide.py` show the pattern already working) so the omitted surface shrinks toward genuine presentation. This is continuous, not a task with an end state; it is recorded so the omission is never read as "the UI has no logic". The installer's split into a gated `installer_logic.py` and an untested Qt surface is the same move, done in one go, and is the shape to copy.
+The open question is how much of those 55 modules is actually presentation. `org_editor.py`, `org_guide_dialog.py` and the board widgets carry sequencing and state-shaping decisions, and each one of those is a decision no test can see. There is no proposal here to test Qt. The item is to keep pulling the decision-shaped parts down into `fulcrum/application` (where `org_draft.py` and `org_guide.py` show the pattern already working) so the omitted surface shrinks toward genuine presentation. This is continuous, not a task with an end state; it is recorded so the omission is never read as "the UI has no logic". The installer's split into a gated `installer_logic.py` and an untested Qt surface is the same move, done in one go, and is the shape to copy.
 
 ## 3. The frozen-build worker pool has never been exercised
 
@@ -28,7 +28,7 @@ It has not been run against a real Nuitka standalone build. Under freezing, each
 
 ## 4. Ruff has never been run against this repository beyond its default rules
 
-`ruff check .` passes clean and exits zero; that is ruff's default selection (E4, E7, E9 and F) doing very little work. Run with `--select ALL` the repository reports **4398 findings**, of which 304 are auto-fixable with `--fix` and a further 829 sit behind `--unsafe-fixes`. The largest families:
+`ruff check .` passes clean and exits zero; that is ruff's default selection (E4, E7, E9 and F) doing very little work. Run with `--select ALL` the repository reports **4752 findings**, of which 318 are auto-fixable with `--fix` and a further 907 sit behind `--unsafe-fixes`. The largest families:
 
 | Rule | Count | What it is |
 |---|---|---|
@@ -53,7 +53,7 @@ Clearing this means one dedicated commit per rule family, each with the gate gre
 
 ## Looks like debt, not worth touching
 
-- The ten modules between 351 and 380 lines (`hierarchy.py`, `simulation.py`, `org_draft.py`, `org_guide.py`, `org_guide_dialog.py`, `glossary.py`, `theme.py`, `board_view.py`, `main_window.py` and the installer's `installer_logic.py`) are under the cap and clear of the danger band. They need nothing.
+- The modules between 351 and 385 lines (`hierarchy.py`, `simulation.py`, `org_draft.py`, `org_guide.py`, `org_guide_dialog.py`, `glossary.py`, `theme.py`, `board_view.py`, `main_window.py` and the installer's `installer_logic.py`) are under the cap. `main_window.py` is the closest at 385 after gaining the update-check wiring; whoever touches it next should lift a cohesive slice (the Help menu construction is the obvious one) rather than nurse it under 400.
 - The `org_guide_*` family (`org_guide.py`, `_compose`, `_growth`, `_parallel`) reads as a file that got split four ways. It is the 400-line cap doing its job and each part is cohesive; merging them would breach the cap immediately.
 - The dual GPL-3.0 model and LGPL-3.0 UI split, with three licence files at root plus `INSTALLER_LICENSE`, looks like duplication. It is the deliberate licence design and every file is load-bearing.
 - The four `except Exception` blocks in the installer (`installer_ops.py` once, `installer_window.py` three times) each carry a `# noqa: BLE001` and a reason, and each one is a degrade-gracefully path where a raised exception is worse than a status message. Correct as written.

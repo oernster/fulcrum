@@ -76,7 +76,7 @@ infrastructure, shared and the installer's pure modules). The structural
 tests in `tests/structural` enforce the architectural invariants: domain
 purity, inward dependencies, the 400-line module limit across source, tests
 and the installer, the installer importing nothing from the `fulcrum`
-package, and its pure modules touching no registry, subprocess, environment
+package and its pure modules touching no registry, subprocess, environment
 or Qt. Adding a feature means placing it in the right layer (the domain stays
 pure; the UI talks only to the application) or those tests fail. The detail
 is in [TESTING.md](TESTING.md).
@@ -167,7 +167,10 @@ binaries are built and released separately.
 Builds Fulcrum as a Flatpak against the `org.freedesktop.Platform//25.08`
 runtime, installs it for the current user and writes a distributable
 `fulcrum.flatpak` bundle. The PySide6 wheels are pre-downloaded on the host then
-installed offline inside the sandbox, so the build needs no network. Needs
+installed offline inside the sandbox, so the build needs no network. The
+manifest's finish-args grant `--share=network` at runtime, which the in-app
+update check needs: without it the sandbox blocks the socket and every check
+reports unreachable. Needs
 `flatpak` and `flatpak-builder` with the freedesktop 25.08 runtime and SDK. Pass
 `--no-bundle` to build and install without the distributable bundle.
 
