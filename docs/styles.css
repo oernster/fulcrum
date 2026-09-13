@@ -129,6 +129,11 @@ header.nav {
 .btn-primary:hover { background: var(--accent-bright); color: #0d0f12; }
 .btn-ghost { border-color: var(--border); color: var(--text); }
 .btn-ghost:hover { border-color: var(--accent); color: var(--accent-bright); }
+/* The donate button carries artwork before its label. The mark is sized in em
+   against the button's own type; at one line box the artwork could not be read,
+   so it takes 2.7em and the button is deliberately taller than a text-only one. */
+.btn-donate { display: inline-flex; align-items: center; gap: 10px; }
+.btn-donate img { display: block; height: 2.7em; width: auto; }
 .badges {
   margin-top: 24px;
   color: var(--muted);

@@ -229,6 +229,14 @@ The development builds for Windows, Linux and macOS (the icon set, the Windows
 executable and installer, the Linux Flatpak, the macOS disk image and the GitHub
 Pages site) are described in [DEVELOPMENT-README.md](DEVELOPMENT-README.md).
 
+## Supporting the project
+
+Fulcrum is free and stays free. There is no paid tier, no licence key and no
+feature held back behind a donation. If it has saved you time or simply been
+useful, a donation supports its maintenance and continued development.
+
+<a href="https://www.paypal.com/ncp/payment/URFW8QCB4GGZC"><img src="docs/donate.png" alt="Donate to Fulcrum" width="120"></a>
+
 ## Licence
 
 Dual-licensed by component: the model under GPL-3.0 and the user interface (the
