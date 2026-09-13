@@ -14,6 +14,13 @@ newer Fulcrum exists; a failed check is silent.
 
 A short tour and the books behind it are at <https://ernster.dev/fulcrum/>.
 
+> **Commercial licences available.** Fulcrum is free and open source under
+> GPL-3.0, with its interface layer under LGPL-3.0. If those terms do not suit
+> what you are building, such as a closed-source product, a commercial licence
+> can be bought from me separately. It covers my own code; PySide6 keeps its
+> own LGPL-3.0 licence. See
+> [commercial licensing](https://ernster.dev/commercial-licensing.html).
+
 ## Who it is for
 
 - Software architects, senior engineers and CTOs who want to reason about org
@@ -51,7 +58,7 @@ A short tour and the books behind it are at <https://ernster.dev/fulcrum/>.
   records another actor (a team, a unit or an unmodelled label such as a
   chapter lead) asserting the right to decide for a team. A claimed team is
   contested, reads violet on the maps, carries its own watched signal and opens
-  its own repair moves: resolve the class to a single owner, or downgrade a
+  its own repair moves: resolve the class to a single owner or downgrade a
   claimant to an explicitly priced consulted dependency. Claims live in the
   editor beside the dependency table and round-trip through JSON.
 - The board opens as the complete picture: every domain and team at once,
@@ -74,7 +81,7 @@ A short tour and the books behind it are at <https://ernster.dev/fulcrum/>.
   previous edit), change it and rescore. The current org autosaves, so the
   model survives closing the app.
 - Leads and owners are never blank: every group and team gets a plausible name
-  from a built-in pool (overtype it in one motion, or roll the dice for
+  from a built-in pool (overtype it in one motion or roll the dice for
   another), across the editor and random generation.
 - Per-team headcount that rolls up through the domain hierarchy to a whole-org
   total, so a 100k-person structure is as workable as a handful of teams. The
@@ -96,7 +103,7 @@ A short tour and the books behind it are at <https://ernster.dev/fulcrum/>.
   interfaces), each carrying its own definition: hover for a gloss, click for
   the full meaning.
 - Every move you play is marked where it landed: the nodes it acted on are
-  ringed on both maps, and where the complete picture summarises a section,
+  ringed on both maps; where the complete picture summarises a section,
   the section holding those teams is ringed instead. At whole-org scale a
   repair inside one unit moves the colours by hundredths, so the ring is what
   makes a played move visible at all.
@@ -134,11 +141,11 @@ A short tour and the books behind it are at <https://ernster.dev/fulcrum/>.
 - Plan export as a self-contained HTML report, from the header's chart button
   beside the move record and the provenance mark. It is written straight into
   your Downloads folder under a name that never overwrites an earlier one and
-  then opened for reading, and it covers the whole record with earlier runs
+  then opened for reading; it covers the whole record with earlier runs
   visually separated from the current one. The same plan exports as JSON you
   can re-import to resume the organisation and the moves played on it. Every
-  move in the report is judged twice: against the whole organisation and,
-  where it acted inside one unit, within that unit's own frame, so a repair
+  move in the report is judged twice: against the whole organisation and
+  (where it acted inside one unit) within that unit's own frame, so a repair
   played as good in a drilled section reads as good instead of vanishing into
   whole-org neutrality.
 - Full keyboard navigation: the whole interface sits on one explicit focus ring,
@@ -229,3 +236,7 @@ PySide6 layer) under LGPL-3.0. See [LICENSE](LICENSE) for the split, with the
 full texts in [LICENSE-GPL-3.0.txt](LICENSE-GPL-3.0.txt) and
 [LICENSE-LGPL-3.0.txt](LICENSE-LGPL-3.0.txt). The running app shows both under
 Help.
+
+A commercial licence for my own code is also available, separately from the
+open-source licences: see
+[commercial licensing](https://ernster.dev/commercial-licensing.html).
