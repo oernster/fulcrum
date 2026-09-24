@@ -28,7 +28,7 @@ APP_NAME = "Fulcrum"
 APP_DISPLAY_NAME = "Fulcrum"
 APP_TAGLINE = "Organisational Decision Architecture Simulation Tool"
 APP_PUBLISHER = "Oliver Ernster"
-APP_URL = "https://oernster.github.io/fulcrum/"
+APP_URL = "https://ernster.dev/fulcrum/"
 
 # Payload layout produced by buildinstaller.py: payload/Fulcrum/ holds the
 # bundle's non-binary files (read by the installer UI), payload/Fulcrum.zip the

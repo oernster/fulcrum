@@ -174,7 +174,7 @@ cat > "packaging/${APP_ID}.metainfo.xml" <<XML
   <releases>
     <release version="${APP_VERSION}" date="$(date +%Y-%m-%d)"/>
   </releases>
-  <url type="homepage">https://oernster.github.io/fulcrum/</url>
+  <url type="homepage">https://ernster.dev/fulcrum/</url>
 </component>
 XML
 
